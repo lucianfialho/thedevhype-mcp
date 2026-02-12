@@ -1,9 +1,11 @@
 import { z } from 'zod';
-import { createMcpHandler } from 'mcp-handler';
-import { scrapNFCeFromUrl } from '../../lib/scraper';
+import { scrapNFCeFromUrl } from '../../scraper';
+import type { McpServerDefinition } from '../types';
 
-const handler = createMcpHandler(
-  (server) => {
+export const notaFiscalServer: McpServerDefinition = {
+  name: 'nota-fiscal',
+  description: 'Busca e extrai dados de Notas Fiscais de Consumidor Eletrônicas (NFC-e)',
+  init: (server) => {
     server.tool(
       'buscar_nota_fiscal',
       'Busca e extrai dados de uma Nota Fiscal de Consumidor Eletrônica (NFC-e) a partir da URL de consulta. Retorna estabelecimento, produtos, valores, formas de pagamento e informações fiscais.',
@@ -73,15 +75,4 @@ const handler = createMcpHandler(
       },
     );
   },
-  {
-    capabilities: {
-      tools: {},
-    },
-  },
-  {
-    basePath: '/api',
-    verboseLogs: true,
-  },
-);
-
-export { handler as GET, handler as POST, handler as DELETE };
+};
