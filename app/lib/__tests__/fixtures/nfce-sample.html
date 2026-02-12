@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head><title>NFC-e Consulta</title></head>
+<body>
+  <div class="txtTopo" id="u20">SUPERMERCADO TESTE LTDA</div>
+  <div class="text">CNPJ: 12.345.678/0001-99</div>
+  <div class="text">Rua das Flores, 123, Sala 1, Centro, São Paulo, SP</div>
+
+  <table id="tabResult">
+    <tbody>
+      <tr>
+        <td><span class="txtTit">ARROZ BRANCO 5KG</span></td>
+        <td><span class="RCod">Código: 7891234</span></td>
+        <td><span class="Rqtd">Qtde.:2,000</span></td>
+        <td><span class="RUN">UN: UN</span></td>
+        <td><span class="RvlUnit">Vl. Unit.: 22,90</span></td>
+        <td><span class="valor">45,80</span></td>
+      </tr>
+      <tr>
+        <td><span class="txtTit">FEIJAO PRETO 1KG</span></td>
+        <td><span class="RCod">Código: 7895678</span></td>
+        <td><span class="Rqtd">Qtde.:3,000</span></td>
+        <td><span class="RUN">UN: UN</span></td>
+        <td><span class="RvlUnit">Vl. Unit.: 8,50</span></td>
+        <td><span class="valor">25,50</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div id="totalNota">
+    <div id="linhaTotal">
+      <label>Qtd. total de itens:</label>
+      <span class="totalNumb">5</span>
+    </div>
+    <div id="linhaTotal">
+      <label>Valor total R$</label>
+      <span class="totalNumb">71,30</span>
+    </div>
+    <div id="linhaTotal">
+      <label>Descontos R$</label>
+      <span class="totalNumb">0,00</span>
+    </div>
+    <div class="linhaShade" id="linhaTotal">
+      <label>Valor a pagar R$</label>
+      <span class="totalNumb">71,30</span>
+    </div>
+    <div id="linhaForma">Forma de pagamento</div>
+    <div id="linhaTotal">
+      <label class="tx">Cartão de Débito</label>
+      <span class="totalNumb">71,30</span>
+    </div>
+    <div id="linhaTotal">
+      <label class="tx">Troco</label>
+      <span class="totalNumb">0,00</span>
+    </div>
+    <div class="spcTop" id="linhaTotal">
+      <label>Tributos Totais Incidentes</label>
+      <span class="totalNumb">12,50</span>
+    </div>
+  </div>
+
+  <div id="infos">
+    <div class="ui-collapsible-content">
+      Número: 001234
+      Série: 001
+      Emissão: 10/02/2026 14:30:00
+      Protocolo de Autorização: 135260000111222
+      10/02/2026 às 14:30:05
+    </div>
+  </div>
+
+  <div class="chave">3526 0212 3456 7800 0199 6500 1000 0012 3410 0013 5678</div>
+</body>
+</html>
