@@ -12,10 +12,12 @@
   "dependencies": {
     "@neondatabase/neon-js": "^0.2.0-beta.1",
     "@neondatabase/serverless": "^1.0.2",
-    "cheerio": "^1.2.0",
+    "@sparticuz/chromium": "^133.0.0",
     "drizzle-orm": "^0.45.1",
     "mcp-handler": "^1.0.7",
     "next": "16.1.6",
+    "puppeteer": "^24.37.3",
+    "puppeteer-core": "^24.37.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "zod": "^4.3.6"
@@ -26,6 +28,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "cheerio": "^1.2.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "dotenv": "^17.3.1",
