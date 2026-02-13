@@ -274,15 +274,41 @@ function parseDataBrasileira(dataStr: string): Date {
 }
 
 /**
- * Faz requisição HTTP e extrai dados da NFC-e
+ * Detects if the HTML response is a SEFAZ IP block page instead of actual NFC-e data.
+ */
+function isBlockedResponse(html: string): boolean {
+  return html.length < 3000 && (
+    html.includes('crimes cibernéticos') ||
+    html.includes('endereços IP') ||
+    html.includes('proteção máxima') ||
+    !html.includes('#tabResult') && !html.includes('txtTopo')
+  );
+}
+
+/**
+ * Builds the fetch URL — uses ScraperAPI proxy when SCRAPER_API_KEY is set.
+ */
+function buildFetchUrl(targetUrl: string): string {
+  const apiKey = process.env.SCRAPER_API_KEY;
+  if (apiKey) {
+    return `https://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&country_code=br`;
+  }
+  return targetUrl;
+}
+
+/**
+ * Faz requisição HTTP e extrai dados da NFC-e.
+ * Usa ScraperAPI como proxy quando SCRAPER_API_KEY está configurada.
  */
 export async function scrapNFCeFromUrl(url: string): Promise<ScrapingResult> {
+  const useProxy = !!process.env.SCRAPER_API_KEY;
   try {
-    console.log(`[scraper] Fetching URL: ${url}`);
-    const response = await fetch(url);
+    const fetchUrl = buildFetchUrl(url);
+    console.log(`[scraper] Fetching URL${useProxy ? ' (via ScraperAPI)' : ''}: ${url}`);
+
+    const response = await fetch(fetchUrl);
 
     console.log(`[scraper] Response status: ${response.status} ${response.statusText}`);
-    console.log(`[scraper] Content-Type: ${response.headers.get('content-type')}`);
 
     if (!response.ok) {
       return {
@@ -293,7 +319,14 @@ export async function scrapNFCeFromUrl(url: string): Promise<ScrapingResult> {
 
     const html = await response.text();
     console.log(`[scraper] HTML length: ${html.length} chars`);
-    console.log(`[scraper] HTML preview (first 500 chars): ${html.substring(0, 500)}`);
+
+    if (isBlockedResponse(html)) {
+      console.log(`[scraper] Blocked by SEFAZ (IP restriction detected)`);
+      return {
+        sucesso: false,
+        erro: 'A SEFAZ bloqueou a requisição (restrição de IP). Configure SCRAPER_API_KEY para usar proxy com IP residencial.',
+      };
+    }
 
     const result = await scrapNFCe(html, url);
 
