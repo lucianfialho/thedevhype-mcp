@@ -264,18 +264,33 @@ function parseDataBrasileira(dataStr: string): Date {
  * Uses @sparticuz/chromium for serverless environments (Vercel/AWS Lambda),
  * falls back to regular puppeteer for local development.
  */
+/**
+ * Parses PROXY_URL env var (http://user:pass@host:port) into components.
+ */
+function parseProxyUrl(proxyUrl: string) {
+  const url = new URL(proxyUrl);
+  return {
+    server: `${url.protocol}//${url.hostname}:${url.port}`,
+    username: decodeURIComponent(url.username),
+    password: decodeURIComponent(url.password),
+  };
+}
+
 async function launchBrowser() {
+  const proxyUrl = process.env.PROXY_URL;
+  const proxyArgs = proxyUrl ? [`--proxy-server=${parseProxyUrl(proxyUrl).server}`] : [];
+
   if (process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.VERCEL) {
     const chromium = (await import('@sparticuz/chromium')).default;
     const puppeteer = (await import('puppeteer-core')).default;
     return puppeteer.launch({
-      args: chromium.args,
+      args: [...chromium.args, ...proxyArgs],
       executablePath: await chromium.executablePath(),
       headless: chromium.headless,
     });
   }
   const puppeteer = (await import('puppeteer')).default;
-  return puppeteer.launch({ headless: true });
+  return puppeteer.launch({ headless: true, args: proxyArgs });
 }
 
 /**
@@ -285,10 +300,18 @@ async function launchBrowser() {
 export async function scrapNFCeFromUrl(url: string): Promise<ScrapingResult> {
   let browser;
   try {
-    console.log(`[scraper] Launching browser (env: ${process.env.VERCEL ? 'vercel' : process.env.AWS_LAMBDA_FUNCTION_NAME ? 'lambda' : 'local'})`);
+    const proxyUrl = process.env.PROXY_URL;
+    console.log(`[scraper] Launching browser (env: ${process.env.VERCEL ? 'vercel' : process.env.AWS_LAMBDA_FUNCTION_NAME ? 'lambda' : 'local'}, proxy: ${proxyUrl ? 'yes' : 'no'})`);
     browser = await launchBrowser();
     console.log(`[scraper] Browser launched, navigating to: ${url}`);
     const page = await browser.newPage();
+
+    if (proxyUrl) {
+      const { username, password } = parseProxyUrl(proxyUrl);
+      if (username && password) {
+        await page.authenticate({ username, password });
+      }
+    }
 
     await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
     const pageTitle = await page.title();
