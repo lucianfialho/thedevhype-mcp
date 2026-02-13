@@ -285,11 +285,15 @@ async function launchBrowser() {
 export async function scrapNFCeFromUrl(url: string): Promise<ScrapingResult> {
   let browser;
   try {
+    console.log(`[scraper] Launching browser (env: ${process.env.VERCEL ? 'vercel' : process.env.AWS_LAMBDA_FUNCTION_NAME ? 'lambda' : 'local'})`);
     browser = await launchBrowser();
+    console.log(`[scraper] Browser launched, navigating to: ${url}`);
     const page = await browser.newPage();
 
     await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
+    console.log(`[scraper] Page loaded, waiting for #tabResult selector`);
     await page.waitForSelector('#tabResult', { timeout: 30000 });
+    console.log(`[scraper] #tabResult found, extracting data`);
 
     const data = await page.evaluate(() => {
       const text = (sel: string) => document.querySelector(sel)?.textContent?.trim() ?? '';
@@ -405,6 +409,8 @@ export async function scrapNFCeFromUrl(url: string): Promise<ScrapingResult> {
       };
     });
 
+    console.log(`[scraper] Extracted: ${data.produtos.length} produtos, estabelecimento="${data.estabelecimento.nome}", nota=${data.infoNota.numero}`);
+
     const notaFiscal: NotaFiscal = {
       numero: data.infoNota.numero,
       serie: data.infoNota.serie,
@@ -430,6 +436,7 @@ export async function scrapNFCeFromUrl(url: string): Promise<ScrapingResult> {
       notaFiscal,
     };
   } catch (erro) {
+    console.error(`[scraper] Error:`, erro instanceof Error ? erro.message : erro);
     return {
       sucesso: false,
       erro: erro instanceof Error ? erro.message : 'Erro ao fazer scraping com Puppeteer',
