@@ -8,6 +8,11 @@ import { ToggleServer } from './toggle-server';
 
 export const dynamic = 'force-dynamic';
 
+function maskApiKey(key: string): string {
+  const last4 = key.slice(-4);
+  return `sk-****${last4}`;
+}
+
 export default async function DashboardPage() {
   const { data: session } = await auth.getSession();
   const user = session?.user;
@@ -40,6 +45,7 @@ export default async function DashboardPage() {
             const url = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/mcp/${server.name}/mcp`;
             const access = accessByName.get(server.name);
             const enabled = access?.enabled ?? false;
+            const maskedKey = access?.apiKey ? maskApiKey(access.apiKey) : null;
 
             return (
               <li
@@ -60,9 +66,25 @@ export default async function DashboardPage() {
                       {server.description}
                     </p>
                     {enabled && (
-                      <code className="mt-3 block truncate rounded bg-zinc-100 px-3 py-2 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                        {url}
-                      </code>
+                      <div className="mt-3 space-y-2">
+                        <div>
+                          <span className="text-xs font-medium text-zinc-500">Endpoint</span>
+                          <code className="mt-1 block truncate rounded bg-zinc-100 px-3 py-2 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                            {url}
+                          </code>
+                        </div>
+                        {maskedKey && (
+                          <div>
+                            <span className="text-xs font-medium text-zinc-500">API Key</span>
+                            <code className="mt-1 block rounded bg-zinc-100 px-3 py-2 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                              {maskedKey}
+                            </code>
+                            <p className="mt-1 text-xs text-zinc-400">
+                              Use as Bearer token in the Authorization header.
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                   {enabled && <CopyUrlButton url={url} />}
