@@ -1,54 +1,46 @@
 import { NextResponse } from 'next/server';
+import { withMcpAuth } from 'mcp-handler';
+import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import { db } from '../../../lib/db';
 import { userMcpAccess } from '../../../lib/db/public.schema';
 import { eq, and } from 'drizzle-orm';
 import { registry } from '../../../lib/mcp/servers';
 
+function createVerifyToken(serverName: string) {
+  return async (_req: Request, bearerToken?: string): Promise<AuthInfo | undefined> => {
+    if (!bearerToken) return undefined;
+
+    const rows = await db
+      .select({ userId: userMcpAccess.userId })
+      .from(userMcpAccess)
+      .where(
+        and(
+          eq(userMcpAccess.apiKey, bearerToken),
+          eq(userMcpAccess.mcpName, serverName),
+          eq(userMcpAccess.enabled, true),
+        ),
+      )
+      .limit(1);
+
+    if (rows.length === 0) return undefined;
+
+    return { token: bearerToken, clientId: '', scopes: [], extra: { userId: rows[0].userId } };
+  };
+}
+
 async function handleRequest(request: Request, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
   const serverName = path[0];
 
-  const handler = registry.getHandler(serverName);
-  if (!handler) {
+  const baseHandler = registry.getHandler(serverName);
+  if (!baseHandler) {
     return NextResponse.json(
       { error: `MCP server "${serverName}" not found` },
       { status: 404 },
     );
   }
 
-  // Validate API key from Authorization header
-  const authHeader = request.headers.get('authorization');
-  const apiKey = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: 'Invalid or missing API key' },
-      { status: 401 },
-    );
-  }
-
-  const rows = await db
-    .select({ id: userMcpAccess.id, userId: userMcpAccess.userId })
-    .from(userMcpAccess)
-    .where(
-      and(
-        eq(userMcpAccess.apiKey, apiKey),
-        eq(userMcpAccess.mcpName, serverName),
-        eq(userMcpAccess.enabled, true),
-      ),
-    )
-    .limit(1);
-
-  if (rows.length === 0) {
-    return NextResponse.json(
-      { error: 'Invalid or missing API key' },
-      { status: 401 },
-    );
-  }
-
-  // Inject auth info so tool callbacks can access userId via extra.authInfo
-  (request as any).auth = { token: apiKey, clientId: '', scopes: [], extra: { userId: rows[0].userId } };
-
+  const handler = withMcpAuth(baseHandler, createVerifyToken(serverName), { required: true });
   return handler(request);
 }
 
