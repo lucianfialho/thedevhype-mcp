@@ -291,7 +291,20 @@ export async function scrapNFCeFromUrl(url: string): Promise<ScrapingResult> {
     const page = await browser.newPage();
 
     await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
-    console.log(`[scraper] Page loaded, waiting for #tabResult selector`);
+    const pageTitle = await page.title();
+    const pageUrl = page.url();
+    const bodyPreview = await page.evaluate(() => document.body?.innerHTML?.substring(0, 2000) ?? '(empty body)');
+    console.log(`[scraper] Page loaded — title: "${pageTitle}", url: ${pageUrl}`);
+    console.log(`[scraper] Body preview: ${bodyPreview}`);
+
+    const hasTabResult = await page.$('#tabResult');
+    if (!hasTabResult) {
+      console.log(`[scraper] #tabResult NOT found. Waiting 10s and retrying...`);
+      await new Promise(r => setTimeout(r, 10000));
+      const bodyAfterWait = await page.evaluate(() => document.body?.innerHTML?.substring(0, 2000) ?? '(empty body)');
+      console.log(`[scraper] Body after 10s wait: ${bodyAfterWait}`);
+    }
+
     await page.waitForSelector('#tabResult', { timeout: 30000 });
     console.log(`[scraper] #tabResult found, extracting data`);
 
