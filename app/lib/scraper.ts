@@ -8,11 +8,27 @@ export async function scrapNFCe(html: string, urlOrigem?: string): Promise<Scrap
   try {
     const $ = cheerio.load(html);
 
+    // Log key selectors to diagnose parsing issues
+    console.log(`[scraper:parse] #tabResult tbody tr count: ${$('#tabResult tbody tr').length}`);
+    console.log(`[scraper:parse] .txtTopo#u20 text: "${$('.txtTopo#u20').text().trim()}"`);
+    console.log(`[scraper:parse] .text first: "${$('.text').first().text().trim()}"`);
+    console.log(`[scraper:parse] #infos content (first 300): "${$('#infos .ui-collapsible-content').first().text().substring(0, 300)}"`);
+    console.log(`[scraper:parse] .chave text: "${$('.chave').text().trim()}"`);
+    console.log(`[scraper:parse] #totalNota children: ${$('#totalNota').children().length}`);
+
     const estabelecimento = extrairEstabelecimento($);
     const produtos = extrairProdutos($);
     const totalizadores = extrairTotalizadores($);
     const infoNota = extrairInformacoesNota($);
     const formasPagamento = extrairFormasPagamento($);
+
+    console.log(`[scraper:parse] Parsed results:`, {
+      estabelecimento: { nome: estabelecimento.nome, cnpj: estabelecimento.cnpj },
+      produtosCount: produtos.length,
+      totalizadores,
+      infoNota: { numero: infoNota.numero, serie: infoNota.serie, chaveAcesso: infoNota.chaveAcesso?.substring(0, 10) + '...' },
+      formasPagamentoCount: formasPagamento.length,
+    });
 
     const notaFiscal: NotaFiscal = {
       numero: infoNota.numero,
@@ -262,7 +278,11 @@ function parseDataBrasileira(dataStr: string): Date {
  */
 export async function scrapNFCeFromUrl(url: string): Promise<ScrapingResult> {
   try {
+    console.log(`[scraper] Fetching URL: ${url}`);
     const response = await fetch(url);
+
+    console.log(`[scraper] Response status: ${response.status} ${response.statusText}`);
+    console.log(`[scraper] Content-Type: ${response.headers.get('content-type')}`);
 
     if (!response.ok) {
       return {
@@ -272,8 +292,27 @@ export async function scrapNFCeFromUrl(url: string): Promise<ScrapingResult> {
     }
 
     const html = await response.text();
-    return scrapNFCe(html, url);
+    console.log(`[scraper] HTML length: ${html.length} chars`);
+    console.log(`[scraper] HTML preview (first 500 chars): ${html.substring(0, 500)}`);
+
+    const result = await scrapNFCe(html, url);
+
+    if (result.sucesso && result.notaFiscal) {
+      const nf = result.notaFiscal;
+      console.log(`[scraper] Extraction success:`, {
+        estabelecimento: nf.estabelecimento.nome || '(empty)',
+        cnpj: nf.estabelecimento.cnpj || '(empty)',
+        numero: nf.numero || '(empty)',
+        produtos: nf.produtos.length,
+        valorAPagar: nf.valorAPagar,
+      });
+    } else {
+      console.log(`[scraper] Extraction failed: ${result.erro}`);
+    }
+
+    return result;
   } catch (erro) {
+    console.error(`[scraper] Fetch error:`, erro);
     return {
       sucesso: false,
       erro: erro instanceof Error ? erro.message : 'Erro ao fazer requisição',
