@@ -6,13 +6,17 @@ import { useRouter } from 'next/navigation';
 export function ToggleServer({
   mcpName,
   enabled: initialEnabled,
+  hasApiKey: initialHasApiKey,
 }: {
   mcpName: string;
   enabled: boolean;
+  hasApiKey: boolean;
 }) {
   const [enabled, setEnabled] = useState(initialEnabled);
   const [isPending, setIsPending] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [newApiKey, setNewApiKey] = useState<string | null>(null);
+  const [hasApiKey, setHasApiKey] = useState(initialHasApiKey);
   const [copied, setCopied] = useState(false);
   const router = useRouter();
 
@@ -39,6 +43,9 @@ export function ToggleServer({
 
       if (data.enabled && data.apiKey) {
         setNewApiKey(data.apiKey);
+        setHasApiKey(true);
+      } else if (!data.enabled) {
+        setHasApiKey(false);
       }
 
       router.refresh();
@@ -46,6 +53,31 @@ export function ToggleServer({
       setEnabled(prev);
     } finally {
       setIsPending(false);
+    }
+  }
+
+  async function handleGenerateKey() {
+    setIsGenerating(true);
+    setNewApiKey(null);
+
+    try {
+      const res = await fetch('/api/mcp-access/generate-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mcpName }),
+      });
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+      if (data.apiKey) {
+        setNewApiKey(data.apiKey);
+        setHasApiKey(true);
+      }
+
+      router.refresh();
+    } finally {
+      setIsGenerating(false);
     }
   }
 
@@ -58,21 +90,37 @@ export function ToggleServer({
 
   return (
     <div>
-      <button
-        onClick={handleToggle}
-        disabled={isPending}
-        role="switch"
-        aria-checked={enabled}
-        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
-          enabled ? 'bg-zinc-900 dark:bg-zinc-100' : 'bg-zinc-200 dark:bg-zinc-700'
-        }`}
-      >
-        <span
-          className={`pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform dark:bg-zinc-900 ${
-            enabled ? 'translate-x-5' : 'translate-x-0'
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleToggle}
+          disabled={isPending}
+          role="switch"
+          aria-checked={enabled}
+          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+            enabled ? 'bg-zinc-900 dark:bg-zinc-100' : 'bg-zinc-200 dark:bg-zinc-700'
           }`}
-        />
-      </button>
+        >
+          <span
+            className={`pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform dark:bg-zinc-900 ${
+              enabled ? 'translate-x-5' : 'translate-x-0'
+            }`}
+          />
+        </button>
+
+        {enabled && !newApiKey && (
+          <button
+            onClick={handleGenerateKey}
+            disabled={isGenerating}
+            className="rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          >
+            {isGenerating
+              ? 'Generating...'
+              : hasApiKey
+                ? 'Regenerate Key'
+                : 'Generate Key'}
+          </button>
+        )}
+      </div>
 
       {newApiKey && (
         <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950">

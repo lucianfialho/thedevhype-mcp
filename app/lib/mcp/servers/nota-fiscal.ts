@@ -5,6 +5,13 @@ import type { McpServerDefinition } from '../types';
 export const notaFiscalServer: McpServerDefinition = {
   name: 'nota-fiscal',
   description: 'Busca e extrai dados de Notas Fiscais de Consumidor Eletrônicas (NFC-e)',
+  category: 'Brazilian Services',
+  tools: [
+    {
+      name: 'buscar_nota_fiscal',
+      description: 'Extrai dados de uma NFC-e a partir da URL de consulta (estabelecimento, produtos, valores, pagamentos e informações fiscais)',
+    },
+  ],
   init: (server) => {
     server.tool(
       'buscar_nota_fiscal',
