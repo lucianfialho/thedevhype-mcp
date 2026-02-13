@@ -1,4 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+vi.mock('../../db', () => ({ db: {} }));
+
 import { registry } from '../servers';
 
 describe('McpRegistry', () => {

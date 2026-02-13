@@ -51,7 +51,7 @@ export default async function DashboardPage() {
           {Array.from(categories.entries()).map(([category, categoryServers]) => (
             <section key={category}>
               <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-400">
-                {category}
+                {category === 'Brazilian Services' ? `🇧🇷 ${category}` : category}
               </h3>
               <ul className="space-y-4">
                 {categoryServers.map((server) => {

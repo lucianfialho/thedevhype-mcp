@@ -28,7 +28,7 @@ async function handleRequest(request: Request, { params }: { params: Promise<{ p
   }
 
   const rows = await db
-    .select({ id: userMcpAccess.id })
+    .select({ id: userMcpAccess.id, userId: userMcpAccess.userId })
     .from(userMcpAccess)
     .where(
       and(
@@ -45,6 +45,9 @@ async function handleRequest(request: Request, { params }: { params: Promise<{ p
       { status: 401 },
     );
   }
+
+  // Inject auth info so tool callbacks can access userId via extra.authInfo
+  (request as any).auth = { token: apiKey, clientId: '', scopes: [], extra: { userId: rows[0].userId } };
 
   return handler(request);
 }
