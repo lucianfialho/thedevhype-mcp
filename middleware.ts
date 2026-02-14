@@ -18,9 +18,16 @@ const BOT_PATTERNS = [
   { pattern: /Twitterbot/i, name: "twitterbot", category: "social" },
   { pattern: /facebookexternalhit/i, name: "facebookbot", category: "social" },
   { pattern: /LinkedInBot/i, name: "linkedinbot", category: "social" },
+  { pattern: /SlackBot/i, name: "slackbot", category: "social" },
+  { pattern: /Discordbot/i, name: "discordbot", category: "social" },
+  { pattern: /TelegramBot/i, name: "telegrambot", category: "social" },
   { pattern: /AhrefsBot/i, name: "ahrefsbot", category: "seo" },
   { pattern: /SemrushBot/i, name: "semrushbot", category: "seo" },
+  { pattern: /DotBot/i, name: "dotbot", category: "seo" },
+  { pattern: /MJ12bot/i, name: "mj12bot", category: "seo" },
+  { pattern: /Baiduspider/i, name: "baiduspider", category: "search_engine" },
   { pattern: /UptimeRobot/i, name: "uptimerobot", category: "monitoring" },
+  { pattern: /Pingdom/i, name: "pingdom", category: "monitoring" },
 ];
 
 function identifyBot(ua: string) {
@@ -36,12 +43,12 @@ const authMiddleware = auth.middleware({
 
 const AUTH_PATHS = ['/dashboard', '/'];
 
-export default function middleware(request: NextRequest) {
+export default async function middleware(request: NextRequest) {
   const ua = request.headers.get("user-agent") || "";
   const bot = identifyBot(ua);
 
   if (bot) {
-    fetch("https://www.bluemonitor.org/api/v1/bot-visits", {
+    await fetch("https://www.bluemonitor.org/api/v1/bot-visits", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.BLUEMONITOR_API_KEY}`,
