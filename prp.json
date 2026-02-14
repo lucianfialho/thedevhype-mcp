@@ -1,0 +1,383 @@
+{
+  "project": {
+    "name": "thedevhype.com",
+    "description": "MCP de Curadoria de Conteudo + Bookmarks - fontes RSS, bookmarks com tags, busca unificada e scraping de conteudo",
+    "branchName": "saci/mcp-curadoria"
+  },
+  "features": [
+    {
+      "id": "F1",
+      "name": "Schema e Registro do MCP",
+      "description": "Criar schema do banco, definicao do server e registrar no registry",
+      "priority": 1,
+      "tasks": [
+        {
+          "id": "F1-T1",
+          "title": "Criar schema do banco de dados mcp_curadoria",
+          "description": "Criar arquivo curadoria.schema.ts com schema PostgreSQL mcp_curadoria contendo tabelas sources, articles e bookmarks. Seguir padrao exato do nota-fiscal.schema.ts.",
+          "priority": 1,
+          "passes": false,
+          "context": {
+            "files": [
+              "app/lib/mcp/servers/nota-fiscal.schema.ts",
+              "app/lib/db/public.schema.ts"
+            ],
+            "libraries": ["drizzle-orm"],
+            "hints": [
+              "Usar pgSchema('mcp_curadoria')",
+              "sources: id, userId, url, title, siteUrl, category, lastFetchedAt, createdAt",
+              "articles: id, userId, sourceId (FK sources), title, url, author, content, summary, publishedAt, createdAt. Unique on (userId, url)",
+              "bookmarks: id, userId, url, title, content, summary, tags (text array), notes, createdAt",
+              "Todos os userId referenciam userInNeonAuth.id",
+              "Exportar types com InferSelectModel e InferInsertModel"
+            ]
+          },
+          "acceptance": [
+            "Schema mcp_curadoria criado com 3 tabelas",
+            "Tabela sources com campos corretos e FK userId",
+            "Tabela articles com FK sourceId e unique (userId, url)",
+            "Tabela bookmarks com tags como text array",
+            "Types exportados para cada tabela",
+            "Typecheck passes"
+          ],
+          "tests": {
+            "command": "npx tsc --noEmit"
+          }
+        },
+        {
+          "id": "F1-T2",
+          "title": "Atualizar drizzle.config.ts com novo schema",
+          "description": "Adicionar mcp_curadoria ao schemaFilter do drizzle.config.ts para que as migrations incluam o novo schema.",
+          "priority": 2,
+          "passes": false,
+          "context": {
+            "files": ["drizzle.config.ts"],
+            "libraries": ["drizzle-kit"],
+            "hints": [
+              "Adicionar 'mcp_curadoria' ao array schemaFilter",
+              "Atual: ['public', 'mcp_nota_fiscal']"
+            ]
+          },
+          "acceptance": [
+            "schemaFilter inclui 'mcp_curadoria'",
+            "Typecheck passes"
+          ],
+          "tests": {
+            "command": "npx tsc --noEmit"
+          }
+        },
+        {
+          "id": "F1-T3",
+          "title": "Criar MCP server definition e registrar",
+          "description": "Criar curadoria.ts com a definicao do server (name, description, category, tools list) e funcao init vazia. Registrar em servers/index.ts.",
+          "priority": 3,
+          "passes": false,
+          "context": {
+            "files": [
+              "app/lib/mcp/servers/nota-fiscal.ts",
+              "app/lib/mcp/servers/index.ts",
+              "app/lib/mcp/types.ts"
+            ],
+            "libraries": ["@modelcontextprotocol/sdk"],
+            "hints": [
+              "name: 'curadoria'",
+              "category: 'Content Tools'",
+              "Listar todas as 8 tools com name e description",
+              "Init function vazia por agora, tools serao implementadas nas proximas tasks",
+              "Registrar em index.ts: registry.register(curadoriaServer)"
+            ]
+          },
+          "acceptance": [
+            "Arquivo curadoria.ts criado com McpServerDefinition completa",
+            "8 tools listadas: adicionar_fonte, listar_fontes, remover_fonte, buscar_novidades, salvar_bookmark, listar_bookmarks, remover_bookmark, buscar_conteudo, extrair_conteudo",
+            "Server registrado em index.ts",
+            "Typecheck passes"
+          ],
+          "tests": {
+            "command": "npx tsc --noEmit"
+          }
+        }
+      ]
+    },
+    {
+      "id": "F2",
+      "name": "Tools de Fontes RSS",
+      "description": "Implementar adicionar_fonte, listar_fontes, remover_fonte e buscar_novidades",
+      "priority": 2,
+      "tasks": [
+        {
+          "id": "F2-T1",
+          "title": "Implementar tool adicionar_fonte",
+          "description": "Tool que recebe URL de feed RSS, valida fazendo fetch e parse, extrai titulo e siteUrl, salva no banco. Limite de 20 fontes por usuario.",
+          "priority": 1,
+          "passes": false,
+          "context": {
+            "files": [
+              "app/lib/mcp/servers/curadoria.ts",
+              "app/lib/mcp/servers/curadoria.schema.ts",
+              "app/lib/mcp/auth-helpers.ts"
+            ],
+            "libraries": ["rss-parser", "@modelcontextprotocol/sdk"],
+            "hints": [
+              "Instalar rss-parser: npm install rss-parser",
+              "Usar getUserId() do auth-helpers pra scoped query",
+              "Validar feed fazendo new RssParser().parseURL(url)",
+              "Contar fontes existentes, retornar erro se >= 20",
+              "Parametro opcional category (string)"
+            ]
+          },
+          "acceptance": [
+            "Tool registrada no server.tool()",
+            "Faz fetch e parse do feed pra validar URL",
+            "Extrai title e link do feed automaticamente",
+            "Salva fonte no banco com userId",
+            "Retorna erro claro se ja tem 20 fontes",
+            "Retorna erro se URL nao e feed RSS valido",
+            "Typecheck passes"
+          ],
+          "tests": {
+            "command": "npx tsc --noEmit"
+          }
+        },
+        {
+          "id": "F2-T2",
+          "title": "Implementar tools listar_fontes e remover_fonte",
+          "description": "listar_fontes retorna todas as fontes do usuario. remover_fonte remove uma fonte e seus artigos associados.",
+          "priority": 2,
+          "passes": false,
+          "context": {
+            "files": [
+              "app/lib/mcp/servers/curadoria.ts",
+              "app/lib/mcp/servers/curadoria.schema.ts"
+            ],
+            "libraries": ["drizzle-orm"],
+            "hints": [
+              "listar_fontes: SELECT * WHERE userId, ordenar por createdAt desc",
+              "remover_fonte: recebe sourceId, DELETE cascade nos articles primeiro, depois deleta a fonte",
+              "Validar que a fonte pertence ao userId antes de remover"
+            ]
+          },
+          "acceptance": [
+            "listar_fontes retorna array com id, title, url, category, lastFetchedAt",
+            "remover_fonte valida ownership antes de deletar",
+            "remover_fonte remove artigos associados",
+            "Typecheck passes"
+          ],
+          "tests": {
+            "command": "npx tsc --noEmit"
+          }
+        },
+        {
+          "id": "F2-T3",
+          "title": "Implementar tool buscar_novidades",
+          "description": "Faz fetch de feeds RSS, parse do XML, salva artigos novos no banco via upsert. Parametros opcionais sourceId e limit.",
+          "priority": 3,
+          "passes": false,
+          "context": {
+            "files": [
+              "app/lib/mcp/servers/curadoria.ts",
+              "app/lib/mcp/servers/curadoria.schema.ts"
+            ],
+            "libraries": ["rss-parser", "drizzle-orm"],
+            "hints": [
+              "Se sourceId informado, busca so aquela fonte. Senao, busca todas do usuario",
+              "Para cada fonte: new RssParser().parseURL(source.url)",
+              "Upsert artigos: ON CONFLICT (userId, url) DO UPDATE",
+              "Atualizar lastFetchedAt da fonte apos fetch",
+              "Content truncado a 500 chars no retorno (salva completo no banco)",
+              "Default limit 20 artigos no retorno"
+            ]
+          },
+          "acceptance": [
+            "Faz fetch de todas as fontes ou de uma especifica",
+            "Parse RSS/Atom correto com rss-parser",
+            "Upsert de artigos sem duplicatas",
+            "Atualiza lastFetchedAt da fonte",
+            "Retorna artigos com title, url, author, publishedAt, content truncado",
+            "Parametro limit funciona (default 20)",
+            "Typecheck passes"
+          ],
+          "tests": {
+            "command": "npx tsc --noEmit"
+          }
+        }
+      ]
+    },
+    {
+      "id": "F3",
+      "name": "Tools de Bookmarks",
+      "description": "Implementar salvar_bookmark, listar_bookmarks e remover_bookmark",
+      "priority": 3,
+      "tasks": [
+        {
+          "id": "F3-T1",
+          "title": "Implementar tool salvar_bookmark",
+          "description": "Salva URL como bookmark com tags e notas. Se title nao informado, faz fetch da URL e extrai do HTML <title>.",
+          "priority": 1,
+          "passes": false,
+          "context": {
+            "files": [
+              "app/lib/mcp/servers/curadoria.ts",
+              "app/lib/mcp/servers/curadoria.schema.ts"
+            ],
+            "libraries": ["drizzle-orm"],
+            "hints": [
+              "Parametros: url (required), title (optional), tags (optional string[]), notes (optional)",
+              "Se title nao informado: fetch(url) e extrair <title> com regex simples",
+              "Tags salvas como array PostgreSQL text[]",
+              "Retornar o bookmark criado com id"
+            ]
+          },
+          "acceptance": [
+            "Salva bookmark com url, title, tags, notes",
+            "Auto-extrai title da URL se nao informado",
+            "Tags salvas como text array no PostgreSQL",
+            "Retorna bookmark criado com id",
+            "Typecheck passes"
+          ],
+          "tests": {
+            "command": "npx tsc --noEmit"
+          }
+        },
+        {
+          "id": "F3-T2",
+          "title": "Implementar tools listar_bookmarks e remover_bookmark",
+          "description": "listar_bookmarks com filtro por tag e limit. remover_bookmark por id.",
+          "priority": 2,
+          "passes": false,
+          "context": {
+            "files": [
+              "app/lib/mcp/servers/curadoria.ts",
+              "app/lib/mcp/servers/curadoria.schema.ts"
+            ],
+            "libraries": ["drizzle-orm"],
+            "hints": [
+              "listar_bookmarks: parametros tag (optional) e limit (default 20)",
+              "Filtro por tag: usar ANY operator do PostgreSQL (tag = ANY(tags))",
+              "Ordenar por createdAt desc",
+              "remover_bookmark: validar ownership antes de deletar"
+            ]
+          },
+          "acceptance": [
+            "listar_bookmarks retorna bookmarks ordenados por data",
+            "Filtro por tag funciona com array PostgreSQL",
+            "Parametro limit funciona",
+            "remover_bookmark valida ownership",
+            "Typecheck passes"
+          ],
+          "tests": {
+            "command": "npx tsc --noEmit"
+          }
+        }
+      ]
+    },
+    {
+      "id": "F4",
+      "name": "Busca e Scraping",
+      "description": "Implementar busca unificada e scraping de conteudo",
+      "priority": 4,
+      "tasks": [
+        {
+          "id": "F4-T1",
+          "title": "Implementar tool buscar_conteudo",
+          "description": "Busca full-text em artigos e bookmarks via ILIKE. Parametros: query, tipo (artigos/bookmarks/todos).",
+          "priority": 1,
+          "passes": false,
+          "context": {
+            "files": [
+              "app/lib/mcp/servers/curadoria.ts",
+              "app/lib/mcp/servers/curadoria.schema.ts"
+            ],
+            "libraries": ["drizzle-orm"],
+            "hints": [
+              "Buscar com ILIKE '%query%' em title, content, notes",
+              "Para bookmarks, buscar tambem em tags (array_to_string)",
+              "Unificar resultados com campo 'tipo': 'artigo' | 'bookmark'",
+              "Retornar: tipo, title, url, snippet (trecho do match), createdAt",
+              "Limite 20 resultados, title matches primeiro"
+            ]
+          },
+          "acceptance": [
+            "Busca em artigos por title e content",
+            "Busca em bookmarks por title, content, notes, tags",
+            "Resultados unificados com campo tipo",
+            "Snippet do trecho que deu match",
+            "Limite de 20 resultados",
+            "Match no title priorizado",
+            "Typecheck passes"
+          ],
+          "tests": {
+            "command": "npx tsc --noEmit"
+          }
+        },
+        {
+          "id": "F4-T2",
+          "title": "Implementar tool extrair_conteudo",
+          "description": "Scraping de conteudo de URL via scrape API externa ou fallback com fetch direto.",
+          "priority": 2,
+          "passes": false,
+          "context": {
+            "files": [
+              "app/lib/mcp/servers/curadoria.ts",
+              "app/lib/mcp/servers/curadoria.schema.ts"
+            ],
+            "libraries": [],
+            "hints": [
+              "Env vars: SCRAPE_API_URL e SCRAPE_API_KEY (opcionais)",
+              "Se configurado: POST para SCRAPE_API_URL com a URL alvo",
+              "Se nao configurado: fetch direto e extrair texto com regex (remover tags HTML)",
+              "Retornar: title, content (texto limpo), description",
+              "Parametro opcional: bookmarkId ou articleId pra atualizar content no banco"
+            ]
+          },
+          "acceptance": [
+            "Funciona com scrape API configurada via env",
+            "Funciona sem scrape API (fallback fetch + HTML strip)",
+            "Retorna title, content limpo, description",
+            "Se bookmarkId/articleId informado, atualiza content no banco",
+            "Typecheck passes"
+          ],
+          "tests": {
+            "command": "npx tsc --noEmit"
+          }
+        }
+      ]
+    },
+    {
+      "id": "F5",
+      "name": "Migration e Validacao",
+      "description": "Gerar migration do Drizzle e validar tudo funciona",
+      "priority": 5,
+      "tasks": [
+        {
+          "id": "F5-T1",
+          "title": "Gerar migration e aplicar no banco",
+          "description": "Rodar drizzle-kit generate e push para criar as tabelas no banco.",
+          "priority": 1,
+          "passes": false,
+          "context": {
+            "files": [
+              "drizzle.config.ts",
+              "app/lib/mcp/servers/curadoria.schema.ts"
+            ],
+            "libraries": ["drizzle-kit"],
+            "hints": [
+              "npx drizzle-kit generate",
+              "npx drizzle-kit push",
+              "Verificar que migration foi criada em drizzle/"
+            ]
+          },
+          "acceptance": [
+            "Migration gerada com sucesso",
+            "Schema aplicado no banco sem erros",
+            "Tabelas sources, articles, bookmarks criadas",
+            "Typecheck passes"
+          ],
+          "tests": {
+            "command": "npx drizzle-kit generate && npx tsc --noEmit"
+          }
+        }
+      ]
+    }
+  ]
+}

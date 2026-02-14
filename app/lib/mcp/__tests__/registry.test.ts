@@ -9,7 +9,7 @@ describe('McpRegistry', () => {
     const servers = registry.listServers();
 
     expect(servers.length).toBeGreaterThanOrEqual(1);
-    expect(servers.find((s) => s.name === 'nota-fiscal')).toBeDefined();
+    expect(servers.find((s) => s.name === 'eloa')).toBeDefined();
   });
 
   it('should return undefined for unknown server', () => {
@@ -18,7 +18,7 @@ describe('McpRegistry', () => {
   });
 
   it('should return a handler for registered server', () => {
-    const handler = registry.getHandler('nota-fiscal');
+    const handler = registry.getHandler('eloa');
     expect(handler).toBeDefined();
     expect(typeof handler).toBe('function');
   });

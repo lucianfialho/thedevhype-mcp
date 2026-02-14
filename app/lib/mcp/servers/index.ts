@@ -1,6 +1,6 @@
 import { registry } from '../registry';
-import { notaFiscalServer } from './nota-fiscal';
+import { eloaServer } from './eloa';
 
-registry.register(notaFiscalServer);
+registry.register(eloaServer);
 
 export { registry };
