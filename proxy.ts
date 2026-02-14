@@ -37,13 +37,13 @@ function identifyBot(ua: string) {
   return null;
 }
 
-const authMiddleware = auth.middleware({
+const authProxy = auth.middleware({
   loginUrl: '/auth/sign-in',
 });
 
 const AUTH_PATHS = ['/dashboard', '/'];
 
-export default async function middleware(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const ua = request.headers.get("user-agent") || "";
   const bot = identifyBot(ua);
 
@@ -72,7 +72,7 @@ export default async function middleware(request: NextRequest) {
   );
 
   if (needsAuth) {
-    return authMiddleware(request);
+    return authProxy(request);
   }
 
   return NextResponse.next();
