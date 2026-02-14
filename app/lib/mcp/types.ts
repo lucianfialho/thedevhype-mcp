@@ -11,6 +11,7 @@ export interface McpServerDefinition {
   name: string;
   description: string;
   category: string;
+  icon?: string;
   tools: McpToolInfo[];
   init: McpServerInitFn;
 }

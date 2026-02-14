@@ -70,6 +70,13 @@ export default async function DashboardPage() {
                       }`}
                     >
                       <div className="flex items-start justify-between gap-4">
+                        {server.icon && (
+                          <img
+                            src={server.icon}
+                            alt={server.name}
+                            className="h-10 w-10 shrink-0 rounded-full"
+                          />
+                        )}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-3">
                             <h3 className="text-lg font-semibold">{server.name}</h3>

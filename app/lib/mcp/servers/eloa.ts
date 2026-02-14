@@ -14,6 +14,7 @@ export const eloaServer: McpServerDefinition = {
   description:
     'Eloa — AI Content Curator: gerencia fontes RSS, bookmarks e busca em todo seu conteudo salvo',
   category: 'Content Tools',
+  icon: '/eloa.png',
   tools: [
     {
       name: 'adicionar_fonte',
