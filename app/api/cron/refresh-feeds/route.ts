@@ -1,5 +1,5 @@
 import { db } from '@/app/lib/db';
-import { sources, articles } from '@/app/lib/mcp/servers/eloa.schema';
+import { sources, userSources, articles } from '@/app/lib/mcp/servers/eloa.schema';
 import { eq, sql } from 'drizzle-orm';
 import RssParser from 'rss-parser';
 
@@ -11,6 +11,7 @@ export async function GET(request: Request) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Each URL appears only once in sources (shared)
   const allSources = await db.select().from(sources);
 
   let updated = 0;
@@ -29,28 +30,37 @@ export async function GET(request: Request) {
       const text = await res.text();
       const feed = await rssParser.parseString(text);
 
+      // Get all subscribers for this source
+      const subscribers = await db
+        .select({ userId: userSources.userId })
+        .from(userSources)
+        .where(eq(userSources.sourceId, source.id));
+
       for (const item of feed.items || []) {
         if (!item.link) continue;
-        await db
-          .insert(articles)
-          .values({
-            userId: source.userId,
-            sourceId: source.id,
-            title: item.title || 'Sem titulo',
-            url: item.link,
-            author: item.creator || item.author || null,
-            content: item.contentSnippet || item.content || '',
-            publishedAt: item.isoDate || null,
-          })
-          .onConflictDoUpdate({
-            target: [articles.userId, articles.url],
-            set: {
-              title: sql`EXCLUDED.title`,
-              content: sql`EXCLUDED.content`,
-              author: sql`EXCLUDED.author`,
-              publishedAt: sql`EXCLUDED."publishedAt"`,
-            },
-          });
+        // Insert article for each subscriber
+        for (const sub of subscribers) {
+          await db
+            .insert(articles)
+            .values({
+              userId: sub.userId,
+              sourceId: source.id,
+              title: item.title || 'Sem titulo',
+              url: item.link,
+              author: item.creator || item.author || null,
+              content: item.contentSnippet || item.content || '',
+              publishedAt: item.isoDate || null,
+            })
+            .onConflictDoUpdate({
+              target: [articles.userId, articles.url],
+              set: {
+                title: sql`EXCLUDED.title`,
+                content: sql`EXCLUDED.content`,
+                author: sql`EXCLUDED.author`,
+                publishedAt: sql`EXCLUDED."publishedAt"`,
+              },
+            });
+        }
       }
 
       await db

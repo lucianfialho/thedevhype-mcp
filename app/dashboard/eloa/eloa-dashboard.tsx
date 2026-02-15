@@ -7,7 +7,7 @@ import { SourcesTab } from './tabs/sources-tab';
 import { FeedTab } from './tabs/feed-tab';
 import { BookmarksTab } from './tabs/bookmarks-tab';
 import { SearchTab } from './tabs/search-tab';
-import type { Source, Article, Bookmark } from '@/app/lib/mcp/servers/eloa.schema';
+import type { SourceWithSubscription, Article, Bookmark } from '@/app/lib/mcp/servers/eloa.schema';
 
 const TABS = [
   { id: 'feed', label: 'Feed' },
@@ -20,7 +20,7 @@ type Tab = (typeof TABS)[number]['id'];
 
 interface EloaDashboardProps {
   initialTab: Tab;
-  initialSources: Source[];
+  initialSources: SourceWithSubscription[];
   initialArticles: Array<{
     id: number;
     title: string;

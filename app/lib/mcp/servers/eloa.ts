@@ -3,7 +3,7 @@ import { eq, and, sql, desc } from 'drizzle-orm';
 import RssParser from 'rss-parser';
 import { db } from '../../db';
 import { getUserId } from '../auth-helpers';
-import { sources, articles, bookmarks } from './eloa.schema';
+import { sources, userSources, articles, bookmarks } from './eloa.schema';
 import type { McpServerDefinition } from '../types';
 
 const MAX_SOURCES = 20;
@@ -65,30 +65,49 @@ export const eloaServer: McpServerDefinition = {
       async ({ url, category }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
 
-        // Check limit
+        // Check subscription limit
         const existing = await db
           .select({ count: sql<number>`count(*)` })
-          .from(sources)
-          .where(eq(sources.userId, userId));
+          .from(userSources)
+          .where(eq(userSources.userId, userId));
         if (existing[0].count >= MAX_SOURCES) {
           return { content: [{ type: 'text' as const, text: `Erro: limite de ${MAX_SOURCES} fontes atingido. Remova uma fonte antes de adicionar.` }] };
         }
 
-        // Validate and parse feed
-        let feed;
-        try {
-          feed = await rssParser.parseURL(url);
-        } catch {
-          return { content: [{ type: 'text' as const, text: 'Erro: URL nao e um feed RSS/Atom valido.' }] };
+        // Check if source already exists by URL
+        let [source] = await db
+          .select()
+          .from(sources)
+          .where(eq(sources.url, url));
+
+        if (!source) {
+          // Validate and parse feed
+          let feed;
+          try {
+            feed = await rssParser.parseURL(url);
+          } catch {
+            return { content: [{ type: 'text' as const, text: 'Erro: URL nao e um feed RSS/Atom valido.' }] };
+          }
+
+          [source] = await db.insert(sources).values({
+            url,
+            title: feed.title || url,
+            siteUrl: feed.link || null,
+          }).returning();
         }
 
-        const [source] = await db.insert(sources).values({
+        // Create subscription (ignore if already exists)
+        await db.insert(userSources).values({
           userId,
-          url,
-          title: feed.title || url,
-          siteUrl: feed.link || null,
+          sourceId: source.id,
           category: category || null,
-        }).returning();
+        }).onConflictDoNothing();
+
+        // Get subscriber count
+        const [countRow] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(userSources)
+          .where(eq(userSources.sourceId, source.id));
 
         return {
           content: [{
@@ -98,7 +117,8 @@ export const eloaServer: McpServerDefinition = {
               title: source.title,
               url: source.url,
               siteUrl: source.siteUrl,
-              category: source.category,
+              category: category || null,
+              subscriberCount: countRow.count,
             }, null, 2),
           }],
         };
@@ -114,22 +134,24 @@ export const eloaServer: McpServerDefinition = {
         const userId = getUserId(extra as Record<string, unknown>);
 
         const result = await db
-          .select()
-          .from(sources)
-          .where(eq(sources.userId, userId))
+          .select({
+            id: sources.id,
+            title: sources.title,
+            url: sources.url,
+            siteUrl: sources.siteUrl,
+            lastFetchedAt: sources.lastFetchedAt,
+            category: userSources.category,
+            subscriberCount: sql<number>`(SELECT count(*)::int FROM mcp_eloa.user_sources WHERE "sourceId" = ${sources.id})`,
+          })
+          .from(userSources)
+          .innerJoin(sources, eq(userSources.sourceId, sources.id))
+          .where(eq(userSources.userId, userId))
           .orderBy(desc(sources.createdAt));
 
         return {
           content: [{
             type: 'text' as const,
-            text: JSON.stringify(result.map((s) => ({
-              id: s.id,
-              title: s.title,
-              url: s.url,
-              siteUrl: s.siteUrl,
-              category: s.category,
-              lastFetchedAt: s.lastFetchedAt,
-            })), null, 2),
+            text: JSON.stringify(result, null, 2),
           }],
         };
       },
@@ -138,30 +160,49 @@ export const eloaServer: McpServerDefinition = {
     // ─── remover_fonte ───
     server.tool(
       'remover_fonte',
-      'Remove uma fonte RSS e todos os artigos associados.',
+      'Remove uma fonte RSS e todos os artigos associados do usuario.',
       {
         sourceId: z.number().describe('ID da fonte a remover'),
       },
       async ({ sourceId }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
 
-        // Verify ownership
-        const [source] = await db
+        // Verify subscription
+        const [subscription] = await db
           .select()
-          .from(sources)
-          .where(and(eq(sources.id, sourceId), eq(sources.userId, userId)));
-        if (!source) {
+          .from(userSources)
+          .where(and(eq(userSources.sourceId, sourceId), eq(userSources.userId, userId)));
+        if (!subscription) {
           return { content: [{ type: 'text' as const, text: 'Erro: fonte nao encontrada.' }] };
         }
 
-        // Delete articles first, then source
+        // Get source title
+        const [source] = await db
+          .select()
+          .from(sources)
+          .where(eq(sources.id, sourceId));
+
+        // Delete user's articles for this source
         await db.delete(articles).where(
           and(eq(articles.sourceId, sourceId), eq(articles.userId, userId)),
         );
-        await db.delete(sources).where(eq(sources.id, sourceId));
+
+        // Delete subscription
+        await db.delete(userSources).where(
+          and(eq(userSources.sourceId, sourceId), eq(userSources.userId, userId)),
+        );
+
+        // If no subscribers left, delete the source
+        const [remaining] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(userSources)
+          .where(eq(userSources.sourceId, sourceId));
+        if (remaining.count === 0) {
+          await db.delete(sources).where(eq(sources.id, sourceId));
+        }
 
         return {
-          content: [{ type: 'text' as const, text: `Fonte "${source.title}" e seus artigos foram removidos.` }],
+          content: [{ type: 'text' as const, text: `Fonte "${source?.title || 'Fonte'}" removida. Seus artigos foram apagados.` }],
         };
       },
     );
@@ -177,21 +218,30 @@ export const eloaServer: McpServerDefinition = {
       async ({ sourceId, limit }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
 
-        // Get sources to fetch
+        // Get sources the user is subscribed to
         const sourceFilter = sourceId
-          ? and(eq(sources.id, sourceId), eq(sources.userId, userId))
-          : eq(sources.userId, userId);
-        const userSources = await db.select().from(sources).where(sourceFilter);
+          ? and(eq(userSources.sourceId, sourceId), eq(userSources.userId, userId))
+          : eq(userSources.userId, userId);
 
-        if (userSources.length === 0) {
+        const subscriptions = await db
+          .select({
+            sourceId: sources.id,
+            url: sources.url,
+            title: sources.title,
+          })
+          .from(userSources)
+          .innerJoin(sources, eq(userSources.sourceId, sources.id))
+          .where(sourceFilter);
+
+        if (subscriptions.length === 0) {
           return { content: [{ type: 'text' as const, text: 'Nenhuma fonte cadastrada.' }] };
         }
 
         const newArticles: Array<{ title: string; url: string; author?: string; publishedAt?: string; content?: string; source: string }> = [];
 
-        for (const source of userSources) {
+        for (const sub of subscriptions) {
           try {
-            const feed = await rssParser.parseURL(source.url);
+            const feed = await rssParser.parseURL(sub.url);
             for (const item of feed.items || []) {
               if (!item.link) continue;
 
@@ -200,7 +250,7 @@ export const eloaServer: McpServerDefinition = {
                 .insert(articles)
                 .values({
                   userId,
-                  sourceId: source.id,
+                  sourceId: sub.sourceId,
                   title: item.title || 'Sem titulo',
                   url: item.link,
                   author: item.creator || item.author || null,
@@ -224,7 +274,7 @@ export const eloaServer: McpServerDefinition = {
                 author: inserted.author || undefined,
                 publishedAt: inserted.publishedAt || undefined,
                 content: articleContent.slice(0, 500),
-                source: source.title,
+                source: sub.title,
               });
             }
 
@@ -232,7 +282,7 @@ export const eloaServer: McpServerDefinition = {
             await db
               .update(sources)
               .set({ lastFetchedAt: new Date().toISOString() })
-              .where(eq(sources.id, source.id));
+              .where(eq(sources.id, sub.sourceId));
           } catch {
             // Skip failed feeds silently
           }
@@ -270,23 +320,53 @@ export const eloaServer: McpServerDefinition = {
         const userId = getUserId(extra as Record<string, unknown>);
 
         let bookmarkTitle = title || '';
-        if (!bookmarkTitle) {
-          try {
-            const res = await fetch(url);
-            const html = await res.text();
-            const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-            bookmarkTitle = match ? match[1].trim() : url;
-          } catch {
-            bookmarkTitle = url;
+        let content = '';
+        let summary = '';
+
+        // Always fetch HTML to extract content for FTS
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 5000);
+          const res = await fetch(url, { signal: controller.signal });
+          clearTimeout(timeout);
+          const html = await res.text();
+
+          if (!bookmarkTitle) {
+            const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+            bookmarkTitle = titleMatch ? titleMatch[1].trim() : url;
           }
+
+          const descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i);
+          summary = descMatch ? descMatch[1].trim() : '';
+
+          content = html
+            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 10000);
+        } catch {
+          if (!bookmarkTitle) bookmarkTitle = url;
         }
 
         const [bookmark] = await db.insert(bookmarks).values({
           userId,
           url,
           title: bookmarkTitle,
+          content: content || null,
+          summary: summary || null,
           tags: tags || null,
           notes: notes || null,
+        }).onConflictDoUpdate({
+          target: [bookmarks.userId, bookmarks.url],
+          set: {
+            title: sql`EXCLUDED.title`,
+            content: sql`EXCLUDED.content`,
+            summary: sql`EXCLUDED.summary`,
+            tags: sql`EXCLUDED.tags`,
+            notes: sql`EXCLUDED.notes`,
+          },
         }).returning();
 
         return {

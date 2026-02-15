@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { Command } from 'cmdk';
 import { addSource, addBookmark, searchContent } from './actions';
-import type { Source, Bookmark } from '@/app/lib/mcp/servers/eloa.schema';
+import type { SourceWithSubscription, Bookmark } from '@/app/lib/mcp/servers/eloa.schema';
 
 interface CommandBarProps {
   onNavigate: (tab: 'feed' | 'fontes' | 'bookmarks' | 'busca') => void;
-  onSourceAdded: (source: Source) => void;
+  onSourceAdded: (source: SourceWithSubscription) => void;
   onBookmarkAdded: (bookmark: Bookmark) => void;
 }
 

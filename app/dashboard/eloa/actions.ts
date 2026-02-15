@@ -3,7 +3,8 @@
 import { auth } from '@/app/lib/auth/server';
 import { db } from '@/app/lib/db';
 import { eq, and, sql, desc } from 'drizzle-orm';
-import { sources, articles, bookmarks } from '@/app/lib/mcp/servers/eloa.schema';
+import { sources, userSources, articles, bookmarks } from '@/app/lib/mcp/servers/eloa.schema';
+import type { SourceWithSubscription } from '@/app/lib/mcp/servers/eloa.schema';
 import RssParser from 'rss-parser';
 
 const MAX_SOURCES = 20;
@@ -18,52 +19,97 @@ async function requireUserId() {
 
 // ─── Sources ───
 
-export async function getSources() {
+export async function getSources(): Promise<SourceWithSubscription[]> {
   const userId = await requireUserId();
-  return db
-    .select()
-    .from(sources)
-    .where(eq(sources.userId, userId))
+
+  const rows = await db
+    .select({
+      id: sources.id,
+      url: sources.url,
+      title: sources.title,
+      siteUrl: sources.siteUrl,
+      lastFetchedAt: sources.lastFetchedAt,
+      createdAt: sources.createdAt,
+      category: userSources.category,
+      subscriberCount: sql<number>`(SELECT count(*)::int FROM mcp_eloa.user_sources WHERE "sourceId" = ${sources.id})`,
+    })
+    .from(userSources)
+    .innerJoin(sources, eq(userSources.sourceId, sources.id))
+    .where(eq(userSources.userId, userId))
     .orderBy(desc(sources.createdAt));
+
+  return rows;
 }
 
-export async function addSource(url: string, category?: string) {
+export async function addSource(url: string, category?: string): Promise<{ data?: SourceWithSubscription; error?: string }> {
   try {
     const userId = await requireUserId();
 
+    // Check subscription limit
     const existing = await db
       .select({ count: sql<number>`count(*)` })
-      .from(sources)
-      .where(eq(sources.userId, userId));
+      .from(userSources)
+      .where(eq(userSources.userId, userId));
     if (existing[0].count >= MAX_SOURCES) {
       return { error: `Limite de ${MAX_SOURCES} fontes atingido.` };
     }
 
-    let feedTitle = url;
-    let feedSiteUrl: string | null = null;
+    // Check if source already exists by URL
+    let [source] = await db
+      .select()
+      .from(sources)
+      .where(eq(sources.url, url));
 
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000);
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeout);
-      const text = await res.text();
-      const feed = await rssParser.parseString(text);
-      feedTitle = feed.title || url;
-      feedSiteUrl = feed.link || null;
-    } catch {
-      return { error: 'URL nao e um feed RSS/Atom valido ou demorou demais.' };
+    if (!source) {
+      // Validate and parse feed
+      let feedTitle = url;
+      let feedSiteUrl: string | null = null;
+
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeout);
+        const text = await res.text();
+        const feed = await rssParser.parseString(text);
+        feedTitle = feed.title || url;
+        feedSiteUrl = feed.link || null;
+      } catch {
+        return { error: 'URL nao e um feed RSS/Atom valido ou demorou demais.' };
+      }
+
+      [source] = await db.insert(sources).values({
+        url,
+        title: feedTitle,
+        siteUrl: feedSiteUrl,
+      }).returning();
     }
 
-    const [source] = await db.insert(sources).values({
+    // Create subscription (ignore if already exists)
+    await db.insert(userSources).values({
       userId,
-      url,
-      title: feedTitle,
-      siteUrl: feedSiteUrl,
+      sourceId: source.id,
       category: category || null,
-    }).returning();
+    }).onConflictDoNothing();
 
-    return { data: source };
+    // Get subscriber count
+    const [countRow] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(userSources)
+      .where(eq(userSources.sourceId, source.id));
+
+    return {
+      data: {
+        id: source.id,
+        url: source.url,
+        title: source.title,
+        siteUrl: source.siteUrl,
+        lastFetchedAt: source.lastFetchedAt,
+        createdAt: source.createdAt,
+        category: category || null,
+        subscriberCount: countRow.count,
+      },
+    };
   } catch (err) {
     console.error('addSource error:', err);
     return { error: 'Erro ao adicionar fonte.' };
@@ -73,18 +119,39 @@ export async function addSource(url: string, category?: string) {
 export async function removeSource(sourceId: number) {
   const userId = await requireUserId();
 
+  // Verify subscription exists
+  const [subscription] = await db
+    .select()
+    .from(userSources)
+    .where(and(eq(userSources.sourceId, sourceId), eq(userSources.userId, userId)));
+  if (!subscription) return { error: 'Fonte nao encontrada.' };
+
+  // Get source title for response
   const [source] = await db
     .select()
     .from(sources)
-    .where(and(eq(sources.id, sourceId), eq(sources.userId, userId)));
-  if (!source) return { error: 'Fonte nao encontrada.' };
+    .where(eq(sources.id, sourceId));
 
+  // Delete user's articles for this source
   await db.delete(articles).where(
     and(eq(articles.sourceId, sourceId), eq(articles.userId, userId)),
   );
-  await db.delete(sources).where(eq(sources.id, sourceId));
 
-  return { data: { removed: source.title } };
+  // Delete subscription
+  await db.delete(userSources).where(
+    and(eq(userSources.sourceId, sourceId), eq(userSources.userId, userId)),
+  );
+
+  // If no subscribers left, delete the source
+  const [remaining] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(userSources)
+    .where(eq(userSources.sourceId, sourceId));
+  if (remaining.count === 0) {
+    await db.delete(sources).where(eq(sources.id, sourceId));
+  }
+
+  return { data: { removed: source?.title || 'Fonte' } };
 }
 
 // ─── Articles ───
@@ -117,17 +184,23 @@ export async function getArticles(sourceId?: number, page = 0, limit = 20) {
 export async function refreshFeeds(sourceId?: number) {
   const userId = await requireUserId();
 
+  // Get sources the user is subscribed to
   const sourceFilter = sourceId
-    ? and(eq(sources.id, sourceId), eq(sources.userId, userId))
-    : eq(sources.userId, userId);
-  const userSources = await db.select().from(sources).where(sourceFilter);
+    ? and(eq(userSources.sourceId, sourceId), eq(userSources.userId, userId))
+    : eq(userSources.userId, userId);
+
+  const subscriptions = await db
+    .select({ sourceId: sources.id, url: sources.url })
+    .from(userSources)
+    .innerJoin(sources, eq(userSources.sourceId, sources.id))
+    .where(sourceFilter);
 
   let count = 0;
-  for (const source of userSources) {
+  for (const sub of subscriptions) {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 3000);
-      const res = await fetch(source.url, { signal: controller.signal });
+      const res = await fetch(sub.url, { signal: controller.signal });
       clearTimeout(timeout);
       const text = await res.text();
       const feed = await rssParser.parseString(text);
@@ -137,7 +210,7 @@ export async function refreshFeeds(sourceId?: number) {
           .insert(articles)
           .values({
             userId,
-            sourceId: source.id,
+            sourceId: sub.sourceId,
             title: item.title || 'Sem titulo',
             url: item.link,
             author: item.creator || item.author || null,
@@ -158,7 +231,7 @@ export async function refreshFeeds(sourceId?: number) {
       await db
         .update(sources)
         .set({ lastFetchedAt: new Date().toISOString() })
-        .where(eq(sources.id, source.id));
+        .where(eq(sources.id, sub.sourceId));
     } catch {
       // Skip failed feeds
     }
@@ -190,26 +263,53 @@ export async function addBookmark(url: string, title?: string, tags?: string[], 
     const userId = await requireUserId();
 
     let bookmarkTitle = title || '';
-    if (!bookmarkTitle) {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 3000);
-        const res = await fetch(url, { signal: controller.signal });
-        clearTimeout(timeout);
-        const html = await res.text();
-        const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-        bookmarkTitle = match ? match[1].trim() : url;
-      } catch {
-        bookmarkTitle = url;
+    let content = '';
+    let summary = '';
+
+    // Always fetch HTML to extract content for FTS
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
+      const html = await res.text();
+
+      if (!bookmarkTitle) {
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        bookmarkTitle = titleMatch ? titleMatch[1].trim() : url;
       }
+
+      const descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i);
+      summary = descMatch ? descMatch[1].trim() : '';
+
+      content = html
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 10000);
+    } catch {
+      if (!bookmarkTitle) bookmarkTitle = url;
     }
 
     const [bookmark] = await db.insert(bookmarks).values({
       userId,
       url,
       title: bookmarkTitle,
+      content: content || null,
+      summary: summary || null,
       tags: tags?.length ? tags : null,
       notes: notes || null,
+    }).onConflictDoUpdate({
+      target: [bookmarks.userId, bookmarks.url],
+      set: {
+        title: sql`EXCLUDED.title`,
+        content: sql`EXCLUDED.content`,
+        summary: sql`EXCLUDED.summary`,
+        tags: sql`EXCLUDED.tags`,
+        notes: sql`EXCLUDED.notes`,
+      },
     }).returning();
 
     return { data: bookmark };

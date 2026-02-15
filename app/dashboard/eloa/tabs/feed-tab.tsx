@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { getArticles, refreshFeeds } from '../actions';
-import type { Source } from '@/app/lib/mcp/servers/eloa.schema';
+import type { SourceWithSubscription } from '@/app/lib/mcp/servers/eloa.schema';
 
 interface FeedArticle {
   id: number;
@@ -17,7 +17,7 @@ interface FeedArticle {
 
 interface FeedTabProps {
   articles: FeedArticle[];
-  sources: Source[];
+  sources: SourceWithSubscription[];
   onArticlesChange: (articles: FeedArticle[]) => void;
 }
 

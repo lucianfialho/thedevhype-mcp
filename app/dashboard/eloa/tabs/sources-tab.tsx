@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import { addSource, removeSource } from '../actions';
-import type { Source } from '@/app/lib/mcp/servers/eloa.schema';
+import type { SourceWithSubscription } from '@/app/lib/mcp/servers/eloa.schema';
 
 const MAX_SOURCES = 20;
 
 interface SourcesTabProps {
-  sources: Source[];
-  onSourcesChange: (sources: Source[]) => void;
+  sources: SourceWithSubscription[];
+  onSourcesChange: (sources: SourceWithSubscription[]) => void;
 }
 
 function timeAgo(dateStr: string | null) {
@@ -46,7 +46,7 @@ export function SourcesTab({ sources, onSourcesChange }: SourcesTabProps) {
   }
 
   async function handleRemove(id: number) {
-    if (!confirm('Remover esta fonte e todos os artigos associados?')) return;
+    if (!confirm('Cancelar inscricao nesta fonte?')) return;
     setRemovingId(id);
     const result = await removeSource(id);
     setRemovingId(null);
@@ -132,8 +132,13 @@ export function SourcesTab({ sources, onSourcesChange }: SourcesTabProps) {
                 <p className="mt-1 truncate text-xs text-zinc-400">
                   <code>{source.url}</code>
                 </p>
-                <p className="mt-1 text-xs text-zinc-400">
-                  Atualizado: {timeAgo(source.lastFetchedAt)}
+                <p className="mt-1 flex items-center gap-2 text-xs text-zinc-400">
+                  <span>Atualizado: {timeAgo(source.lastFetchedAt)}</span>
+                  {source.subscriberCount > 1 && (
+                    <span className="rounded-full bg-zinc-100 px-1.5 py-0.5 text-xs dark:bg-zinc-800">
+                      {source.subscriberCount} inscritos
+                    </span>
+                  )}
                 </p>
               </div>
               <button
