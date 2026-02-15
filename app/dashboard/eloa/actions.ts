@@ -210,7 +210,7 @@ export async function getAllTags() {
   const userId = await requireUserId();
 
   const result = await db.execute<{ tag: string }>(
-    sql`SELECT DISTINCT unnest(tags) as tag FROM mcp_eloa.bookmarks WHERE user_id = ${userId} ORDER BY tag`,
+    sql`SELECT DISTINCT unnest(tags) as tag FROM mcp_eloa.bookmarks WHERE "userId" = ${userId} ORDER BY tag`,
   );
 
   return result.rows.map((r) => r.tag);
