@@ -76,7 +76,11 @@ export default async function proxy(request: NextRequest, event: NextFetchEvent)
   );
 
   if (needsAuth) {
-    return authProxy(request);
+    // Server actions use the Next-Action header — let them pass through
+    const isServerAction = request.headers.has('Next-Action');
+    if (!isServerAction) {
+      return authProxy(request);
+    }
   }
 
   return NextResponse.next();
