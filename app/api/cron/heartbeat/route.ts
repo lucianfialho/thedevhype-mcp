@@ -43,8 +43,7 @@ export async function GET() {
     await sql`SELECT 1`;
   });
 
-  // API endpoint checks (public endpoints only)
-  checks["api:/api/health"] = await checkEndpoint(`${baseUrl}/api/health`);
+  // /api/health excluded — BlueMonitor already monitors it via pull check
 
   const hasError = Object.values(checks).some((c) => c.status === "error");
   const status = hasError ? "error" : "ok";

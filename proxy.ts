@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, NextFetchEvent } from "next/server";
 import { auth } from '@/app/lib/auth/server';
 
 const BOT_PATTERNS = [
@@ -44,7 +44,7 @@ const authProxy = auth.middleware({
 const AUTH_PATHS = ['/dashboard', '/'];
 
 function trackBot(bot: { name: string; category: string }, pathname: string, ua: string) {
-  fetch("https://www.bluemonitor.org/api/v1/bot-visits", {
+  return fetch("https://www.bluemonitor.org/api/v1/bot-visits", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${process.env.BLUEMONITOR_API_KEY}`,
@@ -62,12 +62,12 @@ function trackBot(bot: { name: string; category: string }, pathname: string, ua:
   }).catch(() => {});
 }
 
-export default async function proxy(request: NextRequest) {
+export default async function proxy(request: NextRequest, event: NextFetchEvent) {
   const ua = request.headers.get("user-agent") || "";
   const bot = identifyBot(ua);
 
   if (bot) {
-    trackBot(bot, request.nextUrl.pathname, ua);
+    event.waitUntil(trackBot(bot, request.nextUrl.pathname, ua));
   }
 
   const pathname = request.nextUrl.pathname;
