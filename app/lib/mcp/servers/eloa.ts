@@ -1,9 +1,10 @@
 import { z } from 'zod';
-import { eq, and, sql, desc } from 'drizzle-orm';
+import { eq, and, sql, desc, gte } from 'drizzle-orm';
 import RssParser from 'rss-parser';
 import { db } from '../../db';
 import { getUserId } from '../auth-helpers';
-import { sources, userSources, articles, bookmarks } from './eloa.schema';
+import { sources, userSources, articles, bookmarks, linkClicks } from './eloa.schema';
+import { generateShortCode } from '../../short-code';
 import type { McpServerDefinition } from '../types';
 
 const MAX_SOURCES = 20;
@@ -45,12 +46,20 @@ export const eloaServer: McpServerDefinition = {
       description: 'Remove um bookmark por ID',
     },
     {
+      name: 'marcar_como_lido',
+      description: 'Marca um artigo como lido ou nao lido',
+    },
+    {
       name: 'buscar_conteudo',
       description: 'Busca em todo conteudo salvo (artigos + bookmarks) por palavra-chave',
     },
     {
       name: 'extrair_conteudo',
       description: 'Extrai conteudo completo de uma URL via scrape API ou fetch direto',
+    },
+    {
+      name: 'ver_analytics',
+      description: 'Mostra analytics de clicks nos artigos com ranking e clicks por fonte',
     },
   ],
   init: (server) => {
@@ -237,7 +246,7 @@ export const eloaServer: McpServerDefinition = {
           return { content: [{ type: 'text' as const, text: 'Nenhuma fonte cadastrada.' }] };
         }
 
-        const newArticles: Array<{ title: string; url: string; author?: string; publishedAt?: string; content?: string; source: string }> = [];
+        const newArticles: Array<{ title: string; url: string; proxyUrl?: string; author?: string; publishedAt?: string; content?: string; source: string; isRead: boolean }> = [];
 
         for (const sub of subscriptions) {
           try {
@@ -253,6 +262,7 @@ export const eloaServer: McpServerDefinition = {
                   sourceId: sub.sourceId,
                   title: item.title || 'Sem titulo',
                   url: item.link,
+                  shortCode: generateShortCode(),
                   author: item.creator || item.author || null,
                   content: articleContent,
                   publishedAt: item.isoDate || null,
@@ -271,10 +281,12 @@ export const eloaServer: McpServerDefinition = {
               newArticles.push({
                 title: inserted.title,
                 url: inserted.url,
+                proxyUrl: inserted.shortCode ? `/r/${inserted.shortCode}` : undefined,
                 author: inserted.author || undefined,
                 publishedAt: inserted.publishedAt || undefined,
                 content: articleContent.slice(0, 500),
                 source: sub.title,
+                isRead: inserted.isRead,
               });
             }
 
@@ -302,6 +314,39 @@ export const eloaServer: McpServerDefinition = {
             type: 'text' as const,
             text: JSON.stringify(sorted, null, 2),
           }],
+        };
+      },
+    );
+
+    // ─── marcar_como_lido ───
+    server.tool(
+      'marcar_como_lido',
+      'Marca um artigo como lido ou nao lido.',
+      {
+        articleId: z.number().describe('ID do artigo'),
+        lido: z.boolean().optional().default(true).describe('true para marcar como lido, false para nao lido'),
+      },
+      async ({ articleId, lido }, extra) => {
+        const userId = getUserId(extra as Record<string, unknown>);
+
+        const [article] = await db
+          .select()
+          .from(articles)
+          .where(and(eq(articles.id, articleId), eq(articles.userId, userId)));
+        if (!article) {
+          return { content: [{ type: 'text' as const, text: 'Erro: artigo nao encontrado.' }] };
+        }
+
+        await db
+          .update(articles)
+          .set({
+            isRead: lido,
+            readAt: lido ? new Date().toISOString() : null,
+          })
+          .where(and(eq(articles.id, articleId), eq(articles.userId, userId)));
+
+        return {
+          content: [{ type: 'text' as const, text: `Artigo "${article.title}" marcado como ${lido ? 'lido' : 'nao lido'}.` }],
         };
       },
     );
@@ -539,6 +584,73 @@ export const eloaServer: McpServerDefinition = {
           content: [{
             type: 'text' as const,
             text: JSON.stringify(results.slice(0, 20), null, 2),
+          }],
+        };
+      },
+    );
+
+    // ─── ver_analytics ───
+    server.tool(
+      'ver_analytics',
+      'Mostra analytics de clicks nos artigos: ranking dos mais clicados e clicks por fonte.',
+      {
+        period: z.enum(['7d', '30d', 'all']).optional().default('7d').describe('Periodo: 7d, 30d ou all'),
+        limit: z.number().optional().default(10).describe('Numero maximo de artigos no ranking'),
+      },
+      async ({ period, limit }, extra) => {
+        const userId = getUserId(extra as Record<string, unknown>);
+
+        const userFilter = eq(articles.userId, userId);
+
+        let dateFilter = sql`1=1`;
+        if (period !== 'all') {
+          const since = new Date();
+          if (period === '7d') since.setDate(since.getDate() - 7);
+          else if (period === '30d') since.setDate(since.getDate() - 30);
+          dateFilter = gte(linkClicks.clickedAt, since.toISOString());
+        }
+
+        const topArticles = await db
+          .select({
+            title: articles.title,
+            url: articles.url,
+            shortCode: articles.shortCode,
+            clickCount: sql<number>`count(*)::int`,
+            lastClickedAt: sql<string>`max(${linkClicks.clickedAt})`,
+          })
+          .from(linkClicks)
+          .innerJoin(articles, eq(linkClicks.articleId, articles.id))
+          .where(and(userFilter, dateFilter))
+          .groupBy(articles.id)
+          .orderBy(sql`count(*) DESC`)
+          .limit(limit);
+
+        const bySource = await db
+          .select({
+            sourceTitle: sql<string>`(SELECT title FROM mcp_eloa.sources WHERE id = ${articles.sourceId})`,
+            clickCount: sql<number>`count(*)::int`,
+          })
+          .from(linkClicks)
+          .innerJoin(articles, eq(linkClicks.articleId, articles.id))
+          .where(and(userFilter, dateFilter))
+          .groupBy(articles.sourceId)
+          .orderBy(sql`count(*) DESC`);
+
+        const [totalRow] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(linkClicks)
+          .innerJoin(articles, eq(linkClicks.articleId, articles.id))
+          .where(and(userFilter, dateFilter));
+
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              period,
+              totalClicks: totalRow.count,
+              topArticles,
+              clicksBySource: bySource,
+            }, null, 2),
           }],
         };
       },

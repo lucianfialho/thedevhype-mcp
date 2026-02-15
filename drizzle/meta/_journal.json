@@ -43,6 +43,20 @@
       "when": 1739750400000,
       "tag": "0005_shared_sources",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1739836800000,
+      "tag": "0006_article_read_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1739923200000,
+      "tag": "0007_link_click_analytics",
+      "breakpoints": true
     }
   ]
 }

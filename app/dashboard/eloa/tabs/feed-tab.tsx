@@ -1,24 +1,28 @@
 'use client';
 
-import { useState } from 'react';
-import { getArticles, refreshFeeds } from '../actions';
+import { useState, useEffect } from 'react';
+import { getArticles, refreshFeeds, markArticleRead, markAllRead, getArticleClickCounts } from '../actions';
 import type { SourceWithSubscription } from '@/app/lib/mcp/servers/eloa.schema';
 
 interface FeedArticle {
   id: number;
   title: string;
   url: string;
+  shortCode: string | null;
   author: string | null;
   content: string | null;
   publishedAt: string | null;
   createdAt: string;
   sourceId: number;
+  isRead: boolean;
+  readAt: string | null;
 }
 
 interface FeedTabProps {
   articles: FeedArticle[];
   sources: SourceWithSubscription[];
   onArticlesChange: (articles: FeedArticle[]) => void;
+  onUnreadCountChange: (count: number) => void;
 }
 
 function timeAgo(dateStr: string | null) {
@@ -32,23 +36,34 @@ function timeAgo(dateStr: string | null) {
   return `${days}d`;
 }
 
-export function FeedTab({ articles, sources, onArticlesChange }: FeedTabProps) {
+export function FeedTab({ articles, sources, onArticlesChange, onUnreadCountChange }: FeedTabProps) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [selectedSource, setSelectedSource] = useState<number | undefined>();
+  const [readFilter, setReadFilter] = useState<'all' | 'unread' | 'read'>('all');
   const [page, setPage] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(articles.length >= 20);
+  const [markingAllRead, setMarkingAllRead] = useState(false);
+  const [clickCounts, setClickCounts] = useState<Record<number, number>>({});
+
+  useEffect(() => {
+    const ids = articles.map((a) => a.id);
+    if (ids.length === 0) return;
+    getArticleClickCounts(ids).then(setClickCounts);
+  }, [articles]);
 
   const sourceMap = new Map(sources.map((s) => [s.id, s.title]));
+  const unreadCount = articles.filter((a) => !a.isRead).length;
 
   async function handleRefresh() {
     setRefreshing(true);
     await refreshFeeds(selectedSource);
-    const fresh = await getArticles(selectedSource, 0, 20);
+    const fresh = await getArticles(selectedSource, 0, 20, readFilter);
     onArticlesChange(fresh);
     setPage(0);
     setHasMore(fresh.length >= 20);
+    onUnreadCountChange(fresh.filter((a) => !a.isRead).length);
     setRefreshing(false);
   }
 
@@ -56,7 +71,16 @@ export function FeedTab({ articles, sources, onArticlesChange }: FeedTabProps) {
     setSelectedSource(sourceId);
     setPage(0);
     setExpandedId(null);
-    const fresh = await getArticles(sourceId, 0, 20);
+    const fresh = await getArticles(sourceId, 0, 20, readFilter);
+    onArticlesChange(fresh);
+    setHasMore(fresh.length >= 20);
+  }
+
+  async function handleReadFilterChange(filter: 'all' | 'unread' | 'read') {
+    setReadFilter(filter);
+    setPage(0);
+    setExpandedId(null);
+    const fresh = await getArticles(selectedSource, 0, 20, filter);
     onArticlesChange(fresh);
     setHasMore(fresh.length >= 20);
   }
@@ -64,11 +88,36 @@ export function FeedTab({ articles, sources, onArticlesChange }: FeedTabProps) {
   async function handleLoadMore() {
     setLoadingMore(true);
     const nextPage = page + 1;
-    const more = await getArticles(selectedSource, nextPage, 20);
+    const more = await getArticles(selectedSource, nextPage, 20, readFilter);
     onArticlesChange([...articles, ...more]);
     setPage(nextPage);
     setHasMore(more.length >= 20);
     setLoadingMore(false);
+  }
+
+  async function handleExpand(article: FeedArticle) {
+    const isExpanding = expandedId !== article.id;
+    setExpandedId(isExpanding ? article.id : null);
+
+    if (isExpanding && !article.isRead) {
+      // Optimistic update
+      const updated = articles.map((a) =>
+        a.id === article.id ? { ...a, isRead: true, readAt: new Date().toISOString() } : a,
+      );
+      onArticlesChange(updated);
+      onUnreadCountChange(updated.filter((a) => !a.isRead).length);
+      // Background persist
+      markArticleRead(article.id, true);
+    }
+  }
+
+  async function handleMarkAllRead() {
+    setMarkingAllRead(true);
+    await markAllRead(selectedSource);
+    const updated = articles.map((a) => ({ ...a, isRead: true, readAt: a.readAt || new Date().toISOString() }));
+    onArticlesChange(updated);
+    onUnreadCountChange(0);
+    setMarkingAllRead(false);
   }
 
   return (
@@ -86,13 +135,33 @@ export function FeedTab({ articles, sources, onArticlesChange }: FeedTabProps) {
             </option>
           ))}
         </select>
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-600 hover:border-zinc-300 hover:text-zinc-900 disabled:opacity-50 sm:w-auto dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:text-zinc-200"
+        <select
+          value={readFilter}
+          onChange={(e) => handleReadFilterChange(e.target.value as 'all' | 'unread' | 'read')}
+          className="w-full rounded-md border border-zinc-200 bg-transparent px-3 py-2 text-sm outline-none sm:w-auto dark:border-zinc-700"
         >
-          {refreshing ? 'Atualizando...' : 'Atualizar feeds'}
-        </button>
+          <option value="all">Todos</option>
+          <option value="unread">Não lidos</option>
+          <option value="read">Lidos</option>
+        </select>
+        <div className="flex gap-2 sm:ml-auto">
+          {unreadCount > 0 && (
+            <button
+              onClick={handleMarkAllRead}
+              disabled={markingAllRead}
+              className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-600 hover:border-zinc-300 hover:text-zinc-900 disabled:opacity-50 sm:w-auto dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:text-zinc-200"
+            >
+              {markingAllRead ? 'Marcando...' : 'Marcar todos como lidos'}
+            </button>
+          )}
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-600 hover:border-zinc-300 hover:text-zinc-900 disabled:opacity-50 sm:w-auto dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:text-zinc-200"
+          >
+            {refreshing ? 'Atualizando...' : 'Atualizar feeds'}
+          </button>
+        </div>
       </div>
 
       {articles.length === 0 ? (
@@ -110,20 +179,31 @@ export function FeedTab({ articles, sources, onArticlesChange }: FeedTabProps) {
               className="rounded-lg border border-zinc-200 transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:hover:border-zinc-700"
             >
               <button
-                onClick={() => setExpandedId(expandedId === article.id ? null : article.id)}
+                onClick={() => handleExpand(article)}
                 className="w-full px-4 py-3 text-left"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <h4 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                      {article.title}
-                    </h4>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-zinc-400">
-                      <span className="rounded bg-zinc-100 px-1.5 py-0.5 dark:bg-zinc-800">
-                        {sourceMap.get(article.sourceId) || 'Fonte'}
-                      </span>
-                      {article.author && <span>{article.author}</span>}
-                      {article.publishedAt && <span>{timeAgo(article.publishedAt)}</span>}
+                  <div className="flex min-w-0 flex-1 items-start gap-2">
+                    {!article.isRead && (
+                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <h4
+                        className={`text-sm ${
+                          article.isRead
+                            ? 'font-normal text-zinc-500 dark:text-zinc-500'
+                            : 'font-semibold text-zinc-900 dark:text-zinc-100'
+                        }`}
+                      >
+                        {article.title}
+                      </h4>
+                      <div className="mt-1 flex items-center gap-2 text-xs text-zinc-400">
+                        <span className="rounded bg-zinc-100 px-1.5 py-0.5 dark:bg-zinc-800">
+                          {sourceMap.get(article.sourceId) || 'Fonte'}
+                        </span>
+                        {article.author && <span>{article.author}</span>}
+                        {article.publishedAt && <span>{timeAgo(article.publishedAt)}</span>}
+                      </div>
                     </div>
                   </div>
                   <svg
@@ -154,17 +234,24 @@ export function FeedTab({ articles, sources, onArticlesChange }: FeedTabProps) {
                       {article.content}
                     </p>
                   )}
-                  <a
-                    href={article.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
-                  >
-                    Abrir artigo
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
-                      <path d="M5 2h5v5M10 2L4 8" />
-                    </svg>
-                  </a>
+                  <div className="flex items-center gap-3">
+                    <a
+                      href={article.shortCode ? `/r/${article.shortCode}` : article.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
+                    >
+                      Abrir artigo
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <path d="M5 2h5v5M10 2L4 8" />
+                      </svg>
+                    </a>
+                    {clickCounts[article.id] > 0 && (
+                      <span className="text-xs text-zinc-400">
+                        {clickCounts[article.id]} {clickCounts[article.id] === 1 ? 'clique' : 'cliques'}
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

@@ -2,9 +2,11 @@
 
 import { auth } from '@/app/lib/auth/server';
 import { db } from '@/app/lib/db';
-import { eq, and, sql, desc } from 'drizzle-orm';
-import { sources, userSources, articles, bookmarks } from '@/app/lib/mcp/servers/eloa.schema';
+import { eq, and, sql, desc, inArray, gte } from 'drizzle-orm';
+import { sources, userSources, articles, bookmarks, linkClicks } from '@/app/lib/mcp/servers/eloa.schema';
 import type { SourceWithSubscription } from '@/app/lib/mcp/servers/eloa.schema';
+import { userInNeonAuth } from '@/app/lib/db/public.schema';
+import { generateShortCode } from '@/app/lib/short-code';
 import RssParser from 'rss-parser';
 
 const MAX_SOURCES = 20;
@@ -156,29 +158,71 @@ export async function removeSource(sourceId: number) {
 
 // ─── Articles ───
 
-export async function getArticles(sourceId?: number, page = 0, limit = 20) {
+export async function getArticles(sourceId?: number, page = 0, limit = 20, filter: 'all' | 'unread' | 'read' = 'all') {
   const userId = await requireUserId();
 
-  const conditions = sourceId
-    ? and(eq(articles.userId, userId), eq(articles.sourceId, sourceId))
-    : eq(articles.userId, userId);
+  const conditions = [eq(articles.userId, userId)];
+  if (sourceId) conditions.push(eq(articles.sourceId, sourceId));
+  if (filter === 'unread') conditions.push(eq(articles.isRead, false));
+  if (filter === 'read') conditions.push(eq(articles.isRead, true));
 
   return db
     .select({
       id: articles.id,
       title: articles.title,
       url: articles.url,
+      shortCode: articles.shortCode,
       author: articles.author,
       content: articles.content,
       publishedAt: articles.publishedAt,
       createdAt: articles.createdAt,
       sourceId: articles.sourceId,
+      isRead: articles.isRead,
+      readAt: articles.readAt,
     })
     .from(articles)
-    .where(conditions)
+    .where(and(...conditions))
     .orderBy(desc(articles.publishedAt))
     .limit(limit)
     .offset(page * limit);
+}
+
+export async function markArticleRead(articleId: number, isRead: boolean) {
+  const userId = await requireUserId();
+
+  await db
+    .update(articles)
+    .set({
+      isRead,
+      readAt: isRead ? new Date().toISOString() : null,
+    })
+    .where(and(eq(articles.id, articleId), eq(articles.userId, userId)));
+}
+
+export async function markAllRead(sourceId?: number) {
+  const userId = await requireUserId();
+
+  const conditions = [eq(articles.userId, userId), eq(articles.isRead, false)];
+  if (sourceId) conditions.push(eq(articles.sourceId, sourceId));
+
+  await db
+    .update(articles)
+    .set({
+      isRead: true,
+      readAt: new Date().toISOString(),
+    })
+    .where(and(...conditions));
+}
+
+export async function getUnreadCount() {
+  const userId = await requireUserId();
+
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(articles)
+    .where(and(eq(articles.userId, userId), eq(articles.isRead, false)));
+
+  return row.count;
 }
 
 export async function refreshFeeds(sourceId?: number) {
@@ -213,6 +257,7 @@ export async function refreshFeeds(sourceId?: number) {
             sourceId: sub.sourceId,
             title: item.title || 'Sem titulo',
             url: item.link,
+            shortCode: generateShortCode(),
             author: item.creator || item.author || null,
             content: item.contentSnippet || item.content || '',
             publishedAt: item.isoDate || null,
@@ -341,6 +386,173 @@ export async function getAllTags() {
   );
 
   return result.rows.map((r) => r.tag);
+}
+
+// ─── Analytics ───
+
+export async function getArticleClickCounts(articleIds: number[]) {
+  if (articleIds.length === 0) return {};
+
+  const userId = await requireUserId();
+
+  const rows = await db
+    .select({
+      articleId: linkClicks.articleId,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(linkClicks)
+    .innerJoin(articles, eq(linkClicks.articleId, articles.id))
+    .where(and(inArray(linkClicks.articleId, articleIds), eq(articles.userId, userId)))
+    .groupBy(linkClicks.articleId);
+
+  const map: Record<number, number> = {};
+  for (const row of rows) {
+    map[row.articleId] = row.count;
+  }
+  return map;
+}
+
+export async function getClickStats() {
+  const userId = await requireUserId();
+
+  const [user] = await db
+    .select({ role: userInNeonAuth.role })
+    .from(userInNeonAuth)
+    .where(eq(userInNeonAuth.id, userId));
+  const isAdmin = user?.role === 'admin';
+
+  const userFilter = isAdmin ? sql`1=1` : eq(articles.userId, userId);
+
+  const [totalRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(linkClicks)
+    .innerJoin(articles, eq(linkClicks.articleId, articles.id))
+    .where(userFilter);
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const [todayRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(linkClicks)
+    .innerJoin(articles, eq(linkClicks.articleId, articles.id))
+    .where(and(userFilter, gte(linkClicks.clickedAt, todayStart.toISOString())));
+
+  return {
+    totalClicks: totalRow.count,
+    todayClicks: todayRow.count,
+    isAdmin,
+  };
+}
+
+export async function getTopClickedArticles(limit = 10, period: 'today' | '7d' | '30d' | 'all' = 'all') {
+  const userId = await requireUserId();
+
+  const [user] = await db
+    .select({ role: userInNeonAuth.role })
+    .from(userInNeonAuth)
+    .where(eq(userInNeonAuth.id, userId));
+  const isAdmin = user?.role === 'admin';
+
+  const userFilter = isAdmin ? sql`1=1` : eq(articles.userId, userId);
+
+  let dateFilter = sql`1=1`;
+  if (period !== 'all') {
+    const now = new Date();
+    if (period === 'today') {
+      now.setHours(0, 0, 0, 0);
+    } else if (period === '7d') {
+      now.setDate(now.getDate() - 7);
+    } else if (period === '30d') {
+      now.setDate(now.getDate() - 30);
+    }
+    dateFilter = gte(linkClicks.clickedAt, now.toISOString());
+  }
+
+  const rows = await db
+    .select({
+      articleId: articles.id,
+      title: articles.title,
+      url: articles.url,
+      shortCode: articles.shortCode,
+      sourceTitle: sql<string>`(SELECT title FROM mcp_eloa.sources WHERE id = ${articles.sourceId})`,
+      clickCount: sql<number>`count(*)::int`,
+      lastClickedAt: sql<string>`max(${linkClicks.clickedAt})`,
+    })
+    .from(linkClicks)
+    .innerJoin(articles, eq(linkClicks.articleId, articles.id))
+    .where(and(userFilter, dateFilter))
+    .groupBy(articles.id)
+    .orderBy(sql`count(*) DESC`)
+    .limit(limit);
+
+  return rows;
+}
+
+export async function getClicksBySource(period: 'today' | '7d' | '30d' | 'all' = 'all') {
+  const userId = await requireUserId();
+
+  const [user] = await db
+    .select({ role: userInNeonAuth.role })
+    .from(userInNeonAuth)
+    .where(eq(userInNeonAuth.id, userId));
+  const isAdmin = user?.role === 'admin';
+
+  const userFilter = isAdmin ? sql`1=1` : eq(articles.userId, userId);
+
+  let dateFilter = sql`1=1`;
+  if (period !== 'all') {
+    const now = new Date();
+    if (period === 'today') {
+      now.setHours(0, 0, 0, 0);
+    } else if (period === '7d') {
+      now.setDate(now.getDate() - 7);
+    } else if (period === '30d') {
+      now.setDate(now.getDate() - 30);
+    }
+    dateFilter = gte(linkClicks.clickedAt, now.toISOString());
+  }
+
+  const rows = await db
+    .select({
+      sourceTitle: sql<string>`(SELECT title FROM mcp_eloa.sources WHERE id = ${articles.sourceId})`,
+      clickCount: sql<number>`count(*)::int`,
+    })
+    .from(linkClicks)
+    .innerJoin(articles, eq(linkClicks.articleId, articles.id))
+    .where(and(userFilter, dateFilter))
+    .groupBy(articles.sourceId)
+    .orderBy(sql`count(*) DESC`);
+
+  return rows;
+}
+
+export async function getClicksOverTime(days = 14) {
+  const userId = await requireUserId();
+
+  const [user] = await db
+    .select({ role: userInNeonAuth.role })
+    .from(userInNeonAuth)
+    .where(eq(userInNeonAuth.id, userId));
+  const isAdmin = user?.role === 'admin';
+
+  const userFilter = isAdmin ? sql`1=1` : eq(articles.userId, userId);
+
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  const rows = await db
+    .select({
+      date: sql<string>`date_trunc('day', ${linkClicks.clickedAt})::date::text`,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(linkClicks)
+    .innerJoin(articles, eq(linkClicks.articleId, articles.id))
+    .where(and(userFilter, gte(linkClicks.clickedAt, since.toISOString())))
+    .groupBy(sql`1`)
+    .orderBy(sql`1`);
+
+  return rows;
 }
 
 // ─── Search ───

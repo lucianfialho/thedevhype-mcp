@@ -4,6 +4,7 @@ import {
   uuid,
   text,
   timestamp,
+  boolean,
   unique,
 } from 'drizzle-orm/pg-core';
 import { sql, type InferSelectModel, type InferInsertModel } from 'drizzle-orm';
@@ -77,10 +78,13 @@ export const articles = mcpEloa.table(
       .references(() => sources.id),
     title: text().notNull(),
     url: text().notNull(),
+    shortCode: text().unique('articles_short_code_unique'),
     author: text(),
     content: text(),
     summary: text(),
     publishedAt: timestamp({ withTimezone: true, mode: 'string' }),
+    isRead: boolean().default(false).notNull(),
+    readAt: timestamp({ withTimezone: true, mode: 'string' }),
     createdAt: timestamp({ withTimezone: true, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -115,3 +119,19 @@ export const bookmarks = mcpEloa.table(
 
 export type Bookmark = InferSelectModel<typeof bookmarks>;
 export type NewBookmark = InferInsertModel<typeof bookmarks>;
+
+// --- Link Clicks (analytics for proxy redirects) ---
+
+export const linkClicks = mcpEloa.table('link_clicks', {
+  id: bigint({ mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  articleId: bigint({ mode: 'number' }).notNull()
+    .references(() => articles.id, { onDelete: 'cascade' }),
+  clickedAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`).notNull(),
+  userAgent: text(),
+  referer: text(),
+  ip: text(),
+});
+
+export type LinkClick = InferSelectModel<typeof linkClicks>;
+export type NewLinkClick = InferInsertModel<typeof linkClicks>;

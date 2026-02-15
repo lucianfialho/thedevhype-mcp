@@ -6,7 +6,7 @@ import { addSource, addBookmark, searchContent } from './actions';
 import type { SourceWithSubscription, Bookmark } from '@/app/lib/mcp/servers/eloa.schema';
 
 interface CommandBarProps {
-  onNavigate: (tab: 'feed' | 'fontes' | 'bookmarks' | 'busca') => void;
+  onNavigate: (tab: 'feed' | 'fontes' | 'bookmarks' | 'busca' | 'analytics') => void;
   onSourceAdded: (source: SourceWithSubscription) => void;
   onBookmarkAdded: (bookmark: Bookmark) => void;
 }
@@ -125,7 +125,7 @@ export function CommandBar({ onNavigate, onSourceAdded, onBookmarkAdded }: Comma
                 </Command.Group>
 
                 <Command.Group heading="Navegar" className="px-2 py-1 text-xs font-semibold text-zinc-400">
-                  {(['feed', 'fontes', 'bookmarks', 'busca'] as const).map((tab) => (
+                  {(['feed', 'fontes', 'bookmarks', 'busca', 'analytics'] as const).map((tab) => (
                     <Command.Item
                       key={tab}
                       onSelect={() => { onNavigate(tab); setOpen(false); }}

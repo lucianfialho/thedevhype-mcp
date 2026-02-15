@@ -7,13 +7,15 @@ import { SourcesTab } from './tabs/sources-tab';
 import { FeedTab } from './tabs/feed-tab';
 import { BookmarksTab } from './tabs/bookmarks-tab';
 import { SearchTab } from './tabs/search-tab';
-import type { SourceWithSubscription, Article, Bookmark } from '@/app/lib/mcp/servers/eloa.schema';
+import { AnalyticsTab } from './tabs/analytics-tab';
+import type { SourceWithSubscription, Bookmark } from '@/app/lib/mcp/servers/eloa.schema';
 
 const TABS = [
   { id: 'feed', label: 'Feed' },
   { id: 'fontes', label: 'Fontes' },
   { id: 'bookmarks', label: 'Bookmarks' },
   { id: 'busca', label: 'Busca' },
+  { id: 'analytics', label: 'Analytics' },
 ] as const;
 
 type Tab = (typeof TABS)[number]['id'];
@@ -25,14 +27,19 @@ interface EloaDashboardProps {
     id: number;
     title: string;
     url: string;
+    shortCode: string | null;
     author: string | null;
     content: string | null;
     publishedAt: string | null;
     createdAt: string;
     sourceId: number;
+    isRead: boolean;
+    readAt: string | null;
   }>;
   initialBookmarks: Bookmark[];
   initialTags: string[];
+  initialUnreadCount: number;
+  isAdmin: boolean;
 }
 
 export function EloaDashboard({
@@ -41,6 +48,8 @@ export function EloaDashboard({
   initialArticles,
   initialBookmarks,
   initialTags,
+  initialUnreadCount,
+  isAdmin,
 }: EloaDashboardProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
@@ -48,6 +57,7 @@ export function EloaDashboard({
   const [articlesData, setArticlesData] = useState(initialArticles);
   const [bookmarksData, setBookmarksData] = useState(initialBookmarks);
   const [tagsData, setTagsData] = useState(initialTags);
+  const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
 
   function switchTab(tab: Tab) {
     setActiveTab(tab);
@@ -74,6 +84,11 @@ export function EloaDashboard({
             }`}
           >
             {tab.label}
+            {tab.id === 'feed' && unreadCount > 0 && (
+              <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-blue-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -89,6 +104,7 @@ export function EloaDashboard({
           articles={articlesData}
           sources={sourcesData}
           onArticlesChange={setArticlesData}
+          onUnreadCountChange={setUnreadCount}
         />
       )}
       {activeTab === 'bookmarks' && (
@@ -100,6 +116,7 @@ export function EloaDashboard({
         />
       )}
       {activeTab === 'busca' && <SearchTab />}
+      {activeTab === 'analytics' && <AnalyticsTab isAdmin={isAdmin} />}
     </>
   );
 }

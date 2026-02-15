@@ -1,6 +1,7 @@
 import { db } from '@/app/lib/db';
 import { sources, userSources, articles } from '@/app/lib/mcp/servers/eloa.schema';
 import { eq, sql } from 'drizzle-orm';
+import { generateShortCode } from '@/app/lib/short-code';
 import RssParser from 'rss-parser';
 
 const rssParser = new RssParser();
@@ -47,6 +48,7 @@ export async function GET(request: Request) {
               sourceId: source.id,
               title: item.title || 'Sem titulo',
               url: item.link,
+              shortCode: generateShortCode(),
               author: item.creator || item.author || null,
               content: item.contentSnippet || item.content || '',
               publishedAt: item.isoDate || null,
