@@ -34,7 +34,7 @@ export default function RootLayout({
           credentials={false}
           social={{ providers: ['github'] }}
         >
-          <header className="flex h-16 items-center justify-between border-b border-zinc-200 px-6 dark:border-zinc-800">
+          <header className="flex h-14 items-center justify-between border-b border-zinc-200 px-4 sm:h-16 sm:px-6 dark:border-zinc-800">
             <h1 className="text-lg font-bold">TheDevHype</h1>
             <UserButton size="icon" />
           </header>

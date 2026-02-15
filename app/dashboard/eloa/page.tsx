@@ -46,18 +46,18 @@ export default async function EloaPage({
   const mcpUrl = 'https://www.thedevhype.com/api/mcp/eloa/mcp';
 
   return (
-    <main className="mx-auto max-w-4xl p-6">
-      <div className="mb-6 flex items-center gap-4">
+    <main className="mx-auto max-w-4xl px-4 py-4 sm:p-6">
+      <div className="mb-6 flex items-center gap-3 sm:gap-4">
         <img
           src="/eloa.png"
           alt="Eloa"
-          className="h-12 w-12 rounded-full"
+          className="h-10 w-10 shrink-0 rounded-full sm:h-12 sm:w-12"
         />
         <div>
-          <h2 className="text-2xl font-bold">Eloa</h2>
-          <p className="text-sm text-zinc-500">AI Content Curator</p>
+          <h2 className="text-xl font-bold sm:text-2xl">Eloa</h2>
+          <p className="text-xs text-zinc-500 sm:text-sm">AI Content Curator</p>
         </div>
-        <kbd className="ml-auto rounded border border-zinc-200 px-2 py-1 text-xs text-zinc-400 dark:border-zinc-700">
+        <kbd className="ml-auto hidden rounded border border-zinc-200 px-2 py-1 text-xs text-zinc-400 sm:block dark:border-zinc-700">
           {'\u2318'}K
         </kbd>
       </div>
@@ -90,8 +90,8 @@ export default async function EloaPage({
           <div className="space-y-3">
             <div>
               <span className="text-xs font-medium text-zinc-500">Endpoint</span>
-              <div className="mt-1 flex items-center gap-2">
-                <code className="block flex-1 truncate rounded bg-zinc-100 px-3 py-2 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+              <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center">
+                <code className="block break-all rounded bg-zinc-100 px-3 py-2 text-xs text-zinc-700 sm:flex-1 sm:truncate sm:break-normal dark:bg-zinc-800 dark:text-zinc-300">
                   {mcpUrl}
                 </code>
                 <CopyUrlButton url={mcpUrl} />

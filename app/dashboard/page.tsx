@@ -8,7 +8,7 @@ export default async function DashboardPage() {
   const user = session?.user;
 
   return (
-    <main className="mx-auto max-w-3xl p-6">
+    <main className="mx-auto max-w-3xl px-4 py-4 sm:p-6">
       <div className="mb-8">
         <h2 className="text-2xl font-bold">Dashboard</h2>
         <p className="mt-1 text-zinc-500">
@@ -18,7 +18,7 @@ export default async function DashboardPage() {
 
       <Link
         href="/dashboard/eloa"
-        className="flex items-center gap-4 rounded-lg border border-zinc-200 p-5 transition-colors hover:border-zinc-300 hover:shadow-sm dark:border-zinc-800 dark:hover:border-zinc-700"
+        className="flex items-center gap-3 rounded-lg border border-zinc-200 p-4 transition-colors hover:border-zinc-300 hover:shadow-sm sm:gap-4 sm:p-5 dark:border-zinc-800 dark:hover:border-zinc-700"
       >
         <img
           src="/eloa.png"

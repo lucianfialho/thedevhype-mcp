@@ -73,11 +73,11 @@ export function FeedTab({ articles, sources, onArticlesChange }: FeedTabProps) {
 
   return (
     <div>
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
         <select
           value={selectedSource ?? ''}
           onChange={(e) => handleFilterChange(e.target.value ? Number(e.target.value) : undefined)}
-          className="rounded-md border border-zinc-200 bg-transparent px-3 py-2 text-sm outline-none dark:border-zinc-700"
+          className="w-full rounded-md border border-zinc-200 bg-transparent px-3 py-2 text-sm outline-none sm:w-auto dark:border-zinc-700"
         >
           <option value="">Todas as fontes</option>
           {sources.map((s) => (
@@ -89,7 +89,7 @@ export function FeedTab({ articles, sources, onArticlesChange }: FeedTabProps) {
         <button
           onClick={handleRefresh}
           disabled={refreshing}
-          className="rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-600 hover:border-zinc-300 hover:text-zinc-900 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:text-zinc-200"
+          className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-600 hover:border-zinc-300 hover:text-zinc-900 disabled:opacity-50 sm:w-auto dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:text-zinc-200"
         >
           {refreshing ? 'Atualizando...' : 'Atualizar feeds'}
         </button>

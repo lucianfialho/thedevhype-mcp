@@ -214,7 +214,7 @@ export function BookmarksTab({ bookmarks, allTags, onBookmarksChange, onTagsChan
                 <button
                   onClick={() => handleRemove(bookmark.id)}
                   disabled={removingId === bookmark.id}
-                  className="ml-2 shrink-0 rounded p-1 text-zinc-400 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100 disabled:opacity-50"
+                  className="ml-2 shrink-0 rounded p-1 text-zinc-400 opacity-100 hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100 disabled:opacity-50"
                   title="Remover bookmark"
                 >
                   {removingId === bookmark.id ? (

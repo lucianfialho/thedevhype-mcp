@@ -62,12 +62,12 @@ export function EloaDashboard({
         onBookmarkAdded={(b) => setBookmarksData((prev) => [b, ...prev])}
       />
 
-      <div className="mb-6 flex gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="mb-6 flex gap-1 overflow-x-auto rounded-lg border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => switchTab(tab.id)}
-            className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+            className={`flex-1 whitespace-nowrap rounded-md px-3 py-2 text-xs font-medium transition-colors sm:text-sm ${
               activeTab === tab.id
                 ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100'
                 : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'

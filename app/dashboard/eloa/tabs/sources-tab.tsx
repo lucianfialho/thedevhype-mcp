@@ -64,33 +64,35 @@ export function SourcesTab({ sources, onSourcesChange }: SourcesTabProps) {
         </span>
       </div>
 
-      <form onSubmit={handleAdd} className="mb-6 flex gap-2">
+      <form onSubmit={handleAdd} className="mb-6 space-y-2 sm:flex sm:gap-2 sm:space-y-0">
         <input
           type="url"
           placeholder="https://example.com/feed.xml"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           required
-          className="flex-1 rounded-md border border-zinc-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-400 dark:border-zinc-700 dark:focus:border-zinc-500"
+          className="w-full rounded-md border border-zinc-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-400 sm:flex-1 dark:border-zinc-700 dark:focus:border-zinc-500"
         />
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="rounded-md border border-zinc-200 bg-transparent px-3 py-2 text-sm outline-none dark:border-zinc-700"
-        >
-          <option value="">Categoria</option>
-          <option value="tech">Tech</option>
-          <option value="design">Design</option>
-          <option value="news">News</option>
-          <option value="other">Other</option>
-        </select>
-        <button
-          type="submit"
-          disabled={loading || !url || sources.length >= MAX_SOURCES}
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-        >
-          {loading ? 'Validando...' : 'Adicionar'}
-        </button>
+        <div className="flex gap-2">
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="flex-1 rounded-md border border-zinc-200 bg-transparent px-3 py-2 text-sm outline-none sm:flex-none dark:border-zinc-700"
+          >
+            <option value="">Categoria</option>
+            <option value="tech">Tech</option>
+            <option value="design">Design</option>
+            <option value="news">News</option>
+            <option value="other">Other</option>
+          </select>
+          <button
+            type="submit"
+            disabled={loading || !url || sources.length >= MAX_SOURCES}
+            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          >
+            {loading ? 'Validando...' : 'Adicionar'}
+          </button>
+        </div>
       </form>
 
       {error && (
@@ -137,7 +139,7 @@ export function SourcesTab({ sources, onSourcesChange }: SourcesTabProps) {
               <button
                 onClick={() => handleRemove(source.id)}
                 disabled={removingId === source.id}
-                className="ml-3 shrink-0 rounded p-1 text-zinc-400 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100 disabled:opacity-50"
+                className="ml-3 shrink-0 rounded p-1 text-zinc-400 opacity-100 hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100 disabled:opacity-50"
                 title="Remover fonte"
               >
                 {removingId === source.id ? (
