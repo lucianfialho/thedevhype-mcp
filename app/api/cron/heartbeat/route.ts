@@ -34,8 +34,7 @@ async function checkEndpoint(url: string) {
 
 export async function GET() {
   const sql = neon(process.env.DATABASE_URL!);
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL
-    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+  const baseUrl = "https://thedevhype.com";
 
   const checks: Record<string, { status: string; latency: number; message?: string }> = {};
 
@@ -44,9 +43,8 @@ export async function GET() {
     await sql`SELECT 1`;
   });
 
-  // API endpoint checks
+  // API endpoint checks (public endpoints only)
   checks["api:/api/health"] = await checkEndpoint(`${baseUrl}/api/health`);
-  checks["api:/api/mcp-access"] = await checkEndpoint(`${baseUrl}/api/mcp-access`);
 
   const hasError = Object.values(checks).some((c) => c.status === "error");
   const status = hasError ? "error" : "ok";

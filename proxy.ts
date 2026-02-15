@@ -43,27 +43,31 @@ const authProxy = auth.middleware({
 
 const AUTH_PATHS = ['/dashboard', '/'];
 
+function trackBot(bot: { name: string; category: string }, pathname: string, ua: string) {
+  fetch("https://www.bluemonitor.org/api/v1/bot-visits", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.BLUEMONITOR_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      domain: "thedevhype.com",
+      visits: [{
+        bot_name: bot.name,
+        bot_category: bot.category,
+        path: pathname,
+        user_agent: ua,
+      }],
+    }),
+  }).catch(() => {});
+}
+
 export default async function proxy(request: NextRequest) {
   const ua = request.headers.get("user-agent") || "";
   const bot = identifyBot(ua);
 
   if (bot) {
-    await fetch("https://www.bluemonitor.org/api/v1/bot-visits", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.BLUEMONITOR_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        domain: "thedevhype.com",
-        visits: [{
-          bot_name: bot.name,
-          bot_category: bot.category,
-          path: request.nextUrl.pathname,
-          user_agent: ua,
-        }],
-      }),
-    }).catch(() => {});
+    trackBot(bot, request.nextUrl.pathname, ua);
   }
 
   const pathname = request.nextUrl.pathname;
