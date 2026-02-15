@@ -2,7 +2,7 @@
 
 import { auth } from '@/app/lib/auth/server';
 import { db } from '@/app/lib/db';
-import { eq, and, sql, desc, ilike, or } from 'drizzle-orm';
+import { eq, and, sql, desc } from 'drizzle-orm';
 import { sources, articles, bookmarks } from '@/app/lib/mcp/servers/eloa.schema';
 import RssParser from 'rss-parser';
 
@@ -247,78 +247,82 @@ export async function getAllTags() {
 
 export async function searchContent(query: string, tipo: 'artigos' | 'bookmarks' | 'todos' = 'todos') {
   const userId = await requireUserId();
-  const pattern = `%${query}%`;
   const results: Array<{ tipo: string; id: number; title: string; url: string; snippet: string; createdAt: string | null }> = [];
 
-  if (tipo === 'todos' || tipo === 'artigos') {
-    const articleResults = await db
-      .select()
-      .from(articles)
-      .where(
-        and(
-          eq(articles.userId, userId),
-          or(ilike(articles.title, pattern), ilike(articles.content, pattern)),
-        ),
-      )
-      .orderBy(desc(articles.createdAt))
-      .limit(20);
+  try {
+    const tsquery = sql`websearch_to_tsquery('simple', ${query})`;
 
-    for (const a of articleResults) {
-      const text = a.content || a.title;
-      const idx = text.toLowerCase().indexOf(query.toLowerCase());
-      const start = Math.max(0, idx - 50);
-      const snippet = text.slice(start, start + 150);
-      results.push({
-        tipo: 'artigo',
-        id: a.id,
-        title: a.title,
-        url: a.url,
-        snippet: snippet + (snippet.length < text.length ? '...' : ''),
-        createdAt: a.createdAt,
-      });
-    }
-  }
-
-  if (tipo === 'todos' || tipo === 'bookmarks') {
-    const bookmarkResults = await db
-      .select()
-      .from(bookmarks)
-      .where(
-        and(
-          eq(bookmarks.userId, userId),
-          or(
-            ilike(bookmarks.title, pattern),
-            ilike(bookmarks.content, pattern),
-            ilike(bookmarks.notes, pattern),
-            sql`array_to_string(${bookmarks.tags}, ' ') ILIKE ${pattern}`,
+    if (tipo === 'todos' || tipo === 'artigos') {
+      const articleResults = await db
+        .select({
+          id: articles.id,
+          title: articles.title,
+          url: articles.url,
+          content: articles.content,
+          createdAt: articles.createdAt,
+          rank: sql<number>`ts_rank(search_vector, ${tsquery})`.as('rank'),
+        })
+        .from(articles)
+        .where(
+          and(
+            eq(articles.userId, userId),
+            sql`search_vector @@ ${tsquery}`,
           ),
-        ),
-      )
-      .orderBy(desc(bookmarks.createdAt))
-      .limit(20);
+        )
+        .orderBy(sql`rank DESC`)
+        .limit(20);
 
-    for (const b of bookmarkResults) {
-      const text = b.notes || b.content || b.title;
-      const idx = text.toLowerCase().indexOf(query.toLowerCase());
-      const start = Math.max(0, idx - 50);
-      const snippet = text.slice(start, start + 150);
-      results.push({
-        tipo: 'bookmark',
-        id: b.id,
-        title: b.title,
-        url: b.url,
-        snippet: snippet + (snippet.length < text.length ? '...' : ''),
-        createdAt: b.createdAt,
-      });
+      for (const a of articleResults) {
+        const text = a.content || a.title;
+        const snippet = text.slice(0, 150);
+        results.push({
+          tipo: 'artigo',
+          id: a.id,
+          title: a.title,
+          url: a.url,
+          snippet: snippet + (snippet.length < text.length ? '...' : ''),
+          createdAt: a.createdAt,
+        });
+      }
     }
-  }
 
-  // Title matches first
-  results.sort((a, b) => {
-    const aTitle = a.title.toLowerCase().includes(query.toLowerCase()) ? 0 : 1;
-    const bTitle = b.title.toLowerCase().includes(query.toLowerCase()) ? 0 : 1;
-    return aTitle - bTitle;
-  });
+    if (tipo === 'todos' || tipo === 'bookmarks') {
+      const bookmarkResults = await db
+        .select({
+          id: bookmarks.id,
+          title: bookmarks.title,
+          url: bookmarks.url,
+          content: bookmarks.content,
+          notes: bookmarks.notes,
+          createdAt: bookmarks.createdAt,
+          rank: sql<number>`ts_rank(search_vector, ${tsquery})`.as('rank'),
+        })
+        .from(bookmarks)
+        .where(
+          and(
+            eq(bookmarks.userId, userId),
+            sql`search_vector @@ ${tsquery}`,
+          ),
+        )
+        .orderBy(sql`rank DESC`)
+        .limit(20);
+
+      for (const b of bookmarkResults) {
+        const text = b.notes || b.content || b.title;
+        const snippet = text.slice(0, 150);
+        results.push({
+          tipo: 'bookmark',
+          id: b.id,
+          title: b.title,
+          url: b.url,
+          snippet: snippet + (snippet.length < text.length ? '...' : ''),
+          createdAt: b.createdAt,
+        });
+      }
+    }
+  } catch {
+    return [];
+  }
 
   return results.slice(0, 20);
 }
