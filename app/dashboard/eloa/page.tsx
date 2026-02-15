@@ -43,7 +43,7 @@ export default async function EloaPage({
     getAllTags(),
   ]);
 
-  const mcpUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/mcp/eloa/mcp`;
+  const mcpUrl = 'https://www.thedevhype.com/api/mcp/eloa/mcp';
 
   return (
     <main className="mx-auto max-w-4xl p-6">

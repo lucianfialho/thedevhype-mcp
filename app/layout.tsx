@@ -31,6 +31,7 @@ export default function RootLayout({
       >
         <NeonAuthUIProvider
           authClient={authClient}
+          credentials={false}
           social={{ providers: ['github'] }}
         >
           <header className="flex h-16 items-center justify-between border-b border-zinc-200 px-6 dark:border-zinc-800">

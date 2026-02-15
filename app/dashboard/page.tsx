@@ -28,8 +28,9 @@ export default async function DashboardPage() {
 
   const accessByName = new Map(accessRows.map((r) => [r.mcpName, r]));
 
+  const otherServers = servers.filter((s) => s.name !== 'eloa');
   const categories = new Map<string, typeof servers>();
-  for (const server of servers) {
+  for (const server of otherServers) {
     const list = categories.get(server.category) ?? [];
     list.push(server);
     categories.set(server.category, list);
@@ -71,7 +72,7 @@ export default async function DashboardPage() {
         </svg>
       </Link>
 
-      {servers.length === 0 ? (
+      {otherServers.length === 0 ? (
         <p className="text-zinc-400">No MCP servers available.</p>
       ) : (
         <div className="space-y-8">
