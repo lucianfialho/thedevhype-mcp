@@ -1,0 +1,64 @@
+import { db } from '@/app/lib/db';
+import { sources, articles } from '@/app/lib/mcp/servers/eloa.schema';
+import { eq, sql } from 'drizzle-orm';
+import RssParser from 'rss-parser';
+
+const rssParser = new RssParser();
+
+export async function GET(request: Request) {
+  const authHeader = request.headers.get('authorization');
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const allSources = await db.select().from(sources);
+
+  let updated = 0;
+  let failed = 0;
+
+  for (const source of allSources) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(source.url, { signal: controller.signal });
+      clearTimeout(timeout);
+      const text = await res.text();
+      const feed = await rssParser.parseString(text);
+
+      for (const item of feed.items || []) {
+        if (!item.link) continue;
+        await db
+          .insert(articles)
+          .values({
+            userId: source.userId,
+            sourceId: source.id,
+            title: item.title || 'Sem titulo',
+            url: item.link,
+            author: item.creator || item.author || null,
+            content: item.contentSnippet || item.content || '',
+            publishedAt: item.isoDate || null,
+          })
+          .onConflictDoUpdate({
+            target: [articles.userId, articles.url],
+            set: {
+              title: sql`EXCLUDED.title`,
+              content: sql`EXCLUDED.content`,
+              author: sql`EXCLUDED.author`,
+              publishedAt: sql`EXCLUDED.published_at`,
+            },
+          });
+      }
+
+      await db
+        .update(sources)
+        .set({ lastFetchedAt: new Date().toISOString() })
+        .where(eq(sources.id, source.id));
+
+      updated++;
+    } catch {
+      failed++;
+    }
+  }
+
+  return Response.json({ ok: true, updated, failed, total: allSources.length });
+}
