@@ -28,32 +28,46 @@ export async function getSources() {
 }
 
 export async function addSource(url: string, category?: string) {
-  const userId = await requireUserId();
-
-  const existing = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(sources)
-    .where(eq(sources.userId, userId));
-  if (existing[0].count >= MAX_SOURCES) {
-    return { error: `Limite de ${MAX_SOURCES} fontes atingido.` };
-  }
-
-  let feed;
   try {
-    feed = await rssParser.parseURL(url);
-  } catch {
-    return { error: 'URL nao e um feed RSS/Atom valido.' };
+    const userId = await requireUserId();
+
+    const existing = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(sources)
+      .where(eq(sources.userId, userId));
+    if (existing[0].count >= MAX_SOURCES) {
+      return { error: `Limite de ${MAX_SOURCES} fontes atingido.` };
+    }
+
+    let feedTitle = url;
+    let feedSiteUrl: string | null = null;
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
+      const text = await res.text();
+      const feed = await rssParser.parseString(text);
+      feedTitle = feed.title || url;
+      feedSiteUrl = feed.link || null;
+    } catch {
+      return { error: 'URL nao e um feed RSS/Atom valido ou demorou demais.' };
+    }
+
+    const [source] = await db.insert(sources).values({
+      userId,
+      url,
+      title: feedTitle,
+      siteUrl: feedSiteUrl,
+      category: category || null,
+    }).returning();
+
+    return { data: source };
+  } catch (err) {
+    console.error('addSource error:', err);
+    return { error: 'Erro ao adicionar fonte.' };
   }
-
-  const [source] = await db.insert(sources).values({
-    userId,
-    url,
-    title: feed.title || url,
-    siteUrl: feed.link || null,
-    category: category || null,
-  }).returning();
-
-  return { data: source };
 }
 
 export async function removeSource(sourceId: number) {
@@ -111,7 +125,12 @@ export async function refreshFeeds(sourceId?: number) {
   let count = 0;
   for (const source of userSources) {
     try {
-      const feed = await rssParser.parseURL(source.url);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+      const res = await fetch(source.url, { signal: controller.signal });
+      clearTimeout(timeout);
+      const text = await res.text();
+      const feed = await rssParser.parseString(text);
       for (const item of feed.items || []) {
         if (!item.link) continue;
         await db
@@ -167,29 +186,37 @@ export async function getBookmarks(tag?: string, page = 0, limit = 20) {
 }
 
 export async function addBookmark(url: string, title?: string, tags?: string[], notes?: string) {
-  const userId = await requireUserId();
+  try {
+    const userId = await requireUserId();
 
-  let bookmarkTitle = title || '';
-  if (!bookmarkTitle) {
-    try {
-      const res = await fetch(url);
-      const html = await res.text();
-      const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-      bookmarkTitle = match ? match[1].trim() : url;
-    } catch {
-      bookmarkTitle = url;
+    let bookmarkTitle = title || '';
+    if (!bookmarkTitle) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeout);
+        const html = await res.text();
+        const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        bookmarkTitle = match ? match[1].trim() : url;
+      } catch {
+        bookmarkTitle = url;
+      }
     }
+
+    const [bookmark] = await db.insert(bookmarks).values({
+      userId,
+      url,
+      title: bookmarkTitle,
+      tags: tags?.length ? tags : null,
+      notes: notes || null,
+    }).returning();
+
+    return { data: bookmark };
+  } catch (err) {
+    console.error('addBookmark error:', err);
+    return { error: 'Erro ao salvar bookmark.' };
   }
-
-  const [bookmark] = await db.insert(bookmarks).values({
-    userId,
-    url,
-    title: bookmarkTitle,
-    tags: tags?.length ? tags : null,
-    notes: notes || null,
-  }).returning();
-
-  return { data: bookmark };
 }
 
 export async function removeBookmark(bookmarkId: number) {
