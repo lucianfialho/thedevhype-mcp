@@ -15,12 +15,16 @@ export async function GET(request: Request) {
 
   let updated = 0;
   let failed = 0;
+  const errors: Array<{ url: string; error: string }> = [];
 
   for (const source of allSources) {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
-      const res = await fetch(source.url, { signal: controller.signal });
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      const res = await fetch(source.url, {
+        signal: controller.signal,
+        headers: { 'User-Agent': 'Eloa/1.0 (RSS Reader)' },
+      });
       clearTimeout(timeout);
       const text = await res.text();
       const feed = await rssParser.parseString(text);
@@ -55,10 +59,14 @@ export async function GET(request: Request) {
         .where(eq(sources.id, source.id));
 
       updated++;
-    } catch {
+    } catch (err) {
       failed++;
+      errors.push({
+        url: source.url,
+        error: err instanceof Error ? err.message : 'Unknown error',
+      });
     }
   }
 
-  return Response.json({ ok: true, updated, failed, total: allSources.length });
+  return Response.json({ ok: true, updated, failed, total: allSources.length, errors });
 }
