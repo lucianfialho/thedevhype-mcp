@@ -150,7 +150,7 @@ export async function refreshFeeds(sourceId?: number) {
               title: sql`EXCLUDED.title`,
               content: sql`EXCLUDED.content`,
               author: sql`EXCLUDED.author`,
-              publishedAt: sql`EXCLUDED.published_at`,
+              publishedAt: sql`EXCLUDED."publishedAt"`,
             },
           });
         count++;
