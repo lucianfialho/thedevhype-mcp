@@ -4,7 +4,7 @@ import { userMcpAccess } from '@/app/lib/db/public.schema';
 import { eq, and } from 'drizzle-orm';
 import { registry } from '@/app/lib/mcp/servers';
 import { LucianDashboard } from './lucian-dashboard';
-import { getNotas, getNotasSummary, getProdutos, getProdutosSummary, getGastos, getGastosSummary } from './actions';
+import { getNotas, getNotasSummary, getProdutos, getProdutosSummary, getGastosData } from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,14 +35,13 @@ export default async function LucianPage({
         .where(and(eq(userMcpAccess.userId, userId), eq(userMcpAccess.mcpName, 'lucian'))))[0]
     : undefined;
 
-  const [notasData, notasSummary, produtosData, produtosSummary, gastosData, gastosSummary] =
+  const [notasData, notasSummary, produtosData, produtosSummary, gastosResult] =
     await Promise.all([
       getNotas(),
       getNotasSummary(),
       getProdutos(),
       getProdutosSummary(),
-      getGastos(),
-      getGastosSummary(),
+      getGastosData(),
     ]);
 
   const mcpConfig = server
@@ -75,8 +74,8 @@ export default async function LucianPage({
         notasSummary={notasSummary}
         initialProdutos={produtosData}
         produtosSummary={produtosSummary}
-        initialGastos={gastosData}
-        gastosSummary={gastosSummary}
+        initialGastos={gastosResult.gastos}
+        gastosSummary={gastosResult.summary}
         mcpConfig={mcpConfig}
       />
     </main>

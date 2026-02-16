@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { getGastos, getGastosSummary } from '../actions';
+import { useState, useRef, useTransition } from 'react';
+import { getGastosData } from '../actions';
 
 type Period = '7' | '30' | '90' | '365';
 type Agrupamento = 'categoria' | 'loja' | 'mes';
@@ -41,18 +41,25 @@ export function GastosTab({ initialGastos, initialSummary }: GastosTabProps) {
   const [agrupamento, setAgrupamento] = useState<Agrupamento>('categoria');
   const [gastos, setGastos] = useState(initialGastos);
   const [summary, setSummary] = useState(initialSummary);
-  const [loading, setLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const isFirstRender = useRef(true);
 
-  useEffect(() => {
-    setLoading(true);
-    Promise.all([getGastos(Number(period), agrupamento), getGastosSummary(Number(period))]).then(
-      ([g, s]) => {
-        setGastos(g);
-        setSummary(s);
-        setLoading(false);
-      },
-    );
-  }, [period, agrupamento]);
+  function handleChange(newPeriod: Period, newAgrupamento: Agrupamento) {
+    if (isFirstRender.current && newPeriod === '30' && newAgrupamento === 'categoria') {
+      isFirstRender.current = false;
+      return;
+    }
+    isFirstRender.current = false;
+
+    setPeriod(newPeriod);
+    setAgrupamento(newAgrupamento);
+
+    startTransition(async () => {
+      const result = await getGastosData(Number(newPeriod), newAgrupamento);
+      setGastos(result.gastos);
+      setSummary(result.summary);
+    });
+  }
 
   const maxTotal = Math.max(...gastos.map((g) => g.total), 1);
 
@@ -86,7 +93,7 @@ export function GastosTab({ initialGastos, initialSummary }: GastosTabProps) {
           {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
             <button
               key={p}
-              onClick={() => setPeriod(p)}
+              onClick={() => handleChange(p, agrupamento)}
               className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                 period === p
                   ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100'
@@ -101,7 +108,7 @@ export function GastosTab({ initialGastos, initialSummary }: GastosTabProps) {
           {(Object.keys(AGRUPAMENTO_LABELS) as Agrupamento[]).map((a) => (
             <button
               key={a}
-              onClick={() => setAgrupamento(a)}
+              onClick={() => handleChange(period, a)}
               className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                 agrupamento === a
                   ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100'
@@ -115,35 +122,35 @@ export function GastosTab({ initialGastos, initialSummary }: GastosTabProps) {
       </div>
 
       {/* Gastos table with percentage bars */}
-      {loading ? (
-        <p className="py-8 text-center text-sm text-zinc-400">Carregando...</p>
-      ) : gastos.length === 0 ? (
-        <p className="py-8 text-center text-sm text-zinc-400">
-          Nenhum gasto encontrado neste periodo.
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {gastos.map((g) => (
-            <div key={g.label} className="flex items-center gap-3">
-              <span className="w-32 shrink-0 truncate text-xs text-zinc-600 dark:text-zinc-400">
-                {g.label}
-              </span>
-              <div className="relative h-5 flex-1 rounded-full bg-zinc-100 dark:bg-zinc-800">
-                <div
-                  className="h-full rounded-full bg-zinc-400 dark:bg-zinc-600"
-                  style={{ width: `${(g.total / maxTotal) * 100}%` }}
-                />
+      <div className={isPending ? 'opacity-60 transition-opacity' : ''}>
+        {gastos.length === 0 ? (
+          <p className="py-8 text-center text-sm text-zinc-400">
+            Nenhum gasto encontrado neste periodo.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {gastos.map((g) => (
+              <div key={g.label} className="flex items-center gap-3">
+                <span className="w-32 shrink-0 truncate text-xs text-zinc-600 dark:text-zinc-400">
+                  {g.label}
+                </span>
+                <div className="relative h-5 flex-1 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                  <div
+                    className="h-full rounded-full bg-zinc-400 dark:bg-zinc-600"
+                    style={{ width: `${(g.total / maxTotal) * 100}%` }}
+                  />
+                </div>
+                <span className="w-24 shrink-0 text-right text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                  R$ {g.total.toFixed(2)}
+                </span>
+                <span className="w-12 shrink-0 text-right text-xs text-zinc-400">
+                  {g.percentual.toFixed(0)}%
+                </span>
               </div>
-              <span className="w-24 shrink-0 text-right text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                R$ {g.total.toFixed(2)}
-              </span>
-              <span className="w-12 shrink-0 text-right text-xs text-zinc-400">
-                {g.percentual.toFixed(0)}%
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

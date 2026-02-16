@@ -216,11 +216,17 @@ export async function getPrecos(produtoNome: string, periodDias = 90) {
 
 // ─── Gastos ───
 
-export async function getGastos(periodDias = 30, agruparPor: 'categoria' | 'loja' | 'mes' = 'categoria') {
+export async function getGastosData(periodDias = 30, agruparPor: 'categoria' | 'loja' | 'mes' = 'categoria') {
   const userId = await requireUserId();
 
   const since = new Date();
   since.setDate(since.getDate() - periodDias);
+  const sinceStr = since.toISOString().slice(0, 10);
+
+  const dateFilter = and(
+    eq(priceEntries.userId, userId),
+    sql`${priceEntries.dataCompra} >= ${sinceStr}`,
+  );
 
   let groupExpr: ReturnType<typeof sql>;
   let labelExpr: ReturnType<typeof sql<string>>;
@@ -236,55 +242,42 @@ export async function getGastos(periodDias = 30, agruparPor: 'categoria' | 'loja
     labelExpr = sql<string>`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM')`;
   }
 
-  const rows = await db
-    .select({
-      label: labelExpr,
-      total: sql<number>`sum(${priceEntries.valorTotal}::numeric)::float`,
-    })
-    .from(priceEntries)
-    .innerJoin(products, eq(priceEntries.productId, products.id))
-    .innerJoin(stores, eq(priceEntries.storeId, stores.id))
-    .where(
-      and(
-        eq(priceEntries.userId, userId),
-        sql`${priceEntries.dataCompra} >= ${since.toISOString().slice(0, 10)}`,
-      ),
-    )
-    .groupBy(groupExpr)
-    .orderBy(sql`sum(${priceEntries.valorTotal}::numeric) DESC`);
+  // Single parallel fetch: grouped rows + summary
+  const [rows, [summaryRow]] = await Promise.all([
+    db
+      .select({
+        label: labelExpr,
+        total: sql<number>`sum(${priceEntries.valorTotal}::numeric)::float`,
+      })
+      .from(priceEntries)
+      .innerJoin(products, eq(priceEntries.productId, products.id))
+      .innerJoin(stores, eq(priceEntries.storeId, stores.id))
+      .where(dateFilter)
+      .groupBy(groupExpr)
+      .orderBy(sql`sum(${priceEntries.valorTotal}::numeric) DESC`),
+    db
+      .select({
+        totalGeral: sql<number>`COALESCE(sum(${priceEntries.valorTotal}::numeric), 0)::float`,
+        comprasCount: sql<number>`count(DISTINCT ${priceEntries.extractionId})::int`,
+      })
+      .from(priceEntries)
+      .where(dateFilter),
+  ]);
 
-  const totalGeral = rows.reduce((acc, r) => acc + r.total, 0);
-
-  return rows.map((r) => ({
-    label: r.label,
-    total: r.total,
-    percentual: totalGeral > 0 ? (r.total / totalGeral) * 100 : 0,
-  }));
-}
-
-export async function getGastosSummary(periodDias = 30) {
-  const userId = await requireUserId();
-
-  const since = new Date();
-  since.setDate(since.getDate() - periodDias);
-
-  const [row] = await db
-    .select({
-      totalGeral: sql<number>`COALESCE(sum(${priceEntries.valorTotal}::numeric), 0)::float`,
-      comprasCount: sql<number>`count(DISTINCT ${priceEntries.extractionId})::int`,
-    })
-    .from(priceEntries)
-    .where(
-      and(
-        eq(priceEntries.userId, userId),
-        sql`${priceEntries.dataCompra} >= ${since.toISOString().slice(0, 10)}`,
-      ),
-    );
+  const totalGeral = summaryRow.totalGeral;
+  const comprasCount = summaryRow.comprasCount;
 
   return {
-    totalGeral: row.totalGeral,
-    comprasCount: row.comprasCount,
-    mediaCompra: row.comprasCount > 0 ? row.totalGeral / row.comprasCount : 0,
+    gastos: rows.map((r) => ({
+      label: r.label,
+      total: r.total,
+      percentual: totalGeral > 0 ? (r.total / totalGeral) * 100 : 0,
+    })),
+    summary: {
+      totalGeral,
+      comprasCount,
+      mediaCompra: comprasCount > 0 ? totalGeral / comprasCount : 0,
+    },
   };
 }
 
