@@ -38,10 +38,11 @@ export async function getNotas(loja?: string, limit = 20) {
   return rows
     .map((r) => {
       const d = r.data as Record<string, unknown> | null;
-      const storeName = (d?.razao_social as string) || (d?.nome_fantasia as string) || 'Loja desconhecida';
-      const cnpj = (d?.cnpj as string) || '';
-      const itens = Array.isArray(d?.itens) ? (d.itens as unknown[]).length : 0;
-      const valorAPagar = Number(d?.valor_a_pagar) || Number(d?.valor_total) || 0;
+      const estabelecimento = d?.estabelecimento as Record<string, unknown> | undefined;
+      const storeName = (estabelecimento?.nome as string) || 'Loja desconhecida';
+      const cnpj = (estabelecimento?.cnpj as string) || '';
+      const itens = Number(d?.quantidadeTotalItens) || (Array.isArray(d?.produtos) ? (d.produtos as unknown[]).length : 0);
+      const valorAPagar = Number(d?.valorAPagar) || 0;
 
       return {
         id: r.id,
@@ -73,9 +74,10 @@ export async function getNotasSummary() {
 
   for (const r of rows) {
     const d = r.data as Record<string, unknown> | null;
-    const cnpj = (d?.cnpj as string) || '';
+    const estabelecimento = d?.estabelecimento as Record<string, unknown> | undefined;
+    const cnpj = (estabelecimento?.cnpj as string) || '';
     if (cnpj) lojasSet.add(cnpj);
-    totalValor += Number(d?.valor_a_pagar) || Number(d?.valor_total) || 0;
+    totalValor += Number(d?.valorAPagar) || 0;
   }
 
   return {
