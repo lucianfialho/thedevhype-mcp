@@ -40,14 +40,6 @@ export function ToggleServer({
 
       const data = await res.json();
       setEnabled(data.enabled);
-
-      if (data.enabled && data.apiKey) {
-        setNewApiKey(data.apiKey);
-        setHasApiKey(true);
-      } else if (!data.enabled) {
-        setHasApiKey(false);
-      }
-
       router.refresh();
     } catch {
       setEnabled(prev);
@@ -89,7 +81,8 @@ export function ToggleServer({
   }
 
   return (
-    <div>
+    <div className="space-y-3">
+      {/* Toggle row */}
       <div className="flex items-center gap-3">
         <button
           onClick={handleToggle}
@@ -106,26 +99,31 @@ export function ToggleServer({
             }`}
           />
         </button>
-
-        {enabled && !newApiKey && (
-          <button
-            onClick={handleGenerateKey}
-            disabled={isGenerating}
-            className="rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-          >
-            {isGenerating
-              ? 'Generating...'
-              : hasApiKey
-                ? 'Regenerate Key'
-                : 'Generate Key'}
-          </button>
-        )}
+        <span className="text-xs text-zinc-500">
+          {enabled ? 'Habilitado' : 'Desabilitado'}
+        </span>
       </div>
 
+      {/* Generate key - only when enabled */}
+      {enabled && !newApiKey && (
+        <button
+          onClick={handleGenerateKey}
+          disabled={isGenerating}
+          className="rounded border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:border-zinc-300 hover:text-zinc-900 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:text-zinc-100"
+        >
+          {isGenerating
+            ? 'Gerando...'
+            : hasApiKey
+              ? 'Regenerar API Key'
+              : 'Gerar API Key'}
+        </button>
+      )}
+
+      {/* New key banner */}
       {newApiKey && (
-        <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950">
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950">
           <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
-            API key generated — copy it now, it won&apos;t be shown again.
+            API key gerada — copie agora, ela nao sera exibida novamente.
           </p>
           <div className="mt-2 flex items-center gap-2">
             <code className="flex-1 truncate rounded bg-white px-2 py-1 text-xs text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
@@ -135,7 +133,7 @@ export function ToggleServer({
               onClick={handleCopyKey}
               className="shrink-0 rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
             >
-              {copied ? 'Copied!' : 'Copy'}
+              {copied ? 'Copiado!' : 'Copiar'}
             </button>
           </div>
         </div>

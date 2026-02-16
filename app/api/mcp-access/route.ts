@@ -29,14 +29,12 @@ export async function POST(request: Request) {
     .limit(1);
 
   let enabled: boolean;
-  let apiKey: string | null = null;
 
   if (existing.length > 0) {
     enabled = !existing[0].enabled;
-    apiKey = enabled ? `sk-${crypto.randomUUID()}` : null;
     await db
       .update(userMcpAccess)
-      .set({ enabled, apiKey })
+      .set({ enabled })
       .where(
         and(
           eq(userMcpAccess.userId, userId),
@@ -45,11 +43,10 @@ export async function POST(request: Request) {
       );
   } else {
     enabled = true;
-    apiKey = `sk-${crypto.randomUUID()}`;
     await db
       .insert(userMcpAccess)
-      .values({ userId, mcpName, enabled, apiKey });
+      .values({ userId, mcpName, enabled });
   }
 
-  return NextResponse.json({ enabled, apiKey });
+  return NextResponse.json({ enabled });
 }

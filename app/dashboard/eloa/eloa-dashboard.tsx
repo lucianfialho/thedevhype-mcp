@@ -8,6 +8,7 @@ import { FeedTab } from './tabs/feed-tab';
 import { BookmarksTab } from './tabs/bookmarks-tab';
 import { SearchTab } from './tabs/search-tab';
 import { AnalyticsTab } from './tabs/analytics-tab';
+import { SettingsTab } from './tabs/settings-tab';
 import type { SourceWithSubscription, Bookmark } from '@/app/lib/mcp/servers/eloa.schema';
 
 const TABS = [
@@ -16,6 +17,7 @@ const TABS = [
   { id: 'bookmarks', label: 'Bookmarks' },
   { id: 'busca', label: 'Busca' },
   { id: 'analytics', label: 'Analytics' },
+  { id: 'config', label: 'Configuracoes' },
 ] as const;
 
 type Tab = (typeof TABS)[number]['id'];
@@ -40,6 +42,13 @@ interface EloaDashboardProps {
   initialTags: string[];
   initialUnreadCount: number;
   isAdmin: boolean;
+  mcpConfig: {
+    mcpUrl: string;
+    tools: Array<{ name: string; description: string }>;
+    enabled: boolean;
+    hasApiKey: boolean;
+    maskedApiKey: string | null;
+  } | null;
 }
 
 export function EloaDashboard({
@@ -50,6 +59,7 @@ export function EloaDashboard({
   initialTags,
   initialUnreadCount,
   isAdmin,
+  mcpConfig,
 }: EloaDashboardProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
@@ -117,6 +127,16 @@ export function EloaDashboard({
       )}
       {activeTab === 'busca' && <SearchTab />}
       {activeTab === 'analytics' && <AnalyticsTab isAdmin={isAdmin} />}
+      {activeTab === 'config' && mcpConfig && (
+        <SettingsTab
+          mcpName="eloa"
+          mcpUrl={mcpConfig.mcpUrl}
+          tools={mcpConfig.tools}
+          initialEnabled={mcpConfig.enabled}
+          initialHasApiKey={mcpConfig.hasApiKey}
+          maskedApiKey={mcpConfig.maskedApiKey}
+        />
+      )}
     </>
   );
 }
