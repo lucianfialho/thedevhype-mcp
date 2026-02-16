@@ -1,0 +1,300 @@
+'use server';
+
+import { auth } from '@/app/lib/auth/server';
+import { db } from '@/app/lib/db';
+import { eq, and, sql, desc, ilike } from 'drizzle-orm';
+import {
+  extractions,
+  stores,
+  products,
+  priceEntries,
+} from '@/app/lib/mcp/servers/nota-fiscal.schema';
+
+async function requireUserId() {
+  const { data: session } = await auth.getSession();
+  const userId = session?.user?.id;
+  if (!userId) throw new Error('Not authenticated');
+  return userId;
+}
+
+// ─── Notas ───
+
+export async function getNotas(loja?: string, limit = 20) {
+  const userId = await requireUserId();
+
+  const conditions = [eq(extractions.userId, userId)];
+
+  const rows = await db
+    .select({
+      id: extractions.id,
+      data: extractions.data,
+      createdAt: extractions.createdAt,
+    })
+    .from(extractions)
+    .where(and(...conditions))
+    .orderBy(desc(extractions.createdAt))
+    .limit(limit);
+
+  return rows
+    .map((r) => {
+      const d = r.data as Record<string, unknown> | null;
+      const storeName = (d?.razao_social as string) || (d?.nome_fantasia as string) || 'Loja desconhecida';
+      const cnpj = (d?.cnpj as string) || '';
+      const itens = Array.isArray(d?.itens) ? (d.itens as unknown[]).length : 0;
+      const valorAPagar = Number(d?.valor_a_pagar) || Number(d?.valor_total) || 0;
+
+      return {
+        id: r.id,
+        storeName,
+        cnpj,
+        totalItens: itens,
+        valorAPagar,
+        createdAt: r.createdAt,
+      };
+    })
+    .filter((n) => {
+      if (!loja) return true;
+      return n.storeName.toLowerCase().includes(loja.toLowerCase());
+    });
+}
+
+export async function getNotasSummary() {
+  const userId = await requireUserId();
+
+  const rows = await db
+    .select({
+      data: extractions.data,
+    })
+    .from(extractions)
+    .where(eq(extractions.userId, userId));
+
+  const lojasSet = new Set<string>();
+  let totalValor = 0;
+
+  for (const r of rows) {
+    const d = r.data as Record<string, unknown> | null;
+    const cnpj = (d?.cnpj as string) || '';
+    if (cnpj) lojasSet.add(cnpj);
+    totalValor += Number(d?.valor_a_pagar) || Number(d?.valor_total) || 0;
+  }
+
+  return {
+    totalNotas: rows.length,
+    totalValor,
+    totalLojas: lojasSet.size,
+  };
+}
+
+// ─── Produtos ───
+
+export async function getProdutos(categoria?: string, busca?: string, limit = 50) {
+  const userId = await requireUserId();
+
+  const conditions = [eq(products.userId, userId)];
+  if (categoria) conditions.push(eq(products.categoria, categoria));
+  if (busca) conditions.push(ilike(products.nome, `%${busca}%`));
+
+  const rows = await db
+    .select({
+      id: products.id,
+      codigo: products.codigo,
+      nome: products.nome,
+      unidade: products.unidade,
+      categoria: products.categoria,
+      storeId: products.storeId,
+      storeName: stores.nome,
+    })
+    .from(products)
+    .innerJoin(stores, eq(products.storeId, stores.id))
+    .where(and(...conditions))
+    .orderBy(products.nome)
+    .limit(limit);
+
+  return rows;
+}
+
+export async function getProdutosSummary() {
+  const userId = await requireUserId();
+
+  const [totals] = await db
+    .select({
+      total: sql<number>`count(*)::int`,
+      comCategoria: sql<number>`count(categoria)::int`,
+      semCategoria: sql<number>`(count(*) - count(categoria))::int`,
+    })
+    .from(products)
+    .where(eq(products.userId, userId));
+
+  const categorias = await db
+    .select({
+      categoria: products.categoria,
+    })
+    .from(products)
+    .where(and(eq(products.userId, userId), sql`${products.categoria} IS NOT NULL`))
+    .groupBy(products.categoria)
+    .orderBy(products.categoria);
+
+  return {
+    total: totals.total,
+    comCategoria: totals.comCategoria,
+    semCategoria: totals.semCategoria,
+    categorias: categorias.map((c) => c.categoria).filter(Boolean) as string[],
+  };
+}
+
+// ─── Precos ───
+
+export async function getPrecos(produtoNome: string, periodDias = 90) {
+  const userId = await requireUserId();
+
+  const since = new Date();
+  since.setDate(since.getDate() - periodDias);
+
+  const rows = await db
+    .select({
+      productId: products.id,
+      produtoNome: products.nome,
+      storeName: stores.nome,
+      valorUnitario: priceEntries.valorUnitario,
+      quantidade: priceEntries.quantidade,
+      valorTotal: priceEntries.valorTotal,
+      dataCompra: priceEntries.dataCompra,
+    })
+    .from(priceEntries)
+    .innerJoin(products, eq(priceEntries.productId, products.id))
+    .innerJoin(stores, eq(priceEntries.storeId, stores.id))
+    .where(
+      and(
+        eq(priceEntries.userId, userId),
+        ilike(products.nome, `%${produtoNome}%`),
+        sql`${priceEntries.dataCompra} >= ${since.toISOString().slice(0, 10)}`,
+      ),
+    )
+    .orderBy(desc(priceEntries.dataCompra));
+
+  // Group by product
+  const grouped: Record<
+    string,
+    {
+      produtoNome: string;
+      min: number;
+      max: number;
+      sum: number;
+      count: number;
+      entries: Array<{ storeName: string; valorUnitario: string; dataCompra: string }>;
+    }
+  > = {};
+
+  for (const r of rows) {
+    const key = r.produtoNome;
+    const valor = Number(r.valorUnitario);
+    if (!grouped[key]) {
+      grouped[key] = { produtoNome: key, min: valor, max: valor, sum: 0, count: 0, entries: [] };
+    }
+    const g = grouped[key];
+    g.min = Math.min(g.min, valor);
+    g.max = Math.max(g.max, valor);
+    g.sum += valor;
+    g.count++;
+    g.entries.push({
+      storeName: r.storeName,
+      valorUnitario: r.valorUnitario,
+      dataCompra: r.dataCompra,
+    });
+  }
+
+  return Object.values(grouped).map((g) => ({
+    produtoNome: g.produtoNome,
+    min: g.min,
+    max: g.max,
+    avg: g.count > 0 ? g.sum / g.count : 0,
+    entries: g.entries,
+  }));
+}
+
+// ─── Gastos ───
+
+export async function getGastos(periodDias = 30, agruparPor: 'categoria' | 'loja' | 'mes' = 'categoria') {
+  const userId = await requireUserId();
+
+  const since = new Date();
+  since.setDate(since.getDate() - periodDias);
+
+  let groupExpr: ReturnType<typeof sql>;
+  let labelExpr: ReturnType<typeof sql<string>>;
+
+  if (agruparPor === 'categoria') {
+    groupExpr = sql`COALESCE(${products.categoria}, 'Sem categoria')`;
+    labelExpr = sql<string>`COALESCE(${products.categoria}, 'Sem categoria')`;
+  } else if (agruparPor === 'loja') {
+    groupExpr = sql`${stores.nome}`;
+    labelExpr = sql<string>`${stores.nome}`;
+  } else {
+    groupExpr = sql`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM')`;
+    labelExpr = sql<string>`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM')`;
+  }
+
+  const rows = await db
+    .select({
+      label: labelExpr,
+      total: sql<number>`sum(${priceEntries.valorTotal}::numeric)::float`,
+    })
+    .from(priceEntries)
+    .innerJoin(products, eq(priceEntries.productId, products.id))
+    .innerJoin(stores, eq(priceEntries.storeId, stores.id))
+    .where(
+      and(
+        eq(priceEntries.userId, userId),
+        sql`${priceEntries.dataCompra} >= ${since.toISOString().slice(0, 10)}`,
+      ),
+    )
+    .groupBy(groupExpr)
+    .orderBy(sql`sum(${priceEntries.valorTotal}::numeric) DESC`);
+
+  const totalGeral = rows.reduce((acc, r) => acc + r.total, 0);
+
+  return rows.map((r) => ({
+    label: r.label,
+    total: r.total,
+    percentual: totalGeral > 0 ? (r.total / totalGeral) * 100 : 0,
+  }));
+}
+
+export async function getGastosSummary(periodDias = 30) {
+  const userId = await requireUserId();
+
+  const since = new Date();
+  since.setDate(since.getDate() - periodDias);
+
+  const [row] = await db
+    .select({
+      totalGeral: sql<number>`COALESCE(sum(${priceEntries.valorTotal}::numeric), 0)::float`,
+      comprasCount: sql<number>`count(DISTINCT ${priceEntries.extractionId})::int`,
+    })
+    .from(priceEntries)
+    .where(
+      and(
+        eq(priceEntries.userId, userId),
+        sql`${priceEntries.dataCompra} >= ${since.toISOString().slice(0, 10)}`,
+      ),
+    );
+
+  return {
+    totalGeral: row.totalGeral,
+    comprasCount: row.comprasCount,
+    mediaCompra: row.comprasCount > 0 ? row.totalGeral / row.comprasCount : 0,
+  };
+}
+
+// ─── Classificar Produto ───
+
+export async function classificarProduto(produtoId: number, categoria: string) {
+  const userId = await requireUserId();
+
+  await db
+    .update(products)
+    .set({ categoria, updatedAt: new Date().toISOString() })
+    .where(and(eq(products.id, produtoId), eq(products.userId, userId)));
+
+  return { ok: true };
+}

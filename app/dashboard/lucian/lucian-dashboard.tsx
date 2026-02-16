@@ -1,9 +1,18 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { SettingsTab } from '../eloa/tabs/settings-tab';
+import { NotasTab } from './tabs/notas-tab';
+import { ProdutosTab } from './tabs/produtos-tab';
+import { PrecosTab } from './tabs/precos-tab';
+import { GastosTab } from './tabs/gastos-tab';
 
 const TABS = [
+  { id: 'notas', label: 'Notas' },
+  { id: 'produtos', label: 'Produtos' },
+  { id: 'precos', label: 'Precos' },
+  { id: 'gastos', label: 'Gastos' },
   { id: 'config', label: 'Configuracoes' },
 ] as const;
 
@@ -11,6 +20,44 @@ type Tab = (typeof TABS)[number]['id'];
 
 interface LucianDashboardProps {
   initialTab: Tab;
+  initialNotas: Array<{
+    id: number;
+    storeName: string;
+    cnpj: string;
+    totalItens: number;
+    valorAPagar: number;
+    createdAt: string;
+  }>;
+  notasSummary: {
+    totalNotas: number;
+    totalValor: number;
+    totalLojas: number;
+  };
+  initialProdutos: Array<{
+    id: number;
+    codigo: string;
+    nome: string;
+    unidade: string | null;
+    categoria: string | null;
+    storeId: number;
+    storeName: string;
+  }>;
+  produtosSummary: {
+    total: number;
+    comCategoria: number;
+    semCategoria: number;
+    categorias: string[];
+  };
+  initialGastos: Array<{
+    label: string;
+    total: number;
+    percentual: number;
+  }>;
+  gastosSummary: {
+    totalGeral: number;
+    comprasCount: number;
+    mediaCompra: number;
+  };
   mcpConfig: {
     mcpUrl: string;
     tools: Array<{ name: string; description: string }>;
@@ -22,9 +69,21 @@ interface LucianDashboardProps {
 
 export function LucianDashboard({
   initialTab,
+  initialNotas,
+  notasSummary,
+  initialProdutos,
+  produtosSummary,
+  initialGastos,
+  gastosSummary,
   mcpConfig,
 }: LucianDashboardProps) {
-  const [activeTab] = useState<Tab>(initialTab);
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+
+  function switchTab(tab: Tab) {
+    setActiveTab(tab);
+    router.push(`/dashboard/lucian?tab=${tab}`, { scroll: false });
+  }
 
   return (
     <>
@@ -32,6 +91,7 @@ export function LucianDashboard({
         {TABS.map((tab) => (
           <button
             key={tab.id}
+            onClick={() => switchTab(tab.id)}
             className={`flex-1 whitespace-nowrap rounded-md px-3 py-2 text-xs font-medium transition-colors sm:text-sm ${
               activeTab === tab.id
                 ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100'
@@ -43,6 +103,16 @@ export function LucianDashboard({
         ))}
       </div>
 
+      {activeTab === 'notas' && (
+        <NotasTab initialNotas={initialNotas} summary={notasSummary} />
+      )}
+      {activeTab === 'produtos' && (
+        <ProdutosTab initialProdutos={initialProdutos} summary={produtosSummary} />
+      )}
+      {activeTab === 'precos' && <PrecosTab />}
+      {activeTab === 'gastos' && (
+        <GastosTab initialGastos={initialGastos} initialSummary={gastosSummary} />
+      )}
       {activeTab === 'config' && mcpConfig && (
         <SettingsTab
           mcpName="lucian"
