@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { auth } from '@/app/lib/auth/server';
 import { db } from '@/app/lib/db';
 import { userMcpAccess, userInNeonAuth } from '@/app/lib/db/public.schema';
@@ -60,6 +61,15 @@ export default async function EloaPage({
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-4 sm:p-6">
+      <Link
+        href="/dashboard"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path d="M10 3L5 8l5 5" />
+        </svg>
+        Back
+      </Link>
       <div className="mb-6 flex items-center gap-3 sm:gap-4">
         <img
           src="/eloa.png"
