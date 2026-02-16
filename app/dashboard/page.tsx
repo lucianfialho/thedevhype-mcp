@@ -55,7 +55,7 @@ export default async function DashboardPage() {
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-semibold">Lucian</h3>
-              <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">Brazil only</span>
+              <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">🇧🇷 Brazil only</span>
             </div>
             <p className="text-sm text-zinc-500">Virtual Grocery Manager — NFC-e receipts, price tracking & spending</p>
           </div>
