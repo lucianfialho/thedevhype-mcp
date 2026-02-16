@@ -64,7 +64,7 @@ export default async function LucianPage({
         />
         <div>
           <h2 className="text-xl font-bold sm:text-2xl">Lucian</h2>
-          <p className="text-xs text-zinc-500 sm:text-sm">Gestor de Supermercado Virtual</p>
+          <p className="text-xs text-zinc-500 sm:text-sm">Virtual Grocery Manager</p>
         </div>
       </div>
 
