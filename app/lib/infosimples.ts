@@ -4,19 +4,19 @@ import type { ScrapingResult, NotaFiscal, Produto, FormaPagamento } from './type
 
 interface InfosimplesProduct {
   codigo: string;
-  descricao: string;
+  nome: string;
   quantidade: string;
   unidade: string;
   valor_unitario: string;
-  valor_total: string;
+  valor_total_produto: string;
   normalizado_quantidade: number;
   normalizado_valor_unitario: number;
   normalizado_valor_total_produto: number;
 }
 
 interface InfosimplesPayment {
-  tipo: string;
-  valor: string;
+  forma_pagamento: string;
+  valor_pago: string;
   normalizado_valor_pago: number;
 }
 
@@ -25,13 +25,15 @@ interface InfosimplesResponse {
   code_message: string;
   data: Array<{
     cancelada: boolean;
-    data_emissao: string;
-    hora_emissao: string;
     informacoes_nota: {
       numero: string;
       serie: string;
       chave_acesso: string;
       protocolo_autorizacao: string;
+      data_emissao: string;
+      hora_emissao: string;
+      data_autorizacao?: string;
+      hora_autorizacao?: string;
     };
     emitente: {
       nome_razao_social: string;
@@ -41,7 +43,10 @@ interface InfosimplesResponse {
     produtos: InfosimplesProduct[];
     formas_pagamento: InfosimplesPayment[];
     normalizado_valor_a_pagar: number;
+    normalizado_valor_total: number;
     normalizado_tributos_totais: number;
+    normalizado_valor_desconto: number;
+    normalizado_quantidade_total_items: number;
   }>;
 }
 
@@ -100,8 +105,9 @@ export async function fetchNFCeFromInfosimples(accessKey: string): Promise<Scrap
       return { sucesso: false, erro: `Infosimples API error: ${json.code_message}` };
     }
 
-    const data = json.data[0];
+    const data = json.data?.[0];
     if (!data) {
+      console.error('[infosimples] No data in response:', JSON.stringify(json).slice(0, 500));
       return { sucesso: false, erro: 'No data returned from Infosimples API' };
     }
 
@@ -109,9 +115,13 @@ export async function fetchNFCeFromInfosimples(accessKey: string): Promise<Scrap
       return { sucesso: false, erro: 'Nota fiscal cancelada' };
     }
 
+    console.log('[infosimples] Response keys:', Object.keys(data));
+    console.log('[infosimples] Products:', data.produtos?.length ?? 0);
+
     const notaFiscal = adaptInfosimplesToNotaFiscal(data);
     return { sucesso: true, notaFiscal };
   } catch (error) {
+    console.error('[infosimples] Error:', error);
     return {
       sucesso: false,
       erro: error instanceof Error ? error.message : 'Erro ao consultar Infosimples API',
@@ -138,59 +148,68 @@ function adaptInfosimplesToNotaFiscal(
   const emitente = data.emitente;
 
   // Parse address parts from "Rua X, 123, Bairro, Cidade, UF"
-  const enderecoParts = emitente.endereco.split(',').map((s) => s.trim());
+  const enderecoParts = (emitente.endereco || '').split(',').map((s) => s.trim());
   const estado = enderecoParts.length >= 2 ? enderecoParts[enderecoParts.length - 1] : '';
   const cidade = enderecoParts.length >= 3 ? enderecoParts[enderecoParts.length - 2] : '';
 
   // Map products
-  const produtos: Produto[] = data.produtos.map((p) => ({
-    codigo: p.codigo,
-    nome: p.descricao,
-    quantidade: p.normalizado_quantidade,
-    unidade: p.unidade,
-    valorUnitario: p.normalizado_valor_unitario,
-    valorTotal: p.normalizado_valor_total_produto,
+  const produtos: Produto[] = (data.produtos || []).map((p) => ({
+    codigo: p.codigo || '',
+    nome: p.nome || '',
+    quantidade: p.normalizado_quantidade ?? 0,
+    unidade: p.unidade || '',
+    valorUnitario: p.normalizado_valor_unitario ?? 0,
+    valorTotal: p.normalizado_valor_total_produto ?? 0,
   }));
 
-  // Map payment methods
-  const formasPagamento: FormaPagamento[] = data.formas_pagamento
-    .filter((fp) => !fp.tipo.toLowerCase().includes('troco'))
+  // Map payment methods (field is forma_pagamento, not tipo)
+  const formasPagamento: FormaPagamento[] = (data.formas_pagamento || [])
+    .filter((fp) => !(fp.forma_pagamento || '').toLowerCase().includes('troco'))
     .map((fp) => ({
-      tipo: fp.tipo,
-      valorPago: fp.normalizado_valor_pago,
+      tipo: fp.forma_pagamento || '',
+      valorPago: fp.normalizado_valor_pago ?? 0,
     }));
 
   // Calculate troco
-  const trocoEntry = data.formas_pagamento.find((fp) =>
-    fp.tipo.toLowerCase().includes('troco'),
+  const trocoEntry = (data.formas_pagamento || []).find((fp) =>
+    (fp.forma_pagamento || '').toLowerCase().includes('troco'),
   );
   const totalPago = formasPagamento.reduce((sum, fp) => sum + fp.valorPago, 0);
   const troco = trocoEntry
     ? trocoEntry.normalizado_valor_pago
-    : Math.max(0, totalPago - data.normalizado_valor_a_pagar);
+    : Math.max(0, totalPago - (data.normalizado_valor_a_pagar ?? 0));
 
-  const valorTotalProdutos = produtos.reduce((sum, p) => sum + p.valorTotal, 0);
-  const descontos = Math.max(0, valorTotalProdutos - data.normalizado_valor_a_pagar);
+  const valorTotalProdutos = data.normalizado_valor_total
+    ?? produtos.reduce((sum, p) => sum + p.valorTotal, 0);
+  const descontos = data.normalizado_valor_desconto
+    ?? Math.max(0, valorTotalProdutos - (data.normalizado_valor_a_pagar ?? 0));
+
+  // Date fields are inside informacoes_nota
+  const dataEmissao = info.data_emissao && info.hora_emissao
+    ? parseBrazilianDate(info.data_emissao, info.hora_emissao)
+    : info.data_emissao
+      ? parseBrazilianDate(info.data_emissao)
+      : new Date();
 
   return {
-    numero: info.numero,
-    serie: info.serie,
-    chaveAcesso: info.chave_acesso.replace(/\s/g, ''),
-    protocoloAutorizacao: info.protocolo_autorizacao,
-    dataEmissao: parseBrazilianDate(data.data_emissao, data.hora_emissao),
+    numero: info.numero || '',
+    serie: info.serie || '',
+    chaveAcesso: (info.chave_acesso || '').replace(/\s/g, ''),
+    protocoloAutorizacao: info.protocolo_autorizacao || '',
+    dataEmissao,
     estabelecimento: {
-      nome: emitente.nome_razao_social,
-      cnpj: emitente.cnpj,
-      endereco: emitente.endereco,
+      nome: emitente.nome_razao_social || '',
+      cnpj: emitente.cnpj || '',
+      endereco: emitente.endereco || '',
       cidade,
       estado,
     },
     produtos,
-    quantidadeTotalItens: produtos.length,
+    quantidadeTotalItens: data.normalizado_quantidade_total_items ?? produtos.length,
     valorTotalProdutos,
     descontos,
-    valorAPagar: data.normalizado_valor_a_pagar,
-    tributos: data.normalizado_tributos_totais,
+    valorAPagar: data.normalizado_valor_a_pagar ?? 0,
+    tributos: data.normalizado_tributos_totais ?? 0,
     formasPagamento,
     troco,
     dataExtracao: new Date(),
