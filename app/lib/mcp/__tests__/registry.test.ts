@@ -10,7 +10,7 @@ describe('McpRegistry', () => {
 
     expect(servers.length).toBeGreaterThanOrEqual(2);
     expect(servers.find((s) => s.name === 'eloa')).toBeDefined();
-    expect(servers.find((s) => s.name === 'nota-fiscal')).toBeDefined();
+    expect(servers.find((s) => s.name === 'lucian')).toBeDefined();
   });
 
   it('should return undefined for unknown server', () => {

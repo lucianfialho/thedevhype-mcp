@@ -12,10 +12,11 @@ import {
 import type { McpServerDefinition } from '../types';
 
 export const notaFiscalServer: McpServerDefinition = {
-  name: 'nota-fiscal',
+  name: 'lucian',
   description:
-    'Gestão financeira de compras: extrai NFC-e, rastreia preços e categoriza gastos em supermercados',
-  category: 'Brazilian Services',
+    'Lucian — Gestor de Supermercado Virtual: extrai NFC-e, rastreia preços e categoriza gastos',
+  category: 'Personal Finance',
+  icon: '/lucian.png',
   tools: [
     {
       name: 'buscar_nota_fiscal',
