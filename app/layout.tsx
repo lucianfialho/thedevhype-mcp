@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { Geist, Geist_Mono } from 'next/font/google';
-import { NeonAuthUIProvider, UserButton } from '@neondatabase/neon-js/auth/react/ui';
+import { NeonAuthUIProvider } from '@neondatabase/neon-js/auth/react/ui';
 import { authClient } from '@/app/lib/auth/client';
 import './globals.css';
 
@@ -35,13 +34,6 @@ export default function RootLayout({
           credentials={false}
           social={{ providers: ['github'] }}
         >
-          <header className="flex h-14 items-center justify-between border-b border-zinc-200 px-4 sm:h-16 sm:px-6 dark:border-zinc-800">
-            <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              <img src="/logo.png" alt="thedevhype" className="h-7 w-7 sm:h-8 sm:w-8" />
-              <span className="text-lg font-bold">thedevhype</span>
-            </Link>
-            <UserButton size="icon" />
-          </header>
           {children}
         </NeonAuthUIProvider>
       </body>
