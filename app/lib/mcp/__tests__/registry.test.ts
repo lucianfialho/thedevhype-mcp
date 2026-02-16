@@ -8,8 +8,9 @@ describe('McpRegistry', () => {
   it('should register and list servers', () => {
     const servers = registry.listServers();
 
-    expect(servers.length).toBeGreaterThanOrEqual(1);
+    expect(servers.length).toBeGreaterThanOrEqual(2);
     expect(servers.find((s) => s.name === 'eloa')).toBeDefined();
+    expect(servers.find((s) => s.name === 'nota-fiscal')).toBeDefined();
   });
 
   it('should return undefined for unknown server', () => {

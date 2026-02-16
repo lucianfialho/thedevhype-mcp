@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { eq, and, sql, desc, ilike, gte } from 'drizzle-orm';
-import { scrapNFCeFromUrl } from '../../scraper';
+import { eq, and, sql, desc, ilike, gte, count } from 'drizzle-orm';
+import { extractAccessKey, fetchNFCeFromInfosimples } from '../../infosimples';
 import { db } from '../../db';
 import { getUserId } from '../auth-helpers';
 import {
@@ -54,11 +54,51 @@ export const notaFiscalServer: McpServerDefinition = {
     // ─── buscar_nota_fiscal ───
     server.tool(
       'buscar_nota_fiscal',
-      'Busca e extrai dados de uma NFC-e a partir da URL, armazenando estabelecimento, produtos e preços no banco.',
-      { url: z.string().url().describe('URL da página de consulta da NFC-e') },
-      async ({ url }, extra) => {
+      'Busca e extrai dados de uma NFC-e a partir da URL ou chave de acesso, armazenando estabelecimento, produtos e preços no banco.',
+      { input: z.string().describe('URL da NFC-e ou chave de acesso de 44 dígitos') },
+      async ({ input }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
-        const resultado = await scrapNFCeFromUrl(url);
+
+        // Monthly extraction limit (free tier: 10/month)
+        const MONTHLY_LIMIT = 10;
+        const firstOfMonth = new Date();
+        firstOfMonth.setDate(1);
+        firstOfMonth.setHours(0, 0, 0, 0);
+
+        const [{ total }] = await db
+          .select({ total: count() })
+          .from(extractions)
+          .where(
+            and(
+              eq(extractions.userId, userId),
+              gte(extractions.createdAt, firstOfMonth.toISOString()),
+            ),
+          );
+
+        if (total >= MONTHLY_LIMIT) {
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: `Limite mensal atingido: você já usou ${total}/${MONTHLY_LIMIT} consultas este mês. Aguarde o próximo mês ou faça upgrade para o plano Pro.`,
+              },
+            ],
+          };
+        }
+
+        const accessKey = extractAccessKey(input);
+        if (!accessKey) {
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: 'Erro: não foi possível extrair a chave de acesso de 44 dígitos do input fornecido.',
+              },
+            ],
+          };
+        }
+
+        const resultado = await fetchNFCeFromInfosimples(accessKey);
 
         if (!resultado.sucesso || !resultado.notaFiscal) {
           return {
@@ -76,7 +116,7 @@ export const notaFiscalServer: McpServerDefinition = {
         // 1. Save extraction
         const [extraction] = await db
           .insert(extractions)
-          .values({ userId, url, data: nf })
+          .values({ userId, url: input, data: nf })
           .returning({ id: extractions.id });
 
         // 2. Upsert store by CNPJ
