@@ -1,7 +1,7 @@
 'use server';
 
 import { auth } from '@/app/lib/auth/server';
-import { db } from '@/app/lib/db';
+import { db, withAdminRLS } from '@/app/lib/db';
 import { eq, sql, desc } from 'drizzle-orm';
 import { userInNeonAuth, apiKeys, apiUsageLog, userMcpAccess, mcpToolUsage } from '@/app/lib/db/public.schema';
 
@@ -22,39 +22,41 @@ async function requireAdmin() {
 // ─── Users ───
 
 export async function getUsers() {
-  await requireAdmin();
+  const adminId = await requireAdmin();
 
-  const rows = await db
-    .select({
-      id: userInNeonAuth.id,
-      name: userInNeonAuth.name,
-      email: userInNeonAuth.email,
-      image: userInNeonAuth.image,
-      role: userInNeonAuth.role,
-      banned: userInNeonAuth.banned,
-      banReason: userInNeonAuth.banReason,
-      banExpires: userInNeonAuth.banExpires,
-      createdAt: userInNeonAuth.createdAt,
-      apiKeyCount: sql<number>`(SELECT count(*)::int FROM api_keys WHERE api_keys."userId" = "neon_auth"."user"."id")`,
-      mcpCount: sql<number>`(SELECT count(*)::int FROM user_mcp_access WHERE user_mcp_access."userId" = "neon_auth"."user"."id" AND user_mcp_access.enabled = true)`,
-    })
-    .from(userInNeonAuth)
-    .orderBy(desc(userInNeonAuth.createdAt));
-
-  return rows;
+  return withAdminRLS(adminId, async (tx) => {
+    return tx
+      .select({
+        id: userInNeonAuth.id,
+        name: userInNeonAuth.name,
+        email: userInNeonAuth.email,
+        image: userInNeonAuth.image,
+        role: userInNeonAuth.role,
+        banned: userInNeonAuth.banned,
+        banReason: userInNeonAuth.banReason,
+        banExpires: userInNeonAuth.banExpires,
+        createdAt: userInNeonAuth.createdAt,
+        apiKeyCount: sql<number>`(SELECT count(*)::int FROM api_keys WHERE api_keys."userId" = "neon_auth"."user"."id")`,
+        mcpCount: sql<number>`(SELECT count(*)::int FROM user_mcp_access WHERE user_mcp_access."userId" = "neon_auth"."user"."id" AND user_mcp_access.enabled = true)`,
+      })
+      .from(userInNeonAuth)
+      .orderBy(desc(userInNeonAuth.createdAt));
+  });
 }
 
 export async function getUserMcpAccess() {
-  await requireAdmin();
+  const adminId = await requireAdmin();
 
-  return db
-    .select({
-      userId: userMcpAccess.userId,
-      mcpName: userMcpAccess.mcpName,
-      enabled: userMcpAccess.enabled,
-    })
-    .from(userMcpAccess)
-    .where(eq(userMcpAccess.enabled, true));
+  return withAdminRLS(adminId, async (tx) => {
+    return tx
+      .select({
+        userId: userMcpAccess.userId,
+        mcpName: userMcpAccess.mcpName,
+        enabled: userMcpAccess.enabled,
+      })
+      .from(userMcpAccess)
+      .where(eq(userMcpAccess.enabled, true));
+  });
 }
 
 export type AdminUser = Awaited<ReturnType<typeof getUsers>>[number];
@@ -63,29 +65,29 @@ export type UserMcpAccessRow = Awaited<ReturnType<typeof getUserMcpAccess>>[numb
 // ─── API Keys ───
 
 export async function getApiKeysAdmin() {
-  await requireAdmin();
+  const adminId = await requireAdmin();
 
-  const rows = await db
-    .select({
-      id: apiKeys.id,
-      key: apiKeys.key,
-      name: apiKeys.name,
-      email: apiKeys.email,
-      tier: apiKeys.tier,
-      rateLimit: apiKeys.rateLimit,
-      dailyLimit: apiKeys.dailyLimit,
-      requestsToday: apiKeys.requestsToday,
-      requestsThisHour: apiKeys.requestsThisHour,
-      lastRequestAt: apiKeys.lastRequestAt,
-      defaultState: apiKeys.defaultState,
-      enabled: apiKeys.enabled,
-      createdAt: apiKeys.createdAt,
-      userId: apiKeys.userId,
-    })
-    .from(apiKeys)
-    .orderBy(desc(apiKeys.createdAt));
-
-  return rows;
+  return withAdminRLS(adminId, async (tx) => {
+    return tx
+      .select({
+        id: apiKeys.id,
+        key: apiKeys.key,
+        name: apiKeys.name,
+        email: apiKeys.email,
+        tier: apiKeys.tier,
+        rateLimit: apiKeys.rateLimit,
+        dailyLimit: apiKeys.dailyLimit,
+        requestsToday: apiKeys.requestsToday,
+        requestsThisHour: apiKeys.requestsThisHour,
+        lastRequestAt: apiKeys.lastRequestAt,
+        defaultState: apiKeys.defaultState,
+        enabled: apiKeys.enabled,
+        createdAt: apiKeys.createdAt,
+        userId: apiKeys.userId,
+      })
+      .from(apiKeys)
+      .orderBy(desc(apiKeys.createdAt));
+  });
 }
 
 export type AdminApiKey = Awaited<ReturnType<typeof getApiKeysAdmin>>[number];
@@ -162,25 +164,26 @@ export type ApiUsageStats = Awaited<ReturnType<typeof getApiUsageStats>>;
 // ─── MCP Usage Stats ───
 
 export async function getMcpUsageStats() {
-  await requireAdmin();
+  const adminId = await requireAdmin();
 
-  const now = new Date();
-  const sevenDaysAgo = new Date(now);
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  return withAdminRLS(adminId, async (tx) => {
+    const now = new Date();
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  const thirtyDaysAgo = new Date(now);
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const [totalCalls, byUser, byTool, recentErrors] = await Promise.all([
-    db
+    const totalCalls = await tx
       .select({
         today: sql<number>`count(*) FILTER (WHERE ${mcpToolUsage.createdAt} >= ${new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()})::int`,
         week: sql<number>`count(*) FILTER (WHERE ${mcpToolUsage.createdAt} >= ${sevenDaysAgo.toISOString()})::int`,
         month: sql<number>`count(*) FILTER (WHERE ${mcpToolUsage.createdAt} >= ${thirtyDaysAgo.toISOString()})::int`,
       })
       .from(mcpToolUsage)
-      .then((r) => r[0]),
-    db
+      .then((r) => r[0]);
+
+    const byUser = await tx
       .select({
         userName: userInNeonAuth.name,
         mcpName: mcpToolUsage.mcpName,
@@ -190,8 +193,9 @@ export async function getMcpUsageStats() {
       .innerJoin(userInNeonAuth, eq(mcpToolUsage.userId, userInNeonAuth.id))
       .where(sql`${mcpToolUsage.createdAt} >= ${thirtyDaysAgo.toISOString()}`)
       .groupBy(userInNeonAuth.name, mcpToolUsage.mcpName)
-      .orderBy(sql`count(*) DESC`),
-    db
+      .orderBy(sql`count(*) DESC`);
+
+    const byTool = await tx
       .select({
         mcpName: mcpToolUsage.mcpName,
         toolName: mcpToolUsage.toolName,
@@ -201,66 +205,71 @@ export async function getMcpUsageStats() {
       .from(mcpToolUsage)
       .where(sql`${mcpToolUsage.createdAt} >= ${thirtyDaysAgo.toISOString()}`)
       .groupBy(mcpToolUsage.mcpName, mcpToolUsage.toolName)
-      .orderBy(sql`count(*) DESC`),
-    db
+      .orderBy(sql`count(*) DESC`);
+
+    const recentErrors = await tx
       .select({ count: sql<number>`count(*)::int` })
       .from(mcpToolUsage)
       .where(sql`${mcpToolUsage.error} = true AND ${mcpToolUsage.createdAt} >= ${thirtyDaysAgo.toISOString()}`)
-      .then((r) => r[0]),
-  ]);
+      .then((r) => r[0]);
 
-  return {
-    totalCalls,
-    byUser,
-    byTool,
-    errors: recentErrors.count,
-  };
+    return {
+      totalCalls,
+      byUser,
+      byTool,
+      errors: recentErrors.count,
+    };
+  });
 }
 
 export type McpUsageStats = Awaited<ReturnType<typeof getMcpUsageStats>>;
 
 // ─── Mutations ───
 
-export async function banUser(userId: string, reason: string) {
-  await requireAdmin();
+export async function banUser(targetUserId: string, reason: string) {
+  const adminId = await requireAdmin();
 
-  await db
-    .update(userInNeonAuth)
-    .set({ banned: true, banReason: reason })
-    .where(eq(userInNeonAuth.id, userId));
-
-  return { success: true };
+  return withAdminRLS(adminId, async (tx) => {
+    await tx
+      .update(userInNeonAuth)
+      .set({ banned: true, banReason: reason })
+      .where(eq(userInNeonAuth.id, targetUserId));
+    return { success: true };
+  });
 }
 
-export async function unbanUser(userId: string) {
-  await requireAdmin();
+export async function unbanUser(targetUserId: string) {
+  const adminId = await requireAdmin();
 
-  await db
-    .update(userInNeonAuth)
-    .set({ banned: false, banReason: null, banExpires: null })
-    .where(eq(userInNeonAuth.id, userId));
-
-  return { success: true };
+  return withAdminRLS(adminId, async (tx) => {
+    await tx
+      .update(userInNeonAuth)
+      .set({ banned: false, banReason: null, banExpires: null })
+      .where(eq(userInNeonAuth.id, targetUserId));
+    return { success: true };
+  });
 }
 
-export async function setUserRole(userId: string, role: string | null) {
-  await requireAdmin();
+export async function setUserRole(targetUserId: string, role: string | null) {
+  const adminId = await requireAdmin();
 
-  await db
-    .update(userInNeonAuth)
-    .set({ role })
-    .where(eq(userInNeonAuth.id, userId));
-
-  return { success: true };
+  return withAdminRLS(adminId, async (tx) => {
+    await tx
+      .update(userInNeonAuth)
+      .set({ role })
+      .where(eq(userInNeonAuth.id, targetUserId));
+    return { success: true };
+  });
 }
 
 export async function toggleApiKeyEnabled(keyId: number, enabled: boolean) {
-  await requireAdmin();
+  const adminId = await requireAdmin();
 
-  await db
-    .update(apiKeys)
-    .set({ enabled })
-    .where(eq(apiKeys.id, keyId));
-
-  return { success: true };
+  return withAdminRLS(adminId, async (tx) => {
+    await tx
+      .update(apiKeys)
+      .set({ enabled })
+      .where(eq(apiKeys.id, keyId));
+    return { success: true };
+  });
 }
