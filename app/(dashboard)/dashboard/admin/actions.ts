@@ -35,8 +35,8 @@ export async function getUsers() {
       banReason: userInNeonAuth.banReason,
       banExpires: userInNeonAuth.banExpires,
       createdAt: userInNeonAuth.createdAt,
-      apiKeyCount: sql<number>`(SELECT count(*)::int FROM api_keys WHERE "userId" = ${userInNeonAuth.id})`,
-      mcpCount: sql<number>`(SELECT count(*)::int FROM user_mcp_access WHERE "userId" = ${userInNeonAuth.id} AND enabled = true)`,
+      apiKeyCount: sql<number>`(SELECT count(*)::int FROM api_keys WHERE api_keys."userId" = "neon_auth"."user"."id")`,
+      mcpCount: sql<number>`(SELECT count(*)::int FROM user_mcp_access WHERE user_mcp_access."userId" = "neon_auth"."user"."id" AND user_mcp_access.enabled = true)`,
     })
     .from(userInNeonAuth)
     .orderBy(desc(userInNeonAuth.createdAt));
