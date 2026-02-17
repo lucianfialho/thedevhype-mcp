@@ -5,11 +5,11 @@ import { userMcpAccess, apiKeys } from '@/app/lib/db/public.schema';
 import { eq, and } from 'drizzle-orm';
 import { registry } from '@/app/lib/mcp/servers';
 import { LucianDashboard } from './lucian-dashboard';
-import { getNotas, getNotasSummary, getProdutos, getProdutosSummary, getGastosData } from './actions';
+import { getNotas, getNotasSummary, getProdutos, getProdutosSummary, getGastosData, getActiveList, getListSummary } from './actions';
 
 export const dynamic = 'force-dynamic';
 
-const TABS = ['notas', 'produtos', 'precos', 'gastos', 'config'] as const;
+const TABS = ['notas', 'produtos', 'precos', 'gastos', 'lista', 'config'] as const;
 type Tab = (typeof TABS)[number];
 
 function maskApiKey(key: string): string {
@@ -36,13 +36,15 @@ export default async function LucianPage({
         .where(and(eq(userMcpAccess.userId, userId), eq(userMcpAccess.mcpName, 'lucian'))))[0]
     : undefined;
 
-  const [notasData, notasSummary, produtosData, produtosSummary, gastosResult, userApiKey] =
+  const [notasData, notasSummary, produtosData, produtosSummary, gastosResult, listItems, listSummaryData, userApiKey] =
     await Promise.all([
       getNotas(),
       getNotasSummary(),
       getProdutos(),
       getProdutosSummary(),
       getGastosData(),
+      getActiveList(),
+      getListSummary(),
       userId
         ? db.select({ key: apiKeys.key, defaultState: apiKeys.defaultState })
             .from(apiKeys)
@@ -96,6 +98,8 @@ export default async function LucianPage({
         produtosSummary={produtosSummary}
         initialGastos={gastosResult.gastos}
         gastosSummary={gastosResult.summary}
+        initialListItems={listItems}
+        listSummary={listSummaryData}
         mcpConfig={mcpConfig}
       />
     </main>

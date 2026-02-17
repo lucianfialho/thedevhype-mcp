@@ -7,12 +7,14 @@ import { NotasTab } from './tabs/notas-tab';
 import { ProdutosTab } from './tabs/produtos-tab';
 import { PrecosTab } from './tabs/precos-tab';
 import { GastosTab } from './tabs/gastos-tab';
+import { ListaTab } from './tabs/lista-tab';
 
 const TABS = [
   { id: 'notas', label: 'Notas' },
   { id: 'produtos', label: 'Produtos' },
   { id: 'precos', label: 'Precos' },
   { id: 'gastos', label: 'Gastos' },
+  { id: 'lista', label: 'Lista' },
   { id: 'config', label: 'Configuracoes' },
 ] as const;
 
@@ -58,6 +60,22 @@ interface LucianDashboardProps {
     comprasCount: number;
     mediaCompra: number;
   };
+  initialListItems: Array<{
+    id: number;
+    name: string;
+    quantity: string | null;
+    unit: string | null;
+    estimatedPrice: string | null;
+    cheapestStore: string | null;
+    checked: boolean;
+    notes: string | null;
+    createdAt: string;
+  }>;
+  listSummary: {
+    totalItems: number;
+    checkedItems: number;
+    estimatedTotal: number;
+  };
   mcpConfig: {
     mcpUrl: string;
     tools: Array<{ name: string; description: string }>;
@@ -78,6 +96,8 @@ export function LucianDashboard({
   produtosSummary,
   initialGastos,
   gastosSummary,
+  initialListItems,
+  listSummary,
   mcpConfig,
 }: LucianDashboardProps) {
   const router = useRouter();
@@ -115,6 +135,9 @@ export function LucianDashboard({
       {activeTab === 'precos' && <PrecosTab />}
       {activeTab === 'gastos' && (
         <GastosTab initialGastos={initialGastos} initialSummary={gastosSummary} />
+      )}
+      {activeTab === 'lista' && (
+        <ListaTab initialItems={initialListItems} initialSummary={listSummary} />
       )}
       {activeTab === 'config' && mcpConfig && (
         <SettingsTab

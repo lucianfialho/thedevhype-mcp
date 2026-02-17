@@ -8,6 +8,8 @@ import {
   stores,
   products,
   priceEntries,
+  shoppingLists,
+  shoppingListItems,
 } from '@/app/lib/mcp/servers/nota-fiscal.schema';
 
 async function requireUserId() {
@@ -301,4 +303,180 @@ export async function classificarProduto(produtoId: number, categoria: string) {
     .where(and(eq(products.id, produtoId), eq(products.userId, userId)));
 
   return { ok: true };
+}
+
+// ─── Lista de Compras ───
+
+async function getOrCreateActiveListForUser(userId: string) {
+  const [existing] = await db
+    .select()
+    .from(shoppingLists)
+    .where(and(eq(shoppingLists.userId, userId), eq(shoppingLists.status, 'active')))
+    .limit(1);
+
+  if (existing) return existing;
+
+  const [created] = await db
+    .insert(shoppingLists)
+    .values({ userId })
+    .returning();
+
+  return created;
+}
+
+export async function getActiveList() {
+  const userId = await requireUserId();
+  const list = await getOrCreateActiveListForUser(userId);
+
+  const items = await db
+    .select()
+    .from(shoppingListItems)
+    .where(eq(shoppingListItems.listId, list.id))
+    .orderBy(shoppingListItems.checked, shoppingListItems.createdAt);
+
+  return items.map((i) => ({
+    id: i.id,
+    name: i.name,
+    quantity: i.quantity,
+    unit: i.unit,
+    estimatedPrice: i.estimatedPrice,
+    cheapestStore: i.cheapestStore,
+    checked: i.checked,
+    notes: i.notes,
+    createdAt: i.createdAt,
+  }));
+}
+
+export async function getListSummary() {
+  const userId = await requireUserId();
+  const list = await getOrCreateActiveListForUser(userId);
+
+  const items = await db
+    .select({
+      checked: shoppingListItems.checked,
+      estimatedPrice: shoppingListItems.estimatedPrice,
+      quantity: shoppingListItems.quantity,
+    })
+    .from(shoppingListItems)
+    .where(eq(shoppingListItems.listId, list.id));
+
+  const totalItems = items.length;
+  const checkedItems = items.filter((i) => i.checked).length;
+  const estimatedTotal = items
+    .filter((i) => !i.checked && i.estimatedPrice && i.quantity)
+    .reduce((sum, i) => sum + Number(i.estimatedPrice) * Number(i.quantity), 0);
+
+  return { totalItems, checkedItems, estimatedTotal };
+}
+
+export async function toggleItemChecked(itemId: number, checked: boolean) {
+  const userId = await requireUserId();
+
+  await db
+    .update(shoppingListItems)
+    .set({ checked })
+    .where(and(eq(shoppingListItems.id, itemId), eq(shoppingListItems.userId, userId)));
+
+  return { ok: true };
+}
+
+export async function removeListItem(itemId: number) {
+  const userId = await requireUserId();
+
+  await db
+    .delete(shoppingListItems)
+    .where(and(eq(shoppingListItems.id, itemId), eq(shoppingListItems.userId, userId)));
+
+  return { ok: true };
+}
+
+export async function finalizeList() {
+  const userId = await requireUserId();
+
+  const [activeList] = await db
+    .select({ id: shoppingLists.id })
+    .from(shoppingLists)
+    .where(and(eq(shoppingLists.userId, userId), eq(shoppingLists.status, 'active')))
+    .limit(1);
+
+  if (!activeList) return { ok: false, error: 'Nenhuma lista ativa.' };
+
+  await db
+    .update(shoppingLists)
+    .set({ status: 'completed', completedAt: new Date().toISOString() })
+    .where(eq(shoppingLists.id, activeList.id));
+
+  return { ok: true };
+}
+
+export async function addItemToList(name: string, qty?: number, unit?: string) {
+  const userId = await requireUserId();
+  const list = await getOrCreateActiveListForUser(userId);
+
+  // Lookup price from history
+  let estimatedPrice: string | null = null;
+  let cheapestStore: string | null = null;
+  let productId: number | null = null;
+
+  const [matched] = await db
+    .select({ id: products.id, unidade: products.unidade })
+    .from(products)
+    .where(and(eq(products.userId, userId), ilike(products.nome, `%${name}%`)))
+    .limit(1);
+
+  if (matched) {
+    productId = matched.id;
+    if (!unit && matched.unidade) unit = matched.unidade;
+
+    const history = await db
+      .select({
+        valorUnitario: priceEntries.valorUnitario,
+        storeName: stores.nome,
+      })
+      .from(priceEntries)
+      .innerJoin(stores, eq(priceEntries.storeId, stores.id))
+      .where(and(eq(priceEntries.userId, userId), eq(priceEntries.productId, matched.id)))
+      .orderBy(desc(priceEntries.dataCompra))
+      .limit(20);
+
+    if (history.length > 0) {
+      const prices = history.map((h) => Number(h.valorUnitario));
+      estimatedPrice = (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2);
+
+      let minPrice = Infinity;
+      for (const entry of history) {
+        const p = Number(entry.valorUnitario);
+        if (p < minPrice) {
+          minPrice = p;
+          cheapestStore = entry.storeName;
+        }
+      }
+    }
+  }
+
+  const [newItem] = await db
+    .insert(shoppingListItems)
+    .values({
+      listId: list.id,
+      userId,
+      productId,
+      name,
+      quantity: qty?.toString() || null,
+      unit: unit || null,
+      estimatedPrice,
+      cheapestStore,
+    })
+    .returning();
+
+  return {
+    id: newItem.id,
+    name: newItem.name,
+    quantity: newItem.quantity,
+    unit: newItem.unit,
+    estimatedPrice: newItem.estimatedPrice,
+    cheapestStore: newItem.cheapestStore,
+    checked: newItem.checked,
+    notes: newItem.notes,
+    createdAt: newItem.createdAt,
+  };
 }

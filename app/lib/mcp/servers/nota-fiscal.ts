@@ -12,6 +12,8 @@ import {
   priceEntries,
   canonicalProducts,
   publicPriceEntries,
+  shoppingLists,
+  shoppingListItems,
 } from './nota-fiscal.schema';
 import type { McpServerDefinition } from '../types';
 
@@ -53,6 +55,27 @@ export const notaFiscalServer: McpServerDefinition = {
     {
       name: 'classificar_produtos_em_lote',
       description: 'Define categorias de vários produtos de uma vez',
+    },
+    {
+      name: 'adicionar_item_lista',
+      description:
+        'Adiciona um item à lista de compras ativa. Aceita linguagem natural como "açúcar", "2kg de frango". Sugere preço e loja mais barata baseado no histórico.',
+    },
+    {
+      name: 'ver_lista_compras',
+      description: 'Mostra todos os itens da lista de compras ativa (pendentes e comprados)',
+    },
+    {
+      name: 'marcar_comprado',
+      description: 'Marca um item da lista como comprado (por ID ou nome)',
+    },
+    {
+      name: 'finalizar_lista',
+      description: 'Finaliza a lista de compras ativa e arquiva',
+    },
+    {
+      name: 'remover_item_lista',
+      description: 'Remove um item da lista de compras (por ID ou nome)',
     },
   ],
   init: (server) => {
@@ -665,6 +688,347 @@ export const notaFiscalServer: McpServerDefinition = {
             {
               type: 'text' as const,
               text: `# Classificação em Lote\n\n${resultados.join('\n')}`,
+            },
+          ],
+        };
+      },
+    );
+
+    // ─── Helper: get or create active shopping list ───
+    async function getOrCreateActiveList(userId: string) {
+      const [existing] = await db
+        .select()
+        .from(shoppingLists)
+        .where(and(eq(shoppingLists.userId, userId), eq(shoppingLists.status, 'active')))
+        .limit(1);
+
+      if (existing) return existing;
+
+      const [created] = await db
+        .insert(shoppingLists)
+        .values({ userId })
+        .returning();
+
+      return created;
+    }
+
+    // ─── adicionar_item_lista ───
+    server.tool(
+      'adicionar_item_lista',
+      'Adiciona um item à lista de compras ativa. Aceita linguagem natural como "açúcar", "2kg de frango". Sugere preço e loja mais barata baseado no histórico.',
+      {
+        item: z.string().describe('Descrição do item, ex: "açúcar", "2kg de frango", "3 leites"'),
+      },
+      async ({ item }, extra) => {
+        const userId = getUserId(extra as Record<string, unknown>);
+        const list = await getOrCreateActiveList(userId);
+
+        // Parse quantity and unit from input (e.g. "2kg de frango" → qty=2, unit=kg, name=frango)
+        const qtyMatch = item.match(/^(\d+(?:[.,]\d+)?)\s*(kg|g|l|ml|un|und|unidades?|litros?|pacotes?|pct|caixas?|cx|latas?|garrafas?|dz|dúzias?)?\s*(?:de\s+)?(.+)$/i);
+
+        let parsedName: string;
+        let parsedQty: number | null = null;
+        let parsedUnit: string | null = null;
+
+        if (qtyMatch) {
+          parsedQty = parseFloat(qtyMatch[1].replace(',', '.'));
+          parsedUnit = qtyMatch[2]?.toLowerCase() || null;
+          parsedName = qtyMatch[3].trim();
+        } else {
+          parsedName = item.trim();
+        }
+
+        // Fuzzy search products in history
+        const matchedProducts = await db
+          .select({
+            id: products.id,
+            nome: products.nome,
+            unidade: products.unidade,
+          })
+          .from(products)
+          .where(and(eq(products.userId, userId), ilike(products.nome, `%${parsedName}%`)))
+          .limit(5);
+
+        let productId: number | null = null;
+        let estimatedPrice: string | null = null;
+        let cheapestStore: string | null = null;
+        let suggestedQty = parsedQty;
+        let suggestedUnit = parsedUnit;
+        let displayName = parsedName;
+
+        if (matchedProducts.length > 0) {
+          const bestMatch = matchedProducts[0];
+          productId = bestMatch.id;
+          displayName = bestMatch.nome;
+          if (!suggestedUnit && bestMatch.unidade) suggestedUnit = bestMatch.unidade;
+
+          // Get price history for this product
+          const priceHistory = await db
+            .select({
+              valorUnitario: priceEntries.valorUnitario,
+              quantidade: priceEntries.quantidade,
+              storeName: stores.nome,
+            })
+            .from(priceEntries)
+            .innerJoin(stores, eq(priceEntries.storeId, stores.id))
+            .where(and(eq(priceEntries.userId, userId), eq(priceEntries.productId, bestMatch.id)))
+            .orderBy(desc(priceEntries.dataCompra))
+            .limit(20);
+
+          if (priceHistory.length > 0) {
+            // Average price
+            const prices = priceHistory.map((p) => Number(p.valorUnitario));
+            const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
+            estimatedPrice = avgPrice.toFixed(2);
+
+            // Cheapest store (by lowest unit price)
+            let minPrice = Infinity;
+            for (const entry of priceHistory) {
+              const p = Number(entry.valorUnitario);
+              if (p < minPrice) {
+                minPrice = p;
+                cheapestStore = entry.storeName;
+              }
+            }
+
+            // Use last quantity as suggestion if none provided
+            if (!suggestedQty) {
+              suggestedQty = Number(priceHistory[0].quantidade);
+            }
+          }
+        }
+
+        // Insert item into list
+        const [newItem] = await db
+          .insert(shoppingListItems)
+          .values({
+            listId: list.id,
+            userId,
+            productId,
+            name: displayName,
+            quantity: suggestedQty?.toString() || null,
+            unit: suggestedUnit,
+            estimatedPrice,
+            cheapestStore,
+          })
+          .returning();
+
+        const lines = [
+          `✅ Item adicionado à lista de compras:`,
+          ``,
+          `**${displayName}**`,
+          suggestedQty ? `Quantidade: ${suggestedQty} ${suggestedUnit || ''}`.trim() : null,
+          estimatedPrice ? `Preço estimado: R$ ${estimatedPrice}` : null,
+          cheapestStore ? `Loja mais barata: ${cheapestStore}` : null,
+          productId ? `(Baseado no histórico de compras)` : `(Produto novo — sem histórico)`,
+          ``,
+          `ID: ${newItem.id}`,
+        ].filter(Boolean);
+
+        return {
+          content: [{ type: 'text' as const, text: lines.join('\n') }],
+        };
+      },
+    );
+
+    // ─── ver_lista_compras ───
+    server.tool(
+      'ver_lista_compras',
+      'Mostra todos os itens da lista de compras ativa (pendentes e comprados).',
+      {},
+      async (_params, extra) => {
+        const userId = getUserId(extra as Record<string, unknown>);
+        const list = await getOrCreateActiveList(userId);
+
+        const items = await db
+          .select()
+          .from(shoppingListItems)
+          .where(eq(shoppingListItems.listId, list.id))
+          .orderBy(shoppingListItems.checked, shoppingListItems.createdAt);
+
+        if (items.length === 0) {
+          return {
+            content: [{ type: 'text' as const, text: 'Lista de compras vazia. Use `adicionar_item_lista` para adicionar itens.' }],
+          };
+        }
+
+        const pending = items.filter((i) => !i.checked);
+        const checked = items.filter((i) => i.checked);
+
+        const formatItem = (i: typeof items[number]) => {
+          const qty = i.quantity ? `${i.quantity} ${i.unit || ''}`.trim() : '';
+          const price = i.estimatedPrice ? `~R$ ${i.estimatedPrice}` : '';
+          const store = i.cheapestStore ? `(${i.cheapestStore})` : '';
+          return `- [${i.checked ? 'x' : ' '}] **${i.name}** ${qty} ${price} ${store} — ID: ${i.id}`.trim();
+        };
+
+        const sections: string[] = [`# Lista de Compras`];
+
+        if (pending.length > 0) {
+          sections.push(`\n## Pendentes (${pending.length})`);
+          sections.push(pending.map(formatItem).join('\n'));
+        }
+
+        if (checked.length > 0) {
+          sections.push(`\n## Comprados (${checked.length})`);
+          sections.push(checked.map(formatItem).join('\n'));
+        }
+
+        const totalEstimado = items
+          .filter((i) => !i.checked && i.estimatedPrice && i.quantity)
+          .reduce((sum, i) => sum + Number(i.estimatedPrice) * Number(i.quantity), 0);
+
+        if (totalEstimado > 0) {
+          sections.push(`\n**Total estimado (pendentes): R$ ${totalEstimado.toFixed(2)}**`);
+        }
+
+        return {
+          content: [{ type: 'text' as const, text: sections.join('\n') }],
+        };
+      },
+    );
+
+    // ─── marcar_comprado ───
+    server.tool(
+      'marcar_comprado',
+      'Marca um item da lista como comprado. Busca por ID numérico ou nome parcial.',
+      {
+        item: z.string().describe('ID numérico ou nome do item'),
+      },
+      async ({ item }, extra) => {
+        const userId = getUserId(extra as Record<string, unknown>);
+        const list = await getOrCreateActiveList(userId);
+
+        const isId = /^\d+$/.test(item.trim());
+        let updated;
+
+        if (isId) {
+          updated = await db
+            .update(shoppingListItems)
+            .set({ checked: true })
+            .where(
+              and(
+                eq(shoppingListItems.id, parseInt(item)),
+                eq(shoppingListItems.listId, list.id),
+                eq(shoppingListItems.userId, userId),
+              ),
+            )
+            .returning({ id: shoppingListItems.id, name: shoppingListItems.name });
+        } else {
+          updated = await db
+            .update(shoppingListItems)
+            .set({ checked: true })
+            .where(
+              and(
+                eq(shoppingListItems.listId, list.id),
+                eq(shoppingListItems.userId, userId),
+                ilike(shoppingListItems.name, `%${item}%`),
+              ),
+            )
+            .returning({ id: shoppingListItems.id, name: shoppingListItems.name });
+        }
+
+        if (updated.length === 0) {
+          return {
+            content: [{ type: 'text' as const, text: `Nenhum item encontrado para "${item}".` }],
+          };
+        }
+
+        const names = updated.map((u) => `- ${u.name} (ID: ${u.id})`).join('\n');
+        return {
+          content: [{ type: 'text' as const, text: `✅ Marcado como comprado:\n${names}` }],
+        };
+      },
+    );
+
+    // ─── remover_item_lista ───
+    server.tool(
+      'remover_item_lista',
+      'Remove um item da lista de compras. Busca por ID numérico ou nome parcial.',
+      {
+        item: z.string().describe('ID numérico ou nome do item'),
+      },
+      async ({ item }, extra) => {
+        const userId = getUserId(extra as Record<string, unknown>);
+        const list = await getOrCreateActiveList(userId);
+
+        const isId = /^\d+$/.test(item.trim());
+        let deleted;
+
+        if (isId) {
+          deleted = await db
+            .delete(shoppingListItems)
+            .where(
+              and(
+                eq(shoppingListItems.id, parseInt(item)),
+                eq(shoppingListItems.listId, list.id),
+                eq(shoppingListItems.userId, userId),
+              ),
+            )
+            .returning({ id: shoppingListItems.id, name: shoppingListItems.name });
+        } else {
+          deleted = await db
+            .delete(shoppingListItems)
+            .where(
+              and(
+                eq(shoppingListItems.listId, list.id),
+                eq(shoppingListItems.userId, userId),
+                ilike(shoppingListItems.name, `%${item}%`),
+              ),
+            )
+            .returning({ id: shoppingListItems.id, name: shoppingListItems.name });
+        }
+
+        if (deleted.length === 0) {
+          return {
+            content: [{ type: 'text' as const, text: `Nenhum item encontrado para "${item}".` }],
+          };
+        }
+
+        const names = deleted.map((d) => `- ${d.name} (ID: ${d.id})`).join('\n');
+        return {
+          content: [{ type: 'text' as const, text: `🗑️ Removido da lista:\n${names}` }],
+        };
+      },
+    );
+
+    // ─── finalizar_lista ───
+    server.tool(
+      'finalizar_lista',
+      'Finaliza a lista de compras ativa, arquivando-a. Uma nova lista vazia será criada automaticamente na próxima interação.',
+      {},
+      async (_params, extra) => {
+        const userId = getUserId(extra as Record<string, unknown>);
+
+        const [activeList] = await db
+          .select()
+          .from(shoppingLists)
+          .where(and(eq(shoppingLists.userId, userId), eq(shoppingLists.status, 'active')))
+          .limit(1);
+
+        if (!activeList) {
+          return {
+            content: [{ type: 'text' as const, text: 'Nenhuma lista ativa para finalizar.' }],
+          };
+        }
+
+        const items = await db
+          .select()
+          .from(shoppingListItems)
+          .where(eq(shoppingListItems.listId, activeList.id));
+
+        const checkedCount = items.filter((i) => i.checked).length;
+
+        await db
+          .update(shoppingLists)
+          .set({ status: 'completed', completedAt: new Date().toISOString() })
+          .where(eq(shoppingLists.id, activeList.id));
+
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: `✅ Lista finalizada!\n\n- Total de itens: ${items.length}\n- Comprados: ${checkedCount}\n- Não comprados: ${items.length - checkedCount}\n\nUma nova lista será criada automaticamente quando você adicionar o próximo item.`,
             },
           ],
         };

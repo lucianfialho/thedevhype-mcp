@@ -9,6 +9,7 @@ import {
   date,
   integer,
   unique,
+  boolean,
 } from 'drizzle-orm/pg-core';
 import { sql, type InferSelectModel, type InferInsertModel } from 'drizzle-orm';
 import { userInNeonAuth } from '../../db/public.schema';
@@ -177,3 +178,46 @@ export const shoppingCache = mcpNotaFiscal.table('shopping_cache', {
 
 export type ShoppingCache = InferSelectModel<typeof shoppingCache>;
 export type NewShoppingCache = InferInsertModel<typeof shoppingCache>;
+
+// --- Shopping lists ---
+
+export const shoppingLists = mcpNotaFiscal.table('shopping_lists', {
+  id: bigint({ mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  userId: uuid()
+    .notNull()
+    .references(() => userInNeonAuth.id),
+  status: text({ enum: ['active', 'completed'] }).default('active').notNull(),
+  completedAt: timestamp({ withTimezone: true, mode: 'string' }),
+  createdAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
+
+export type ShoppingList = InferSelectModel<typeof shoppingLists>;
+export type NewShoppingList = InferInsertModel<typeof shoppingLists>;
+
+// --- Shopping list items ---
+
+export const shoppingListItems = mcpNotaFiscal.table('shopping_list_items', {
+  id: bigint({ mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  listId: bigint({ mode: 'number' })
+    .notNull()
+    .references(() => shoppingLists.id),
+  userId: uuid()
+    .notNull()
+    .references(() => userInNeonAuth.id),
+  productId: bigint({ mode: 'number' }).references(() => products.id),
+  name: text().notNull(),
+  quantity: numeric({ precision: 12, scale: 4 }),
+  unit: text(),
+  estimatedPrice: numeric({ precision: 12, scale: 2 }),
+  cheapestStore: text(),
+  checked: boolean().default(false).notNull(),
+  notes: text(),
+  createdAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
+
+export type ShoppingListItem = InferSelectModel<typeof shoppingListItems>;
+export type NewShoppingListItem = InferInsertModel<typeof shoppingListItems>;
