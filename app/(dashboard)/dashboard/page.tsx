@@ -1,11 +1,22 @@
 import Link from 'next/link';
 import { auth } from '@/app/lib/auth/server';
+import { db } from '@/app/lib/db';
+import { userInNeonAuth } from '@/app/lib/db/public.schema';
+import { eq } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   const { data: session } = await auth.getSession();
   const user = session?.user;
+
+  const isAdmin = user?.id
+    ? await db
+        .select({ role: userInNeonAuth.role })
+        .from(userInNeonAuth)
+        .where(eq(userInNeonAuth.id, user.id))
+        .then((r) => r[0]?.role === 'admin')
+    : false;
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-4 sm:p-6">
@@ -71,6 +82,35 @@ export default async function DashboardPage() {
             <path d="M8 5l5 5-5 5" />
           </svg>
         </Link>
+
+        {isAdmin && (
+          <Link
+            href="/dashboard/admin"
+            className="flex items-center gap-3 rounded-lg border border-zinc-200 p-4 transition-colors hover:border-zinc-300 hover:shadow-sm sm:gap-4 sm:p-5 dark:border-zinc-800 dark:hover:border-zinc-700"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-sm font-bold text-white dark:bg-zinc-100 dark:text-zinc-900">
+              A
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-semibold">Admin</h3>
+                <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-900 dark:text-blue-300">admin only</span>
+              </div>
+              <p className="text-sm text-zinc-500">Gerenciar usuarios, API keys e uso</p>
+            </div>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              className="ml-auto shrink-0 text-zinc-400"
+            >
+              <path d="M8 5l5 5-5 5" />
+            </svg>
+          </Link>
+        )}
       </div>
     </main>
   );
