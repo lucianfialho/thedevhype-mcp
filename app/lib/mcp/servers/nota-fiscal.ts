@@ -1,13 +1,17 @@
 import { z } from 'zod';
+import crypto from 'crypto';
 import { eq, and, sql, desc, ilike, gte, count } from 'drizzle-orm';
 import { extractAccessKey, fetchNFCeFromInfosimples } from '../../infosimples';
 import { db } from '../../db';
+import { userMcpAccess } from '../../db/public.schema';
 import { getUserId } from '../auth-helpers';
 import {
   extractions,
   stores,
   products,
   priceEntries,
+  canonicalProducts,
+  publicPriceEntries,
 } from './nota-fiscal.schema';
 import type { McpServerDefinition } from '../types';
 
@@ -174,6 +178,62 @@ export const notaFiscalServer: McpServerDefinition = {
             valorTotal: p.valorTotal.toString(),
             dataCompra,
           });
+        }
+
+        // Contribute to public API if user opted in
+        try {
+          const [access] = await db
+            .select({ contribute: userMcpAccess.contributePublicData })
+            .from(userMcpAccess)
+            .where(
+              and(
+                eq(userMcpAccess.userId, userId),
+                eq(userMcpAccess.mcpName, 'lucian'),
+                eq(userMcpAccess.contributePublicData, true),
+              ),
+            )
+            .limit(1);
+
+          if (access) {
+            const contributorHash = crypto
+              .createHash('sha256')
+              .update(userId)
+              .digest('hex');
+
+            for (const p of nf.produtos) {
+              const [canonical] = await db
+                .insert(canonicalProducts)
+                .values({
+                  storeId: store.id,
+                  codigo: p.codigo,
+                  nome: p.nome,
+                  unidade: p.unidade,
+                })
+                .onConflictDoUpdate({
+                  target: [canonicalProducts.storeId, canonicalProducts.codigo],
+                  set: {
+                    nome: p.nome,
+                    unidade: p.unidade,
+                    contributorCount: sql`${canonicalProducts.contributorCount} + 1`,
+                    lastSeenAt: sql`CURRENT_TIMESTAMP`,
+                    updatedAt: sql`CURRENT_TIMESTAMP`,
+                  },
+                })
+                .returning({ id: canonicalProducts.id });
+
+              await db.insert(publicPriceEntries).values({
+                canonicalProductId: canonical.id,
+                storeId: store.id,
+                valorUnitario: p.valorUnitario.toString(),
+                valorTotal: p.valorTotal.toString(),
+                quantidade: p.quantidade.toString(),
+                dataCompra,
+                contributorHash,
+              });
+            }
+          }
+        } catch {
+          // Non-critical: don't fail the main flow if public contribution fails
         }
 
         // Format output (same as before)
