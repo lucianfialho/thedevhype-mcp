@@ -7,15 +7,16 @@ import { NotasTab } from './tabs/notas-tab';
 import { ProdutosTab } from './tabs/produtos-tab';
 import { PrecosTab } from './tabs/precos-tab';
 import { GastosTab } from './tabs/gastos-tab';
+import type { GastosTrendData } from './tabs/gastos-trend-chart';
 import { ListaTab } from './tabs/lista-tab';
 import { UserUsageTab } from '../components/user-usage-tab';
 import type { UserMcpUsageStats } from '../components/user-mcp-usage';
 
 const TABS = [
+  { id: 'gastos', label: 'Gastos' },
   { id: 'notas', label: 'Notas' },
   { id: 'produtos', label: 'Produtos' },
   { id: 'precos', label: 'Precos' },
-  { id: 'gastos', label: 'Gastos' },
   { id: 'lista', label: 'Lista' },
   { id: 'usage', label: 'Usage' },
   { id: 'config', label: 'Configuracoes' },
@@ -63,6 +64,7 @@ interface LucianDashboardProps {
     comprasCount: number;
     mediaCompra: number;
   };
+  gastosTrendData: GastosTrendData;
   initialListItems: Array<{
     id: number;
     name: string;
@@ -100,6 +102,7 @@ export function LucianDashboard({
   produtosSummary,
   initialGastos,
   gastosSummary,
+  gastosTrendData,
   initialListItems,
   listSummary,
   mcpConfig,
@@ -139,7 +142,7 @@ export function LucianDashboard({
       )}
       {activeTab === 'precos' && <PrecosTab />}
       {activeTab === 'gastos' && (
-        <GastosTab initialGastos={initialGastos} initialSummary={gastosSummary} />
+        <GastosTab initialGastos={initialGastos} initialSummary={gastosSummary} trendData={gastosTrendData} />
       )}
       {activeTab === 'lista' && (
         <ListaTab initialItems={initialListItems} initialSummary={listSummary} />

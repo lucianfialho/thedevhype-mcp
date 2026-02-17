@@ -274,6 +274,125 @@ export async function getGastosData(periodDias = 30, agruparPor: 'categoria' | '
   };
 }
 
+// ─── Gastos Trend ───
+
+export async function getGastosTrend(meses = 6) {
+  const userId = await requireUserId();
+
+  const sinceDate = new Date();
+  sinceDate.setMonth(sinceDate.getMonth() - meses);
+  const sinceStr = `${sinceDate.getFullYear()}-${String(sinceDate.getMonth() + 1).padStart(2, '0')}-01`;
+
+  // Monthly totals
+  const monthly = await db
+    .select({
+      month: sql<string>`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM')`,
+      total: sql<number>`COALESCE(sum(${priceEntries.valorTotal}::numeric), 0)::float`,
+    })
+    .from(priceEntries)
+    .where(
+      and(
+        eq(priceEntries.userId, userId),
+        sql`${priceEntries.dataCompra} >= ${sinceStr}`,
+      ),
+    )
+    .groupBy(sql`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM')`)
+    .orderBy(sql`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM')`);
+
+  // Top 5 categories by total, then breakdown per month
+  const topCategories = await db
+    .select({
+      categoria: sql<string>`COALESCE(${products.categoria}, 'Sem categoria')`,
+      total: sql<number>`sum(${priceEntries.valorTotal}::numeric)::float`,
+    })
+    .from(priceEntries)
+    .innerJoin(products, eq(priceEntries.productId, products.id))
+    .where(
+      and(
+        eq(priceEntries.userId, userId),
+        sql`${priceEntries.dataCompra} >= ${sinceStr}`,
+      ),
+    )
+    .groupBy(sql`COALESCE(${products.categoria}, 'Sem categoria')`)
+    .orderBy(sql`sum(${priceEntries.valorTotal}::numeric) DESC`)
+    .limit(5);
+
+  const top5Names = topCategories.map((c) => c.categoria);
+
+  const byCategory = top5Names.length > 0
+    ? await db
+        .select({
+          month: sql<string>`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM')`,
+          categoria: sql<string>`COALESCE(${products.categoria}, 'Sem categoria')`,
+          total: sql<number>`sum(${priceEntries.valorTotal}::numeric)::float`,
+        })
+        .from(priceEntries)
+        .innerJoin(products, eq(priceEntries.productId, products.id))
+        .where(
+          and(
+            eq(priceEntries.userId, userId),
+            sql`${priceEntries.dataCompra} >= ${sinceStr}`,
+            sql`COALESCE(${products.categoria}, 'Sem categoria') IN (${sql.join(
+              top5Names.map((n) => sql`${n}`),
+              sql`, `,
+            )})`,
+          ),
+        )
+        .groupBy(
+          sql`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM')`,
+          sql`COALESCE(${products.categoria}, 'Sem categoria')`,
+        )
+        .orderBy(sql`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM')`)
+    : [];
+
+  // Current vs previous month comparison
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const previousMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+
+  const comparisonRows = await db
+    .select({
+      month: sql<string>`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM')`,
+      total: sql<number>`COALESCE(sum(${priceEntries.valorTotal}::numeric), 0)::float`,
+      compras: sql<number>`count(DISTINCT ${priceEntries.extractionId})::int`,
+    })
+    .from(priceEntries)
+    .where(
+      and(
+        eq(priceEntries.userId, userId),
+        sql`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM') IN (${currentMonth}, ${previousMonth})`,
+      ),
+    )
+    .groupBy(sql`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM')`);
+
+  const currentData = comparisonRows.find((r) => r.month === currentMonth) || {
+    month: currentMonth,
+    total: 0,
+    compras: 0,
+  };
+  const previousData = comparisonRows.find((r) => r.month === previousMonth) || {
+    month: previousMonth,
+    total: 0,
+    compras: 0,
+  };
+  const change =
+    previousData.total > 0
+      ? ((currentData.total - previousData.total) / previousData.total) * 100
+      : 0;
+
+  return {
+    monthly,
+    byCategory,
+    categories: top5Names,
+    comparison: {
+      current: { month: currentData.month, total: currentData.total, compras: currentData.compras },
+      previous: { month: previousData.month, total: previousData.total, compras: previousData.compras },
+      change,
+    },
+  };
+}
+
 // ─── Deletar Nota ───
 
 export async function deleteNota(notaId: number) {

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useTransition } from 'react';
 import { getGastosData } from '../actions';
+import { GastosTrendChart, type GastosTrendData } from './gastos-trend-chart';
 
 type Period = '7' | '30' | '90' | '365';
 type Agrupamento = 'categoria' | 'loja' | 'mes';
@@ -34,9 +35,10 @@ interface GastosSummaryData {
 interface GastosTabProps {
   initialGastos: GastoRow[];
   initialSummary: GastosSummaryData;
+  trendData: GastosTrendData;
 }
 
-export function GastosTab({ initialGastos, initialSummary }: GastosTabProps) {
+export function GastosTab({ initialGastos, initialSummary, trendData }: GastosTabProps) {
   const [period, setPeriod] = useState<Period>('30');
   const [agrupamento, setAgrupamento] = useState<Agrupamento>('categoria');
   const [gastos, setGastos] = useState(initialGastos);
@@ -65,6 +67,9 @@ export function GastosTab({ initialGastos, initialSummary }: GastosTabProps) {
 
   return (
     <div>
+      {/* Trend charts */}
+      <GastosTrendChart data={trendData} />
+
       {/* Summary cards */}
       <div className="mb-6 grid grid-cols-3 gap-3">
         <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">

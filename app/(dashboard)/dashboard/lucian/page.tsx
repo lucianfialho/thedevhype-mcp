@@ -5,11 +5,11 @@ import { userMcpAccess, apiKeys } from '@/app/lib/db/public.schema';
 import { eq, and } from 'drizzle-orm';
 import { registry } from '@/app/lib/mcp/servers';
 import { LucianDashboard } from './lucian-dashboard';
-import { getNotas, getNotasSummary, getProdutos, getProdutosSummary, getGastosData, getActiveList, getListSummary, getUserLucianUsage } from './actions';
+import { getNotas, getNotasSummary, getProdutos, getProdutosSummary, getGastosData, getGastosTrend, getActiveList, getListSummary, getUserLucianUsage } from './actions';
 
 export const dynamic = 'force-dynamic';
 
-const TABS = ['notas', 'produtos', 'precos', 'gastos', 'lista', 'usage', 'config'] as const;
+const TABS = ['gastos', 'notas', 'produtos', 'precos', 'lista', 'usage', 'config'] as const;
 type Tab = (typeof TABS)[number];
 
 function maskApiKey(key: string): string {
@@ -23,7 +23,7 @@ export default async function LucianPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const params = await searchParams;
-  const tab = TABS.includes(params.tab as Tab) ? (params.tab as Tab) : 'notas';
+  const tab = TABS.includes(params.tab as Tab) ? (params.tab as Tab) : 'gastos';
 
   const { data: session } = await auth.getSession();
   const userId = session?.user?.id;
@@ -36,13 +36,14 @@ export default async function LucianPage({
         .where(and(eq(userMcpAccess.userId, userId), eq(userMcpAccess.mcpName, 'lucian'))))[0]
     : undefined;
 
-  const [notasData, notasSummary, produtosData, produtosSummary, gastosResult, listItems, listSummaryData, userApiKey, usageStats] =
+  const [notasData, notasSummary, produtosData, produtosSummary, gastosResult, gastosTrendData, listItems, listSummaryData, userApiKey, usageStats] =
     await Promise.all([
       getNotas(),
       getNotasSummary(),
       getProdutos(),
       getProdutosSummary(),
       getGastosData(),
+      getGastosTrend(),
       getActiveList(),
       getListSummary(),
       userId
@@ -99,6 +100,7 @@ export default async function LucianPage({
         produtosSummary={produtosSummary}
         initialGastos={gastosResult.gastos}
         gastosSummary={gastosResult.summary}
+        gastosTrendData={gastosTrendData}
         initialListItems={listItems}
         listSummary={listSummaryData}
         mcpConfig={mcpConfig}
