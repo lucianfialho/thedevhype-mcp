@@ -101,3 +101,22 @@ export const apiUsageLog = pgTable('api_usage_log', {
 
 export type ApiUsageLog = InferSelectModel<typeof apiUsageLog>;
 export type NewApiUsageLog = InferInsertModel<typeof apiUsageLog>;
+
+// --- MCP tool usage log ---
+
+export const mcpToolUsage = pgTable('mcp_tool_usage', {
+  id: bigint({ mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  userId: uuid()
+    .notNull()
+    .references(() => userInNeonAuth.id),
+  mcpName: text().notNull(),
+  toolName: text().notNull(),
+  durationMs: integer(),
+  error: boolean().default(false).notNull(),
+  createdAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
+
+export type McpToolUsage = InferSelectModel<typeof mcpToolUsage>;
+export type NewMcpToolUsage = InferInsertModel<typeof mcpToolUsage>;

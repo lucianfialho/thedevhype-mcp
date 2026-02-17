@@ -4,12 +4,12 @@ import { auth } from '@/app/lib/auth/server';
 import { db } from '@/app/lib/db';
 import { userInNeonAuth } from '@/app/lib/db/public.schema';
 import { eq } from 'drizzle-orm';
-import { getUsers, getApiKeysAdmin, getApiUsageStats } from './actions';
+import { getUsers, getUserMcpAccess, getApiKeysAdmin, getApiUsageStats, getMcpUsageStats } from './actions';
 import { AdminDashboard } from './admin-dashboard';
 
 export const dynamic = 'force-dynamic';
 
-const TABS = ['usuarios', 'api-keys', 'uso'] as const;
+const TABS = ['usuarios', 'api-keys', 'uso', 'mcps'] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function AdminPage({
@@ -32,10 +32,12 @@ export default async function AdminPage({
 
   if (userRecord?.role !== 'admin') redirect('/dashboard');
 
-  const [users, apiKeysData, usageStats] = await Promise.all([
+  const [users, userMcps, apiKeysData, usageStats, mcpUsageStats] = await Promise.all([
     getUsers(),
+    getUserMcpAccess(),
     getApiKeysAdmin(),
     getApiUsageStats(),
+    getMcpUsageStats(),
   ]);
 
   return (
@@ -57,8 +59,10 @@ export default async function AdminPage({
       <AdminDashboard
         initialTab={tab}
         initialUsers={users}
+        initialUserMcps={userMcps}
         initialApiKeys={apiKeysData}
         initialUsageStats={usageStats}
+        initialMcpUsageStats={mcpUsageStats}
       />
     </main>
   );

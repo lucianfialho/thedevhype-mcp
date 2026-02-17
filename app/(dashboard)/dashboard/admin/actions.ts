@@ -3,7 +3,7 @@
 import { auth } from '@/app/lib/auth/server';
 import { db } from '@/app/lib/db';
 import { eq, sql, desc } from 'drizzle-orm';
-import { userInNeonAuth, apiKeys, apiUsageLog, userMcpAccess } from '@/app/lib/db/public.schema';
+import { userInNeonAuth, apiKeys, apiUsageLog, userMcpAccess, mcpToolUsage } from '@/app/lib/db/public.schema';
 
 async function requireAdmin() {
   const { data: session } = await auth.getSession();
@@ -44,7 +44,21 @@ export async function getUsers() {
   return rows;
 }
 
+export async function getUserMcpAccess() {
+  await requireAdmin();
+
+  return db
+    .select({
+      userId: userMcpAccess.userId,
+      mcpName: userMcpAccess.mcpName,
+      enabled: userMcpAccess.enabled,
+    })
+    .from(userMcpAccess)
+    .where(eq(userMcpAccess.enabled, true));
+}
+
 export type AdminUser = Awaited<ReturnType<typeof getUsers>>[number];
+export type UserMcpAccessRow = Awaited<ReturnType<typeof getUserMcpAccess>>[number];
 
 // ─── API Keys ───
 
@@ -144,6 +158,66 @@ export async function getApiUsageStats() {
 }
 
 export type ApiUsageStats = Awaited<ReturnType<typeof getApiUsageStats>>;
+
+// ─── MCP Usage Stats ───
+
+export async function getMcpUsageStats() {
+  await requireAdmin();
+
+  const now = new Date();
+  const sevenDaysAgo = new Date(now);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const thirtyDaysAgo = new Date(now);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const [totalCalls, byUser, byTool, recentErrors] = await Promise.all([
+    db
+      .select({
+        today: sql<number>`count(*) FILTER (WHERE ${mcpToolUsage.createdAt} >= ${new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()})::int`,
+        week: sql<number>`count(*) FILTER (WHERE ${mcpToolUsage.createdAt} >= ${sevenDaysAgo.toISOString()})::int`,
+        month: sql<number>`count(*) FILTER (WHERE ${mcpToolUsage.createdAt} >= ${thirtyDaysAgo.toISOString()})::int`,
+      })
+      .from(mcpToolUsage)
+      .then((r) => r[0]),
+    db
+      .select({
+        userName: userInNeonAuth.name,
+        mcpName: mcpToolUsage.mcpName,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(mcpToolUsage)
+      .innerJoin(userInNeonAuth, eq(mcpToolUsage.userId, userInNeonAuth.id))
+      .where(sql`${mcpToolUsage.createdAt} >= ${thirtyDaysAgo.toISOString()}`)
+      .groupBy(userInNeonAuth.name, mcpToolUsage.mcpName)
+      .orderBy(sql`count(*) DESC`),
+    db
+      .select({
+        mcpName: mcpToolUsage.mcpName,
+        toolName: mcpToolUsage.toolName,
+        count: sql<number>`count(*)::int`,
+        avgDuration: sql<number>`COALESCE(avg("durationMs"), 0)::int`,
+      })
+      .from(mcpToolUsage)
+      .where(sql`${mcpToolUsage.createdAt} >= ${thirtyDaysAgo.toISOString()}`)
+      .groupBy(mcpToolUsage.mcpName, mcpToolUsage.toolName)
+      .orderBy(sql`count(*) DESC`),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(mcpToolUsage)
+      .where(sql`${mcpToolUsage.error} = true AND ${mcpToolUsage.createdAt} >= ${thirtyDaysAgo.toISOString()}`)
+      .then((r) => r[0]),
+  ]);
+
+  return {
+    totalCalls,
+    byUser,
+    byTool,
+    errors: recentErrors.count,
+  };
+}
+
+export type McpUsageStats = Awaited<ReturnType<typeof getMcpUsageStats>>;
 
 // ─── Mutations ───
 

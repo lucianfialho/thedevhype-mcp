@@ -1,15 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import type { AdminUser } from '../actions';
+import type { AdminUser, UserMcpAccessRow } from '../actions';
 import { banUser, unbanUser, setUserRole } from '../actions';
 
 interface UsersTabProps {
   users: AdminUser[];
+  userMcps: UserMcpAccessRow[];
   onRefresh: () => void;
 }
 
-export function UsersTab({ users, onRefresh }: UsersTabProps) {
+export function UsersTab({ users, userMcps, onRefresh }: UsersTabProps) {
   const [banModal, setBanModal] = useState<{ userId: string; name: string } | null>(null);
   const [banReason, setBanReason] = useState('');
   const [loading, setLoading] = useState<string | null>(null);
@@ -97,7 +98,21 @@ export function UsersTab({ users, onRefresh }: UsersTabProps) {
                   )}
                 </td>
                 <td className="py-3 pr-4">
-                  <span className="text-xs text-zinc-500">{user.mcpCount}</span>
+                  <div className="flex flex-wrap gap-1">
+                    {userMcps
+                      .filter((m) => m.userId === user.id)
+                      .map((m) => (
+                        <span
+                          key={m.mcpName}
+                          className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                        >
+                          {m.mcpName}
+                        </span>
+                      ))}
+                    {userMcps.filter((m) => m.userId === user.id).length === 0 && (
+                      <span className="text-xs text-zinc-300 dark:text-zinc-600">—</span>
+                    )}
+                  </div>
                 </td>
                 <td className="py-3 pr-4">
                   <span className="text-xs text-zinc-500">{user.apiKeyCount > 0 ? 'sim' : 'nao'}</span>
