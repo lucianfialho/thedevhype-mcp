@@ -7,6 +7,21 @@ interface McpTool {
   description: string;
 }
 
+const BRAZILIAN_STATES = [
+  { uf: 'AC', name: 'Acre' }, { uf: 'AL', name: 'Alagoas' }, { uf: 'AP', name: 'Amapa' },
+  { uf: 'AM', name: 'Amazonas' }, { uf: 'BA', name: 'Bahia' }, { uf: 'CE', name: 'Ceara' },
+  { uf: 'DF', name: 'Distrito Federal' }, { uf: 'ES', name: 'Espirito Santo' },
+  { uf: 'GO', name: 'Goias' }, { uf: 'MA', name: 'Maranhao' }, { uf: 'MT', name: 'Mato Grosso' },
+  { uf: 'MS', name: 'Mato Grosso do Sul' }, { uf: 'MG', name: 'Minas Gerais' },
+  { uf: 'PA', name: 'Para' }, { uf: 'PB', name: 'Paraiba' }, { uf: 'PR', name: 'Parana' },
+  { uf: 'PE', name: 'Pernambuco' }, { uf: 'PI', name: 'Piaui' },
+  { uf: 'RJ', name: 'Rio de Janeiro' }, { uf: 'RN', name: 'Rio Grande do Norte' },
+  { uf: 'RS', name: 'Rio Grande do Sul' }, { uf: 'RO', name: 'Rondonia' },
+  { uf: 'RR', name: 'Roraima' }, { uf: 'SC', name: 'Santa Catarina' },
+  { uf: 'SP', name: 'Sao Paulo' }, { uf: 'SE', name: 'Sergipe' },
+  { uf: 'TO', name: 'Tocantins' },
+];
+
 interface SettingsTabProps {
   mcpName: string;
   mcpUrl: string;
@@ -14,6 +29,12 @@ interface SettingsTabProps {
   initialEnabled: boolean;
   initialHasApiKey: boolean;
   maskedApiKey: string | null;
+  showContributeToggle?: boolean;
+  initialContribute?: boolean;
+  onContributeChange?: (value: boolean) => void;
+  showDefaultState?: boolean;
+  initialDefaultState?: string | null;
+  publicApiKey?: string | null;
 }
 
 export function SettingsTab({
@@ -23,6 +44,12 @@ export function SettingsTab({
   initialEnabled,
   initialHasApiKey,
   maskedApiKey,
+  showContributeToggle = false,
+  initialContribute = false,
+  onContributeChange,
+  showDefaultState = false,
+  initialDefaultState = null,
+  publicApiKey = null,
 }: SettingsTabProps) {
   const [enabled, setEnabled] = useState(initialEnabled);
   const [isPending, setIsPending] = useState(false);
@@ -31,6 +58,10 @@ export function SettingsTab({
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
+  const [contribute, setContribute] = useState(initialContribute);
+  const [contributePending, setContributePending] = useState(false);
+  const [defaultState, setDefaultState] = useState(initialDefaultState ?? '');
+  const [statePending, setStatePending] = useState(false);
 
   async function handleToggle() {
     setIsPending(true);
@@ -92,6 +123,59 @@ export function SettingsTab({
     await navigator.clipboard.writeText(mcpUrl);
     setCopiedUrl(true);
     setTimeout(() => setCopiedUrl(false), 2000);
+  }
+
+  async function handleContributeToggle() {
+    setContributePending(true);
+    const prev = contribute;
+    setContribute(!prev);
+
+    try {
+      const res = await fetch('/api/mcp-access/contribute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mcpName }),
+      });
+
+      if (!res.ok) {
+        setContribute(prev);
+        return;
+      }
+
+      const data = await res.json();
+      setContribute(data.contributePublicData);
+      onContributeChange?.(data.contributePublicData);
+    } catch {
+      setContribute(prev);
+    } finally {
+      setContributePending(false);
+    }
+  }
+
+  async function handleDefaultStateChange(uf: string) {
+    if (!publicApiKey) return;
+    setStatePending(true);
+    const prev = defaultState;
+    setDefaultState(uf);
+
+    try {
+      const res = await fetch('/api/v1/settings', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': publicApiKey,
+        },
+        body: JSON.stringify({ default_state: uf || null }),
+      });
+
+      if (!res.ok) {
+        setDefaultState(prev);
+      }
+    } catch {
+      setDefaultState(prev);
+    } finally {
+      setStatePending(false);
+    }
   }
 
   return (
@@ -209,6 +293,66 @@ export function SettingsTab({
                 <span className="text-zinc-500">{tool.description}</span>
               </div>
             ))}
+          </div>
+        </section>
+      )}
+
+      {/* Contribute public data toggle */}
+      {showContributeToggle && enabled && (
+        <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                Contribuir dados para API publica
+              </h3>
+              <p className="mt-0.5 text-xs text-zinc-400">
+                Seus precos serao anonimizados e disponibilizados na API publica de precos de supermercado.
+              </p>
+            </div>
+            <button
+              onClick={handleContributeToggle}
+              disabled={contributePending}
+              role="switch"
+              aria-checked={contribute}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                contribute ? 'bg-zinc-900 dark:bg-zinc-100' : 'bg-zinc-200 dark:bg-zinc-700'
+              }`}
+            >
+              <span
+                className={`pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform dark:bg-zinc-900 ${
+                  contribute ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* Default state for API */}
+      {showDefaultState && enabled && publicApiKey && (
+        <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
+          <div>
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+              Estado padrao da API
+            </h3>
+            <p className="mt-0.5 text-xs text-zinc-400">
+              Filtra automaticamente resultados por estado quando nenhum &quot;state&quot; for enviado na query.
+            </p>
+          </div>
+          <div className="mt-3">
+            <select
+              value={defaultState}
+              onChange={(e) => handleDefaultStateChange(e.target.value)}
+              disabled={statePending}
+              className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 transition-colors focus:border-zinc-400 focus:outline-none disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-zinc-500"
+            >
+              <option value="">Todos (sem filtro)</option>
+              {BRAZILIAN_STATES.map((s) => (
+                <option key={s.uf} value={s.uf}>
+                  {s.uf} — {s.name}
+                </option>
+              ))}
+            </select>
           </div>
         </section>
       )}

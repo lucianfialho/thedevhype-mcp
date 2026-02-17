@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { auth } from '@/app/lib/auth/server';
 import { db } from '@/app/lib/db';
-import { userMcpAccess } from '@/app/lib/db/public.schema';
+import { userMcpAccess, apiKeys } from '@/app/lib/db/public.schema';
 import { eq, and } from 'drizzle-orm';
 import { registry } from '@/app/lib/mcp/servers';
 import { LucianDashboard } from './lucian-dashboard';
@@ -36,13 +36,20 @@ export default async function LucianPage({
         .where(and(eq(userMcpAccess.userId, userId), eq(userMcpAccess.mcpName, 'lucian'))))[0]
     : undefined;
 
-  const [notasData, notasSummary, produtosData, produtosSummary, gastosResult] =
+  const [notasData, notasSummary, produtosData, produtosSummary, gastosResult, userApiKey] =
     await Promise.all([
       getNotas(),
       getNotasSummary(),
       getProdutos(),
       getProdutosSummary(),
       getGastosData(),
+      userId
+        ? db.select({ key: apiKeys.key, defaultState: apiKeys.defaultState })
+            .from(apiKeys)
+            .where(eq(apiKeys.userId, userId))
+            .limit(1)
+            .then(r => r[0])
+        : Promise.resolve(undefined),
     ]);
 
   const mcpConfig = server
@@ -52,6 +59,9 @@ export default async function LucianPage({
         enabled: access?.enabled ?? false,
         hasApiKey: !!access?.apiKey,
         maskedApiKey: access?.apiKey ? maskApiKey(access.apiKey) : null,
+        contributePublicData: access?.contributePublicData ?? false,
+        defaultState: userApiKey?.defaultState ?? null,
+        publicApiKey: userApiKey?.key ?? null,
       }
     : null;
 

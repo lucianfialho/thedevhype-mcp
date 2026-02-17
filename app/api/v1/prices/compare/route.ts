@@ -37,7 +37,7 @@ async function fetchShoppingWithCache(
 }
 
 export async function GET(request: NextRequest) {
-  return withApiAuth(request, async (req) => {
+  return withApiAuth(request, async (req, apiKey) => {
     const params = req.nextUrl.searchParams;
 
     const productQuery = params.get('product');
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     const city = params.get('city');
     if (city) conditions.push(ilike(stores.cidade, `%${city}%`));
 
-    const state = params.get('state');
+    const state = params.get('state') || apiKey.defaultState;
     if (state) conditions.push(eq(stores.estado, state.toUpperCase()));
 
     const dbQuery = db

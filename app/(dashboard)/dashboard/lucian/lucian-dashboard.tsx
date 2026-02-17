@@ -64,6 +64,9 @@ interface LucianDashboardProps {
     enabled: boolean;
     hasApiKey: boolean;
     maskedApiKey: string | null;
+    contributePublicData: boolean;
+    defaultState: string | null;
+    publicApiKey: string | null;
   } | null;
 }
 
@@ -121,6 +124,11 @@ export function LucianDashboard({
           initialEnabled={mcpConfig.enabled}
           initialHasApiKey={mcpConfig.hasApiKey}
           maskedApiKey={mcpConfig.maskedApiKey}
+          showContributeToggle
+          initialContribute={mcpConfig.contributePublicData}
+          showDefaultState
+          initialDefaultState={mcpConfig.defaultState}
+          publicApiKey={mcpConfig.publicApiKey}
         />
       )}
     </>

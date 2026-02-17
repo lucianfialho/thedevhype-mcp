@@ -71,6 +71,13 @@
       "when": 1771337286357,
       "tag": "0009_acoustic_slapstick",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1771338761537,
+      "tag": "0010_cool_stepford_cuckoos",
+      "breakpoints": true
     }
   ]
 }

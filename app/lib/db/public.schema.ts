@@ -7,6 +7,8 @@ import {
   boolean,
   unique,
   bigint,
+  integer,
+  smallint,
 } from 'drizzle-orm/pg-core';
 import { sql, type InferSelectModel, type InferInsertModel } from 'drizzle-orm';
 
@@ -46,6 +48,7 @@ export const userMcpAccess = pgTable(
     mcpName: text().notNull(),
     apiKey: text(),
     enabled: boolean().default(true).notNull(),
+    contributePublicData: boolean().default(false).notNull(),
     createdAt: timestamp({ withTimezone: true, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -55,3 +58,46 @@ export const userMcpAccess = pgTable(
 
 export type UserMcpAccess = InferSelectModel<typeof userMcpAccess>;
 export type NewUserMcpAccess = InferInsertModel<typeof userMcpAccess>;
+
+// --- API keys for public API ---
+
+export const apiKeys = pgTable('api_keys', {
+  id: bigint({ mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  userId: uuid().references(() => userInNeonAuth.id),
+  key: text().notNull().unique(),
+  name: text().notNull(),
+  email: text().notNull(),
+  tier: text().default('free').notNull(),
+  rateLimit: integer().default(100).notNull(),
+  dailyLimit: integer().default(1000).notNull(),
+  requestsToday: integer().default(0).notNull(),
+  requestsThisHour: integer().default(0).notNull(),
+  lastRequestAt: timestamp({ withTimezone: true, mode: 'string' }),
+  defaultState: text(),
+  enabled: boolean().default(true).notNull(),
+  createdAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
+
+export type ApiKey = InferSelectModel<typeof apiKeys>;
+export type NewApiKey = InferInsertModel<typeof apiKeys>;
+
+// --- API usage log ---
+
+export const apiUsageLog = pgTable('api_usage_log', {
+  id: bigint({ mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  apiKeyId: bigint({ mode: 'number' })
+    .notNull()
+    .references(() => apiKeys.id),
+  endpoint: text().notNull(),
+  method: text().notNull(),
+  statusCode: smallint().notNull(),
+  responseTimeMs: integer(),
+  createdAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
+
+export type ApiUsageLog = InferSelectModel<typeof apiUsageLog>;
+export type NewApiUsageLog = InferInsertModel<typeof apiUsageLog>;
