@@ -281,6 +281,26 @@ export async function getGastosData(periodDias = 30, agruparPor: 'categoria' | '
   };
 }
 
+// ─── Deletar Nota ───
+
+export async function deleteNota(notaId: number) {
+  const userId = await requireUserId();
+
+  // Verify ownership
+  const [nota] = await db
+    .select({ id: extractions.id })
+    .from(extractions)
+    .where(and(eq(extractions.id, notaId), eq(extractions.userId, userId)));
+
+  if (!nota) return { error: 'Nota nao encontrada.' };
+
+  // Delete price entries first, then the extraction
+  await db.delete(priceEntries).where(eq(priceEntries.extractionId, notaId));
+  await db.delete(extractions).where(eq(extractions.id, notaId));
+
+  return { ok: true };
+}
+
 // ─── Classificar Produto ───
 
 export async function classificarProduto(produtoId: number, categoria: string) {

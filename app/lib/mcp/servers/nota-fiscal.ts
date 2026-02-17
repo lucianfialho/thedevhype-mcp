@@ -118,11 +118,23 @@ export const notaFiscalServer: McpServerDefinition = {
 
         const nf = resultado.notaFiscal;
 
-        // 1. Save extraction
+        // 1. Save extraction (skip if duplicate URL for this user)
         const [extraction] = await db
           .insert(extractions)
           .values({ userId, url: input, data: nf })
+          .onConflictDoNothing({ target: [extractions.userId, extractions.url] })
           .returning({ id: extractions.id });
+
+        if (!extraction) {
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: 'Esta nota fiscal já foi registrada anteriormente. Nenhuma duplicata foi criada.',
+              },
+            ],
+          };
+        }
 
         // 2. Upsert store by CNPJ
         const [store] = await db

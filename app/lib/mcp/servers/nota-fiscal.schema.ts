@@ -17,17 +17,21 @@ export const mcpNotaFiscal = pgSchema('mcp_nota_fiscal');
 
 // --- Extractions (existing) ---
 
-export const extractions = mcpNotaFiscal.table('extractions', {
-  id: bigint({ mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
-  userId: uuid()
-    .notNull()
-    .references(() => userInNeonAuth.id),
-  url: text().notNull(),
-  data: jsonb().notNull(),
-  createdAt: timestamp({ withTimezone: true, mode: 'string' })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-});
+export const extractions = mcpNotaFiscal.table(
+  'extractions',
+  {
+    id: bigint({ mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+    userId: uuid()
+      .notNull()
+      .references(() => userInNeonAuth.id),
+    url: text().notNull(),
+    data: jsonb().notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [unique('extractions_user_url').on(table.userId, table.url)],
+);
 
 export type Extraction = InferSelectModel<typeof extractions>;
 export type NewExtraction = InferInsertModel<typeof extractions>;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { getNotas } from '../actions';
+import { getNotas, deleteNota } from '../actions';
 
 interface NotaRow {
   id: number;
@@ -21,12 +21,14 @@ interface NotasSummary {
 interface NotasTabProps {
   initialNotas: NotaRow[];
   summary: NotasSummary;
+  onSummaryChange?: () => void;
 }
 
-export function NotasTab({ initialNotas, summary }: NotasTabProps) {
+export function NotasTab({ initialNotas, summary, onSummaryChange }: NotasTabProps) {
   const [notas, setNotas] = useState(initialNotas);
   const [filtroLoja, setFiltroLoja] = useState('');
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState<number | null>(null);
   const [limit, setLimit] = useState(20);
 
   async function handleFilter() {
@@ -34,6 +36,15 @@ export function NotasTab({ initialNotas, summary }: NotasTabProps) {
     const data = await getNotas(filtroLoja || undefined, limit);
     setNotas(data);
     setLoading(false);
+  }
+
+  async function handleDelete(notaId: number) {
+    if (!confirm('Excluir esta nota e todos os precos associados?')) return;
+    setDeleting(notaId);
+    await deleteNota(notaId);
+    setNotas((prev) => prev.filter((n) => n.id !== notaId));
+    setDeleting(null);
+    onSummaryChange?.();
   }
 
   async function handleLoadMore() {
@@ -107,10 +118,20 @@ export function NotasTab({ initialNotas, summary }: NotasTabProps) {
                   {new Date(nota.createdAt).toLocaleDateString('pt-BR')} · {nota.totalItens} itens
                 </p>
               </div>
-              <div className="ml-4 shrink-0 text-right">
+              <div className="ml-4 flex shrink-0 items-center gap-3">
                 <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                   R$ {nota.valorAPagar.toFixed(2)}
                 </p>
+                <button
+                  onClick={() => handleDelete(nota.id)}
+                  disabled={deleting === nota.id}
+                  className="rounded p-1 text-zinc-300 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:text-zinc-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                  title="Excluir nota"
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M2 4h12M5.33 4V2.67a1.33 1.33 0 011.34-1.34h2.66a1.33 1.33 0 011.34 1.34V4m2 0v9.33a1.33 1.33 0 01-1.34 1.34H4.67a1.33 1.33 0 01-1.34-1.34V4h9.34z" />
+                  </svg>
+                </button>
               </div>
             </div>
           ))}
