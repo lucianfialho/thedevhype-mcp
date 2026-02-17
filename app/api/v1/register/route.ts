@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
-import { apiKeys } from '@/app/lib/db/public.schema';
+import { apiKeys, userInNeonAuth } from '@/app/lib/db/public.schema';
 import { eq } from 'drizzle-orm';
+import { auth } from '@/app/lib/auth/server';
 import crypto from 'crypto';
 
 export async function POST(request: NextRequest) {
@@ -37,12 +38,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Try to link to logged-in user, fallback to matching by email
+    let userId: string | undefined;
+    const { data: session } = await auth.getSession().catch(() => ({ data: null }));
+    if (session?.user?.id) {
+      userId = session.user.id;
+    } else {
+      const [userByEmail] = await db
+        .select({ id: userInNeonAuth.id })
+        .from(userInNeonAuth)
+        .where(eq(userInNeonAuth.email, email))
+        .limit(1);
+      if (userByEmail) userId = userByEmail.id;
+    }
+
     const key = `pk-${crypto.randomUUID()}`;
 
     await db.insert(apiKeys).values({
       key,
       name,
       email,
+      userId: userId ?? null,
       tier: 'free',
       rateLimit: 100,
       dailyLimit: 1000,
