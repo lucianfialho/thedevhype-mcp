@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
+import { getGastosTrend, type Granularidade } from '../actions';
 
 const MONTH_SHORT: Record<string, string> = {
   '01': 'Jan', '02': 'Fev', '03': 'Mar', '04': 'Abr',
@@ -8,9 +9,61 @@ const MONTH_SHORT: Record<string, string> = {
   '09': 'Set', '10': 'Out', '11': 'Nov', '12': 'Dez',
 };
 
-function fmtMonth(ym: string) {
-  const [y, m] = ym.split('-');
-  return `${MONTH_SHORT[m] || m} ${y}`;
+const WEEKDAY_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+
+const GRANULARIDADE_LABELS: Record<Granularidade, string> = {
+  diario: 'Diario',
+  semanal: 'Semanal',
+  mensal: 'Mensal',
+};
+
+const PERIOD_OPTIONS: Record<Granularidade, Array<{ dias: number; label: string }>> = {
+  diario: [
+    { dias: 7, label: '7d' },
+    { dias: 14, label: '14d' },
+    { dias: 30, label: '30d' },
+  ],
+  semanal: [
+    { dias: 28, label: '4 sem' },
+    { dias: 56, label: '8 sem' },
+    { dias: 84, label: '12 sem' },
+  ],
+  mensal: [
+    { dias: 90, label: '3m' },
+    { dias: 180, label: '6m' },
+    { dias: 365, label: '1a' },
+  ],
+};
+
+function fmtPeriodLabel(period: string, granularidade: Granularidade) {
+  if (granularidade === 'mensal') {
+    const [y, m] = period.split('-');
+    return `${MONTH_SHORT[m] || m} ${y}`;
+  }
+  if (granularidade === 'semanal') {
+    const d = new Date(period + 'T12:00:00');
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return `${d.getDate()}/${m}`;
+  }
+  // diario
+  const d = new Date(period + 'T12:00:00');
+  const day = WEEKDAY_SHORT[d.getDay()];
+  return `${day} ${d.getDate()}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function fmtPeriodFull(period: string, granularidade: Granularidade) {
+  if (granularidade === 'mensal') {
+    const [y, m] = period.split('-');
+    return `${MONTH_SHORT[m] || m} ${y}`;
+  }
+  if (granularidade === 'semanal') {
+    const start = new Date(period + 'T12:00:00');
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    return `${start.getDate()}/${String(start.getMonth() + 1).padStart(2, '0')} - ${end.getDate()}/${String(end.getMonth() + 1).padStart(2, '0')}`;
+  }
+  const d = new Date(period + 'T12:00:00');
+  return `${d.getDate()}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 }
 
 function fmtCurrency(v: number) {
@@ -26,53 +79,105 @@ const CATEGORY_COLORS = [
 ];
 
 export interface GastosTrendData {
-  monthly: Array<{ month: string; total: number }>;
-  byCategory: Array<{ month: string; categoria: string; total: number }>;
+  granularidade: Granularidade;
+  timeline: Array<{ period: string; total: number }>;
+  byCategory: Array<{ period: string; categoria: string; total: number }>;
   categories: string[];
   comparison: {
-    current: { month: string; total: number; compras: number };
-    previous: { month: string; total: number; compras: number };
+    current: { period: string; total: number; compras: number };
+    previous: { period: string; total: number; compras: number };
     change: number;
   };
 }
 
-export function GastosTrendChart({ data }: { data: GastosTrendData }) {
-  const { monthly, byCategory, categories, comparison } = data;
+export function GastosTrendChart({ data: initialData }: { data: GastosTrendData }) {
+  const [data, setData] = useState(initialData);
+  const [granularidade, setGranularidade] = useState<Granularidade>(initialData.granularidade);
+  const [dias, setDias] = useState(() => PERIOD_OPTIONS[initialData.granularidade][1].dias);
+  const [isPending, startTransition] = useTransition();
 
-  if (monthly.length === 0) {
-    return (
-      <p className="py-6 text-center text-sm text-zinc-400">
-        Sem dados de tendencia ainda.
-      </p>
-    );
+  const { timeline, byCategory, categories, comparison } = data;
+
+  function handleChange(newGran: Granularidade, newDias: number) {
+    setGranularidade(newGran);
+    setDias(newDias);
+    startTransition(async () => {
+      const result = await getGastosTrend(newGran, newDias);
+      setData(result);
+    });
   }
 
   return (
     <div className="mb-6 space-y-4">
-      {/* Comparison card */}
-      <ComparisonCard comparison={comparison} />
-
-      {/* Monthly line chart */}
-      <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-        <h3 className="mb-3 text-sm font-medium text-zinc-600 dark:text-zinc-400">
-          Tendencia mensal
-        </h3>
-        <MonthlyLineChart monthly={monthly} />
+      {/* Granularity + Period controls */}
+      <div className="flex flex-wrap gap-2">
+        <div className="flex gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
+          {(Object.keys(GRANULARIDADE_LABELS) as Granularidade[]).map((g) => (
+            <button
+              key={g}
+              onClick={() => handleChange(g, PERIOD_OPTIONS[g][1].dias)}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                granularidade === g
+                  ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100'
+                  : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+              }`}
+            >
+              {GRANULARIDADE_LABELS[g]}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
+          {PERIOD_OPTIONS[granularidade].map((opt) => (
+            <button
+              key={opt.dias}
+              onClick={() => handleChange(granularidade, opt.dias)}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                dias === opt.dias
+                  ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100'
+                  : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Category breakdown stacked bars */}
-      {categories.length > 0 && byCategory.length > 0 && (
-        <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-          <h3 className="mb-3 text-sm font-medium text-zinc-600 dark:text-zinc-400">
-            Top categorias por mes
-          </h3>
-          <CategoryStackedBars
-            monthly={monthly}
-            byCategory={byCategory}
-            categories={categories}
-          />
-        </div>
-      )}
+      <div className={isPending ? 'opacity-60 transition-opacity' : ''}>
+        {timeline.length === 0 ? (
+          <p className="py-6 text-center text-sm text-zinc-400">
+            Sem dados de tendencia para este periodo.
+          </p>
+        ) : (
+          <>
+            {/* Comparison card */}
+            <ComparisonCard comparison={comparison} granularidade={granularidade} />
+
+            {/* Line chart */}
+            <div className="mt-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+              <h3 className="mb-3 text-sm font-medium text-zinc-600 dark:text-zinc-400">
+                Tendencia {GRANULARIDADE_LABELS[granularidade].toLowerCase()}
+              </h3>
+              <LineChart timeline={timeline} granularidade={granularidade} />
+            </div>
+
+            {/* Category stacked bars */}
+            {categories.length > 0 && byCategory.length > 0 && (
+              <div className="mt-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+                <h3 className="mb-3 text-sm font-medium text-zinc-600 dark:text-zinc-400">
+                  Top categorias por periodo
+                </h3>
+                <CategoryStackedBars
+                  timeline={timeline}
+                  byCategory={byCategory}
+                  categories={categories}
+                  granularidade={granularidade}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -81,8 +186,10 @@ export function GastosTrendChart({ data }: { data: GastosTrendData }) {
 
 function ComparisonCard({
   comparison,
+  granularidade,
 }: {
   comparison: GastosTrendData['comparison'];
+  granularidade: Granularidade;
 }) {
   const { current, previous, change } = comparison;
   const isUp = change > 0;
@@ -91,14 +198,14 @@ function ComparisonCard({
   return (
     <div className="grid grid-cols-2 gap-3">
       <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-        <p className="text-xs text-zinc-400">{fmtMonth(current.month)}</p>
+        <p className="text-xs text-zinc-400">{fmtPeriodFull(current.period, granularidade)}</p>
         <p className="mt-1 text-xl font-bold text-zinc-900 dark:text-zinc-100">
           {fmtCurrency(current.total)}
         </p>
         <p className="text-xs text-zinc-400">{current.compras} compras</p>
       </div>
       <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-        <p className="text-xs text-zinc-400">{fmtMonth(previous.month)}</p>
+        <p className="text-xs text-zinc-400">{fmtPeriodFull(previous.period, granularidade)}</p>
         <p className="mt-1 text-xl font-bold text-zinc-900 dark:text-zinc-100">
           {fmtCurrency(previous.total)}
         </p>
@@ -121,12 +228,14 @@ function ComparisonCard({
   );
 }
 
-/* ─── Monthly Line Chart (SVG) ─── */
+/* ─── Line Chart (SVG) ─── */
 
-function MonthlyLineChart({
-  monthly,
+function LineChart({
+  timeline,
+  granularidade,
 }: {
-  monthly: Array<{ month: string; total: number }>;
+  timeline: Array<{ period: string; total: number }>;
+  granularidade: Granularidade;
 }) {
   const [hovered, setHovered] = useState<number | null>(null);
 
@@ -137,22 +246,24 @@ function MonthlyLineChart({
   const chartW = W - PX * 2;
   const chartH = H - PY * 2;
 
-  const maxVal = Math.max(...monthly.map((m) => m.total), 1);
-  const minVal = 0;
-  const range = maxVal - minVal || 1;
+  const maxVal = Math.max(...timeline.map((m) => m.total), 1);
+  const range = maxVal || 1;
 
-  const points = monthly.map((m, i) => ({
-    x: PX + (monthly.length === 1 ? chartW / 2 : (i / (monthly.length - 1)) * chartW),
-    y: PY + chartH - ((m.total - minVal) / range) * chartH,
+  const points = timeline.map((m, i) => ({
+    x: PX + (timeline.length === 1 ? chartW / 2 : (i / (timeline.length - 1)) * chartW),
+    y: PY + chartH - (m.total / range) * chartH,
     ...m,
   }));
 
   const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
 
-  // Y axis ticks
+  // Show fewer X labels when there are many points
+  const maxXLabels = granularidade === 'diario' ? 10 : 12;
+  const step = Math.max(1, Math.ceil(points.length / maxXLabels));
+
   const ticks = 4;
   const yLabels = Array.from({ length: ticks + 1 }, (_, i) => {
-    const val = minVal + (range / ticks) * i;
+    const val = (range / ticks) * i;
     const y = PY + chartH - (i / ticks) * chartH;
     return { val, y };
   });
@@ -167,19 +278,11 @@ function MonthlyLineChart({
       {yLabels.map((t, i) => (
         <g key={i}>
           <line
-            x1={PX}
-            x2={W - PX}
-            y1={t.y}
-            y2={t.y}
+            x1={PX} x2={W - PX} y1={t.y} y2={t.y}
             className="stroke-zinc-200 dark:stroke-zinc-800"
             strokeWidth={0.5}
           />
-          <text
-            x={PX - 6}
-            y={t.y + 3}
-            textAnchor="end"
-            className="fill-zinc-400 text-[9px]"
-          >
+          <text x={PX - 6} y={t.y + 3} textAnchor="end" className="fill-zinc-400 text-[9px]">
             {t.val >= 1000 ? `${(t.val / 1000).toFixed(1)}k` : t.val.toFixed(0)}
           </text>
         </g>
@@ -203,44 +306,28 @@ function MonthlyLineChart({
 
       {/* Points + labels */}
       {points.map((p, i) => (
-        <g
-          key={i}
-          onMouseEnter={() => setHovered(i)}
-          className="cursor-pointer"
-        >
-          {/* Hit area */}
+        <g key={i} onMouseEnter={() => setHovered(i)} className="cursor-pointer">
           <circle cx={p.x} cy={p.y} r={12} fill="transparent" />
-          {/* Dot */}
           <circle
-            cx={p.x}
-            cy={p.y}
-            r={hovered === i ? 5 : 3.5}
+            cx={p.x} cy={p.y}
+            r={hovered === i ? 5 : timeline.length > 20 ? 2 : 3.5}
             className="fill-zinc-600 dark:fill-zinc-300"
           />
-          {/* X label */}
-          <text
-            x={p.x}
-            y={H - 4}
-            textAnchor="middle"
-            className="fill-zinc-400 text-[9px]"
-          >
-            {fmtMonth(p.month)}
-          </text>
-          {/* Value tooltip */}
+          {/* X label (show every Nth) */}
+          {i % step === 0 && (
+            <text x={p.x} y={H - 4} textAnchor="middle" className="fill-zinc-400 text-[9px]">
+              {fmtPeriodLabel(p.period, granularidade)}
+            </text>
+          )}
+          {/* Tooltip */}
           {hovered === i && (
             <>
               <rect
-                x={p.x - 38}
-                y={p.y - 22}
-                width={76}
-                height={16}
-                rx={4}
+                x={p.x - 42} y={p.y - 22} width={84} height={16} rx={4}
                 className="fill-zinc-800 dark:fill-zinc-200"
               />
               <text
-                x={p.x}
-                y={p.y - 11}
-                textAnchor="middle"
+                x={p.x} y={p.y - 11} textAnchor="middle"
                 className="fill-zinc-100 dark:fill-zinc-900 text-[9px] font-medium"
               >
                 {fmtCurrency(p.total)}
@@ -256,25 +343,26 @@ function MonthlyLineChart({
 /* ─── Category Stacked Bars ─── */
 
 function CategoryStackedBars({
-  monthly,
+  timeline,
   byCategory,
   categories,
+  granularidade,
 }: {
-  monthly: Array<{ month: string; total: number }>;
-  byCategory: Array<{ month: string; categoria: string; total: number }>;
+  timeline: Array<{ period: string; total: number }>;
+  byCategory: Array<{ period: string; categoria: string; total: number }>;
   categories: string[];
+  granularidade: Granularidade;
 }) {
-  // Build map: month -> category -> total
   const catMap = new Map<string, Map<string, number>>();
   for (const row of byCategory) {
-    if (!catMap.has(row.month)) catMap.set(row.month, new Map());
-    catMap.get(row.month)!.set(row.categoria, row.total);
+    if (!catMap.has(row.period)) catMap.set(row.period, new Map());
+    catMap.get(row.period)!.set(row.categoria, row.total);
   }
 
-  const months = monthly.map((m) => m.month);
-  const maxMonthTotal = Math.max(
-    ...months.map((m) => {
-      const cats = catMap.get(m);
+  const periods = timeline.map((m) => m.period);
+  const maxPeriodTotal = Math.max(
+    ...periods.map((p) => {
+      const cats = catMap.get(p);
       if (!cats) return 0;
       let sum = 0;
       cats.forEach((v) => (sum += v));
@@ -298,17 +386,17 @@ function CategoryStackedBars({
       </div>
 
       {/* Bars */}
-      {months.map((m) => {
-        const cats = catMap.get(m) || new Map<string, number>();
+      {periods.map((p) => {
+        const cats = catMap.get(p) || new Map<string, number>();
         return (
-          <div key={m} className="flex items-center gap-3">
-            <span className="w-16 shrink-0 text-xs text-zinc-500 dark:text-zinc-400">
-              {fmtMonth(m)}
+          <div key={p} className="flex items-center gap-3">
+            <span className="w-20 shrink-0 text-xs text-zinc-500 dark:text-zinc-400">
+              {fmtPeriodLabel(p, granularidade)}
             </span>
             <div className="relative flex h-5 flex-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
               {categories.map((cat, i) => {
                 const val = cats.get(cat) || 0;
-                const pct = (val / maxMonthTotal) * 100;
+                const pct = (val / maxPeriodTotal) * 100;
                 if (pct === 0) return null;
                 return (
                   <div
@@ -324,9 +412,7 @@ function CategoryStackedBars({
               })}
             </div>
             <span className="w-20 shrink-0 text-right text-xs text-zinc-500">
-              {fmtCurrency(
-                categories.reduce((s, c) => s + (cats.get(c) || 0), 0),
-              )}
+              {fmtCurrency(categories.reduce((s, c) => s + (cats.get(c) || 0), 0))}
             </span>
           </div>
         );

@@ -276,17 +276,32 @@ export async function getGastosData(periodDias = 30, agruparPor: 'categoria' | '
 
 // ─── Gastos Trend ───
 
-export async function getGastosTrend(meses = 6) {
+export type Granularidade = 'diario' | 'semanal' | 'mensal';
+
+export async function getGastosTrend(
+  granularidade: Granularidade = 'mensal',
+  dias = granularidade === 'diario' ? 30 : granularidade === 'semanal' ? 84 : 180,
+) {
   const userId = await requireUserId();
 
   const sinceDate = new Date();
-  sinceDate.setMonth(sinceDate.getMonth() - meses);
-  const sinceStr = `${sinceDate.getFullYear()}-${String(sinceDate.getMonth() + 1).padStart(2, '0')}-01`;
+  sinceDate.setDate(sinceDate.getDate() - dias);
+  const sinceStr = sinceDate.toISOString().slice(0, 10);
 
-  // Monthly totals
-  const monthly = await db
+  // SQL expressions per granularity
+  let periodExpr: ReturnType<typeof sql<string>>;
+  if (granularidade === 'diario') {
+    periodExpr = sql<string>`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM-DD')`;
+  } else if (granularidade === 'semanal') {
+    periodExpr = sql<string>`to_char(date_trunc('week', ${priceEntries.dataCompra}::date), 'YYYY-MM-DD')`;
+  } else {
+    periodExpr = sql<string>`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM')`;
+  }
+
+  // Period totals
+  const timeline = await db
     .select({
-      month: sql<string>`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM')`,
+      period: periodExpr,
       total: sql<number>`COALESCE(sum(${priceEntries.valorTotal}::numeric), 0)::float`,
     })
     .from(priceEntries)
@@ -296,10 +311,10 @@ export async function getGastosTrend(meses = 6) {
         sql`${priceEntries.dataCompra} >= ${sinceStr}`,
       ),
     )
-    .groupBy(sql`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM')`)
-    .orderBy(sql`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM')`);
+    .groupBy(periodExpr)
+    .orderBy(periodExpr);
 
-  // Top 5 categories by total, then breakdown per month
+  // Top 5 categories by total, then breakdown per period
   const topCategories = await db
     .select({
       categoria: sql<string>`COALESCE(${products.categoria}, 'Sem categoria')`,
@@ -322,7 +337,7 @@ export async function getGastosTrend(meses = 6) {
   const byCategory = top5Names.length > 0
     ? await db
         .select({
-          month: sql<string>`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM')`,
+          period: periodExpr,
           categoria: sql<string>`COALESCE(${products.categoria}, 'Sem categoria')`,
           total: sql<number>`sum(${priceEntries.valorTotal}::numeric)::float`,
         })
@@ -338,22 +353,41 @@ export async function getGastosTrend(meses = 6) {
             )})`,
           ),
         )
-        .groupBy(
-          sql`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM')`,
-          sql`COALESCE(${products.categoria}, 'Sem categoria')`,
-        )
-        .orderBy(sql`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM')`)
+        .groupBy(periodExpr, sql`COALESCE(${products.categoria}, 'Sem categoria')`)
+        .orderBy(periodExpr)
     : [];
 
-  // Current vs previous month comparison
+  // Comparison: current period vs previous period
   const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const previousMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+  let currentPeriod: string;
+  let previousPeriod: string;
+  let compPeriodExpr: ReturnType<typeof sql<string>>;
+
+  if (granularidade === 'diario') {
+    currentPeriod = now.toISOString().slice(0, 10);
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    previousPeriod = yesterday.toISOString().slice(0, 10);
+    compPeriodExpr = sql<string>`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM-DD')`;
+  } else if (granularidade === 'semanal') {
+    compPeriodExpr = sql<string>`to_char(date_trunc('week', ${priceEntries.dataCompra}::date), 'YYYY-MM-DD')`;
+    const dayOfWeek = now.getDay();
+    const monday = new Date(now);
+    monday.setDate(monday.getDate() - ((dayOfWeek + 6) % 7));
+    currentPeriod = monday.toISOString().slice(0, 10);
+    const prevMonday = new Date(monday);
+    prevMonday.setDate(prevMonday.getDate() - 7);
+    previousPeriod = prevMonday.toISOString().slice(0, 10);
+  } else {
+    currentPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    previousPeriod = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+    compPeriodExpr = sql<string>`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM')`;
+  }
 
   const comparisonRows = await db
     .select({
-      month: sql<string>`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM')`,
+      period: compPeriodExpr,
       total: sql<number>`COALESCE(sum(${priceEntries.valorTotal}::numeric), 0)::float`,
       compras: sql<number>`count(DISTINCT ${priceEntries.extractionId})::int`,
     })
@@ -361,18 +395,18 @@ export async function getGastosTrend(meses = 6) {
     .where(
       and(
         eq(priceEntries.userId, userId),
-        sql`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM') IN (${currentMonth}, ${previousMonth})`,
+        sql`${compPeriodExpr} IN (${currentPeriod}, ${previousPeriod})`,
       ),
     )
-    .groupBy(sql`to_char(${priceEntries.dataCompra}::date, 'YYYY-MM')`);
+    .groupBy(compPeriodExpr);
 
-  const currentData = comparisonRows.find((r) => r.month === currentMonth) || {
-    month: currentMonth,
+  const currentData = comparisonRows.find((r) => r.period === currentPeriod) || {
+    period: currentPeriod,
     total: 0,
     compras: 0,
   };
-  const previousData = comparisonRows.find((r) => r.month === previousMonth) || {
-    month: previousMonth,
+  const previousData = comparisonRows.find((r) => r.period === previousPeriod) || {
+    period: previousPeriod,
     total: 0,
     compras: 0,
   };
@@ -382,12 +416,13 @@ export async function getGastosTrend(meses = 6) {
       : 0;
 
   return {
-    monthly,
+    granularidade,
+    timeline,
     byCategory,
     categories: top5Names,
     comparison: {
-      current: { month: currentData.month, total: currentData.total, compras: currentData.compras },
-      previous: { month: previousData.month, total: previousData.total, compras: previousData.compras },
+      current: { period: currentData.period, total: currentData.total, compras: currentData.compras },
+      previous: { period: previousData.period, total: previousData.total, compras: previousData.compras },
       change,
     },
   };
