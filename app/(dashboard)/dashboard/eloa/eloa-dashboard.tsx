@@ -7,8 +7,9 @@ import { SourcesTab } from './tabs/sources-tab';
 import { FeedTab } from './tabs/feed-tab';
 import { BookmarksTab } from './tabs/bookmarks-tab';
 import { SearchTab } from './tabs/search-tab';
-import { AnalyticsTab } from './tabs/analytics-tab';
 import { SettingsTab } from './tabs/settings-tab';
+import { UserUsageTab } from '../components/user-usage-tab';
+import type { UserMcpUsageStats } from '../components/user-mcp-usage';
 import type { SourceWithSubscription, Bookmark } from '@/app/lib/mcp/servers/eloa.schema';
 
 const TABS = [
@@ -16,7 +17,7 @@ const TABS = [
   { id: 'fontes', label: 'Fontes' },
   { id: 'bookmarks', label: 'Bookmarks' },
   { id: 'busca', label: 'Busca' },
-  { id: 'analytics', label: 'Analytics' },
+  { id: 'usage', label: 'Usage' },
   { id: 'config', label: 'Configuracoes' },
 ] as const;
 
@@ -41,7 +42,7 @@ interface EloaDashboardProps {
   initialBookmarks: Bookmark[];
   initialTags: string[];
   initialUnreadCount: number;
-  isAdmin: boolean;
+  initialUsageStats: UserMcpUsageStats;
   mcpConfig: {
     mcpUrl: string;
     tools: Array<{ name: string; description: string }>;
@@ -58,7 +59,7 @@ export function EloaDashboard({
   initialBookmarks,
   initialTags,
   initialUnreadCount,
-  isAdmin,
+  initialUsageStats,
   mcpConfig,
 }: EloaDashboardProps) {
   const router = useRouter();
@@ -126,7 +127,7 @@ export function EloaDashboard({
         />
       )}
       {activeTab === 'busca' && <SearchTab />}
-      {activeTab === 'analytics' && <AnalyticsTab isAdmin={isAdmin} />}
+      {activeTab === 'usage' && <UserUsageTab stats={initialUsageStats} />}
       {activeTab === 'config' && mcpConfig && (
         <SettingsTab
           mcpName="eloa"

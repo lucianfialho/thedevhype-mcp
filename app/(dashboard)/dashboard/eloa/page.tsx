@@ -1,15 +1,15 @@
 import Link from 'next/link';
 import { auth } from '@/app/lib/auth/server';
 import { db } from '@/app/lib/db';
-import { userMcpAccess, userInNeonAuth } from '@/app/lib/db/public.schema';
+import { userMcpAccess } from '@/app/lib/db/public.schema';
 import { eq, and } from 'drizzle-orm';
 import { registry } from '@/app/lib/mcp/servers';
-import { getSources, getArticles, getBookmarks, getAllTags, getUnreadCount } from './actions';
+import { getSources, getArticles, getBookmarks, getAllTags, getUnreadCount, getUserEloaUsage } from './actions';
 import { EloaDashboard } from './eloa-dashboard';
 
 export const dynamic = 'force-dynamic';
 
-const TABS = ['feed', 'fontes', 'bookmarks', 'busca', 'analytics', 'config'] as const;
+const TABS = ['feed', 'fontes', 'bookmarks', 'busca', 'usage', 'config'] as const;
 type Tab = (typeof TABS)[number];
 
 function maskApiKey(key: string): string {
@@ -36,18 +36,14 @@ export default async function EloaPage({
         .where(and(eq(userMcpAccess.userId, userId), eq(userMcpAccess.mcpName, 'eloa'))))[0]
     : undefined;
 
-  const [sourcesData, articlesData, bookmarksData, tagsData, unreadCount, userRecord] = await Promise.all([
+  const [sourcesData, articlesData, bookmarksData, tagsData, unreadCount, usageStats] = await Promise.all([
     getSources(),
     getArticles(),
     getBookmarks(),
     getAllTags(),
     getUnreadCount(),
-    userId
-      ? db.select({ role: userInNeonAuth.role }).from(userInNeonAuth).where(eq(userInNeonAuth.id, userId)).then(r => r[0])
-      : Promise.resolve(undefined),
+    getUserEloaUsage(),
   ]);
-
-  const isAdmin = userRecord?.role === 'admin';
 
   const mcpConfig = server
     ? {
@@ -92,7 +88,7 @@ export default async function EloaPage({
         initialBookmarks={bookmarksData}
         initialTags={tagsData}
         initialUnreadCount={unreadCount}
-        isAdmin={isAdmin}
+        initialUsageStats={usageStats}
         mcpConfig={mcpConfig}
       />
     </main>

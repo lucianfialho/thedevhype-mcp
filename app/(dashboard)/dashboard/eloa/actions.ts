@@ -2,10 +2,9 @@
 
 import { auth } from '@/app/lib/auth/server';
 import { db } from '@/app/lib/db';
-import { eq, and, sql, desc, inArray, gte } from 'drizzle-orm';
+import { eq, and, sql, desc, inArray } from 'drizzle-orm';
 import { sources, userSources, articles, bookmarks, linkClicks } from '@/app/lib/mcp/servers/eloa.schema';
 import type { SourceWithSubscription } from '@/app/lib/mcp/servers/eloa.schema';
-import { userInNeonAuth } from '@/app/lib/db/public.schema';
 import { generateShortCode } from '@/app/lib/short-code';
 import RssParser from 'rss-parser';
 
@@ -412,149 +411,6 @@ export async function getArticleClickCounts(articleIds: number[]) {
   return map;
 }
 
-export async function getClickStats() {
-  const userId = await requireUserId();
-
-  const [user] = await db
-    .select({ role: userInNeonAuth.role })
-    .from(userInNeonAuth)
-    .where(eq(userInNeonAuth.id, userId));
-  const isAdmin = user?.role === 'admin';
-
-  const userFilter = isAdmin ? sql`1=1` : eq(articles.userId, userId);
-
-  const [totalRow] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(linkClicks)
-    .innerJoin(articles, eq(linkClicks.articleId, articles.id))
-    .where(userFilter);
-
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-
-  const [todayRow] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(linkClicks)
-    .innerJoin(articles, eq(linkClicks.articleId, articles.id))
-    .where(and(userFilter, gte(linkClicks.clickedAt, todayStart.toISOString())));
-
-  return {
-    totalClicks: totalRow.count,
-    todayClicks: todayRow.count,
-    isAdmin,
-  };
-}
-
-export async function getTopClickedArticles(limit = 10, period: 'today' | '7d' | '30d' | 'all' = 'all') {
-  const userId = await requireUserId();
-
-  const [user] = await db
-    .select({ role: userInNeonAuth.role })
-    .from(userInNeonAuth)
-    .where(eq(userInNeonAuth.id, userId));
-  const isAdmin = user?.role === 'admin';
-
-  const userFilter = isAdmin ? sql`1=1` : eq(articles.userId, userId);
-
-  let dateFilter = sql`1=1`;
-  if (period !== 'all') {
-    const now = new Date();
-    if (period === 'today') {
-      now.setHours(0, 0, 0, 0);
-    } else if (period === '7d') {
-      now.setDate(now.getDate() - 7);
-    } else if (period === '30d') {
-      now.setDate(now.getDate() - 30);
-    }
-    dateFilter = gte(linkClicks.clickedAt, now.toISOString());
-  }
-
-  const rows = await db
-    .select({
-      articleId: articles.id,
-      title: articles.title,
-      url: articles.url,
-      shortCode: articles.shortCode,
-      sourceTitle: sql<string>`(SELECT title FROM mcp_eloa.sources WHERE id = ${articles.sourceId})`,
-      clickCount: sql<number>`count(*)::int`,
-      lastClickedAt: sql<string>`max(${linkClicks.clickedAt})`,
-    })
-    .from(linkClicks)
-    .innerJoin(articles, eq(linkClicks.articleId, articles.id))
-    .where(and(userFilter, dateFilter))
-    .groupBy(articles.id)
-    .orderBy(sql`count(*) DESC`)
-    .limit(limit);
-
-  return rows;
-}
-
-export async function getClicksBySource(period: 'today' | '7d' | '30d' | 'all' = 'all') {
-  const userId = await requireUserId();
-
-  const [user] = await db
-    .select({ role: userInNeonAuth.role })
-    .from(userInNeonAuth)
-    .where(eq(userInNeonAuth.id, userId));
-  const isAdmin = user?.role === 'admin';
-
-  const userFilter = isAdmin ? sql`1=1` : eq(articles.userId, userId);
-
-  let dateFilter = sql`1=1`;
-  if (period !== 'all') {
-    const now = new Date();
-    if (period === 'today') {
-      now.setHours(0, 0, 0, 0);
-    } else if (period === '7d') {
-      now.setDate(now.getDate() - 7);
-    } else if (period === '30d') {
-      now.setDate(now.getDate() - 30);
-    }
-    dateFilter = gte(linkClicks.clickedAt, now.toISOString());
-  }
-
-  const rows = await db
-    .select({
-      sourceTitle: sql<string>`(SELECT title FROM mcp_eloa.sources WHERE id = ${articles.sourceId})`,
-      clickCount: sql<number>`count(*)::int`,
-    })
-    .from(linkClicks)
-    .innerJoin(articles, eq(linkClicks.articleId, articles.id))
-    .where(and(userFilter, dateFilter))
-    .groupBy(articles.sourceId)
-    .orderBy(sql`count(*) DESC`);
-
-  return rows;
-}
-
-export async function getClicksOverTime(days = 14) {
-  const userId = await requireUserId();
-
-  const [user] = await db
-    .select({ role: userInNeonAuth.role })
-    .from(userInNeonAuth)
-    .where(eq(userInNeonAuth.id, userId));
-  const isAdmin = user?.role === 'admin';
-
-  const userFilter = isAdmin ? sql`1=1` : eq(articles.userId, userId);
-
-  const since = new Date();
-  since.setDate(since.getDate() - days);
-
-  const rows = await db
-    .select({
-      date: sql<string>`date_trunc('day', ${linkClicks.clickedAt})::date::text`,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(linkClicks)
-    .innerJoin(articles, eq(linkClicks.articleId, articles.id))
-    .where(and(userFilter, gte(linkClicks.clickedAt, since.toISOString())))
-    .groupBy(sql`1`)
-    .orderBy(sql`1`);
-
-  return rows;
-}
-
 // ─── Search ───
 
 export async function searchContent(query: string, tipo: 'artigos' | 'bookmarks' | 'todos' = 'todos') {
@@ -637,4 +493,12 @@ export async function searchContent(query: string, tipo: 'artigos' | 'bookmarks'
   }
 
   return results.slice(0, 20);
+}
+
+// ─── Usage ───
+
+import { getUserMcpUsage } from '../components/user-mcp-usage';
+
+export async function getUserEloaUsage() {
+  return getUserMcpUsage('eloa');
 }

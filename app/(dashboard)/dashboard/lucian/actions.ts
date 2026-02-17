@@ -480,3 +480,11 @@ export async function addItemToList(name: string, qty?: number, unit?: string) {
     createdAt: newItem.createdAt,
   };
 }
+
+// ─── Usage ───
+
+import { getUserMcpUsage } from '../components/user-mcp-usage';
+
+export async function getUserLucianUsage() {
+  return getUserMcpUsage('lucian');
+}

@@ -8,6 +8,8 @@ import { ProdutosTab } from './tabs/produtos-tab';
 import { PrecosTab } from './tabs/precos-tab';
 import { GastosTab } from './tabs/gastos-tab';
 import { ListaTab } from './tabs/lista-tab';
+import { UserUsageTab } from '../components/user-usage-tab';
+import type { UserMcpUsageStats } from '../components/user-mcp-usage';
 
 const TABS = [
   { id: 'notas', label: 'Notas' },
@@ -15,6 +17,7 @@ const TABS = [
   { id: 'precos', label: 'Precos' },
   { id: 'gastos', label: 'Gastos' },
   { id: 'lista', label: 'Lista' },
+  { id: 'usage', label: 'Usage' },
   { id: 'config', label: 'Configuracoes' },
 ] as const;
 
@@ -86,6 +89,7 @@ interface LucianDashboardProps {
     defaultState: string | null;
     publicApiKey: string | null;
   } | null;
+  initialUsageStats: UserMcpUsageStats;
 }
 
 export function LucianDashboard({
@@ -99,6 +103,7 @@ export function LucianDashboard({
   initialListItems,
   listSummary,
   mcpConfig,
+  initialUsageStats,
 }: LucianDashboardProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
@@ -139,6 +144,7 @@ export function LucianDashboard({
       {activeTab === 'lista' && (
         <ListaTab initialItems={initialListItems} initialSummary={listSummary} />
       )}
+      {activeTab === 'usage' && <UserUsageTab stats={initialUsageStats} />}
       {activeTab === 'config' && mcpConfig && (
         <SettingsTab
           mcpName="lucian"

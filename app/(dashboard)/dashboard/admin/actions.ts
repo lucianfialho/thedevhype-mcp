@@ -2,8 +2,9 @@
 
 import { auth } from '@/app/lib/auth/server';
 import { db } from '@/app/lib/db';
-import { eq, sql, desc } from 'drizzle-orm';
+import { eq, sql, desc, gte } from 'drizzle-orm';
 import { userInNeonAuth, apiKeys, apiUsageLog, userMcpAccess, mcpToolUsage } from '@/app/lib/db/public.schema';
+import { articles, linkClicks } from '@/app/lib/mcp/servers/eloa.schema';
 
 async function requireAdmin() {
   const { data: session } = await auth.getSession();
@@ -255,4 +256,106 @@ export async function toggleApiKeyEnabled(keyId: number, enabled: boolean) {
     .set({ enabled })
     .where(eq(apiKeys.id, keyId));
   return { success: true };
+}
+
+// ─── Click Analytics (global) ───
+
+export async function getClickStats() {
+  await requireAdmin();
+
+  const [totalRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(linkClicks);
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const [todayRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(linkClicks)
+    .where(gte(linkClicks.clickedAt, todayStart.toISOString()));
+
+  return {
+    totalClicks: totalRow.count,
+    todayClicks: todayRow.count,
+  };
+}
+
+export async function getTopClickedArticles(limit = 10, period: 'today' | '7d' | '30d' | 'all' = 'all') {
+  await requireAdmin();
+
+  let dateFilter = sql`1=1`;
+  if (period !== 'all') {
+    const now = new Date();
+    if (period === 'today') {
+      now.setHours(0, 0, 0, 0);
+    } else if (period === '7d') {
+      now.setDate(now.getDate() - 7);
+    } else if (period === '30d') {
+      now.setDate(now.getDate() - 30);
+    }
+    dateFilter = gte(linkClicks.clickedAt, now.toISOString());
+  }
+
+  return db
+    .select({
+      articleId: articles.id,
+      title: articles.title,
+      url: articles.url,
+      shortCode: articles.shortCode,
+      sourceTitle: sql<string>`(SELECT title FROM mcp_eloa.sources WHERE id = ${articles.sourceId})`,
+      clickCount: sql<number>`count(*)::int`,
+      lastClickedAt: sql<string>`max(${linkClicks.clickedAt})`,
+    })
+    .from(linkClicks)
+    .innerJoin(articles, eq(linkClicks.articleId, articles.id))
+    .where(dateFilter)
+    .groupBy(articles.id)
+    .orderBy(sql`count(*) DESC`)
+    .limit(limit);
+}
+
+export async function getClicksBySource(period: 'today' | '7d' | '30d' | 'all' = 'all') {
+  await requireAdmin();
+
+  let dateFilter = sql`1=1`;
+  if (period !== 'all') {
+    const now = new Date();
+    if (period === 'today') {
+      now.setHours(0, 0, 0, 0);
+    } else if (period === '7d') {
+      now.setDate(now.getDate() - 7);
+    } else if (period === '30d') {
+      now.setDate(now.getDate() - 30);
+    }
+    dateFilter = gte(linkClicks.clickedAt, now.toISOString());
+  }
+
+  return db
+    .select({
+      sourceTitle: sql<string>`(SELECT title FROM mcp_eloa.sources WHERE id = ${articles.sourceId})`,
+      clickCount: sql<number>`count(*)::int`,
+    })
+    .from(linkClicks)
+    .innerJoin(articles, eq(linkClicks.articleId, articles.id))
+    .where(dateFilter)
+    .groupBy(articles.sourceId)
+    .orderBy(sql`count(*) DESC`);
+}
+
+export async function getClicksOverTime(days = 14) {
+  await requireAdmin();
+
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  return db
+    .select({
+      date: sql<string>`date_trunc('day', ${linkClicks.clickedAt})::date::text`,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(linkClicks)
+    .where(gte(linkClicks.clickedAt, since.toISOString()))
+    .groupBy(sql`1`)
+    .orderBy(sql`1`);
 }

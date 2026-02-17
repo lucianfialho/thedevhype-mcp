@@ -10,10 +10,6 @@ import {
 
 type Period = 'today' | '7d' | '30d' | 'all';
 
-interface AnalyticsTabProps {
-  isAdmin: boolean;
-}
-
 const PERIOD_LABELS: Record<Period, string> = {
   today: 'Hoje',
   '7d': '7 dias',
@@ -21,7 +17,7 @@ const PERIOD_LABELS: Record<Period, string> = {
   all: 'Todos',
 };
 
-export function AnalyticsTab({ isAdmin }: AnalyticsTabProps) {
+export function AnalyticsTab() {
   const [period, setPeriod] = useState<Period>('7d');
   const [stats, setStats] = useState<{ totalClicks: number; todayClicks: number } | null>(null);
   const [topArticles, setTopArticles] = useState<
@@ -64,13 +60,13 @@ export function AnalyticsTab({ isAdmin }: AnalyticsTabProps) {
     <div>
       {/* Summary cards */}
       <div className="mb-6 grid grid-cols-2 gap-3">
-        <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
           <p className="text-xs text-zinc-400">Total de cliques</p>
           <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
             {stats?.totalClicks ?? '—'}
           </p>
         </div>
-        <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
           <p className="text-xs text-zinc-400">Cliques hoje</p>
           <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
             {stats?.todayClicks ?? '—'}
@@ -78,13 +74,10 @@ export function AnalyticsTab({ isAdmin }: AnalyticsTabProps) {
         </div>
       </div>
 
-      {/* Admin badge */}
-      {isAdmin && (
-        <p className="mb-4 text-xs text-zinc-400">(Dados globais)</p>
-      )}
+      <p className="mb-4 text-xs text-zinc-400">(Dados globais)</p>
 
       {/* Period filter */}
-      <div className="mb-4 flex gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="mb-4 flex gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-700 dark:bg-zinc-800/50">
         {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
           <button
             key={p}
@@ -116,7 +109,7 @@ export function AnalyticsTab({ isAdmin }: AnalyticsTabProps) {
                 {topArticles.map((a) => (
                   <div
                     key={a.articleId}
-                    className="flex items-center justify-between rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-800"
+                    className="flex items-center justify-between rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-700"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">

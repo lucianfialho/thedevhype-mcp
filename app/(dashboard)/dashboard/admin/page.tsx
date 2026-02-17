@@ -9,7 +9,7 @@ import { AdminDashboard } from './admin-dashboard';
 
 export const dynamic = 'force-dynamic';
 
-const TABS = ['usuarios', 'api-keys', 'uso', 'mcps'] as const;
+const TABS = ['usuarios', 'api-keys', 'uso', 'mcps', 'analytics'] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function AdminPage({

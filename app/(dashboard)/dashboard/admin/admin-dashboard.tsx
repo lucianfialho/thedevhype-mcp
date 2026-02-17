@@ -6,6 +6,7 @@ import { UsersTab } from './tabs/users-tab';
 import { ApiKeysTab } from './tabs/api-keys-tab';
 import { UsageTab } from './tabs/usage-tab';
 import { McpsTab } from './tabs/mcps-tab';
+import { AnalyticsTab } from './tabs/analytics-tab';
 import { getUsers, getUserMcpAccess, getApiKeysAdmin } from './actions';
 import type { AdminUser, AdminApiKey, ApiUsageStats, UserMcpAccessRow, McpUsageStats } from './actions';
 
@@ -14,6 +15,7 @@ const TABS = [
   { id: 'api-keys', label: 'API Keys' },
   { id: 'uso', label: 'Uso da API' },
   { id: 'mcps', label: 'MCPs' },
+  { id: 'analytics', label: 'Analytics' },
 ] as const;
 
 type Tab = (typeof TABS)[number]['id'];
@@ -89,6 +91,7 @@ export function AdminDashboard({
       {activeTab === 'mcps' && (
         <McpsTab stats={initialMcpUsageStats} />
       )}
+      {activeTab === 'analytics' && <AnalyticsTab />}
     </>
   );
 }
