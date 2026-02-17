@@ -7,6 +7,7 @@ import {
   timestamp,
   numeric,
   date,
+  integer,
   unique,
 } from 'drizzle-orm/pg-core';
 import { sql, type InferSelectModel, type InferInsertModel } from 'drizzle-orm';
@@ -104,3 +105,71 @@ export const priceEntries = mcpNotaFiscal.table('price_entries', {
 
 export type PriceEntry = InferSelectModel<typeof priceEntries>;
 export type NewPriceEntry = InferInsertModel<typeof priceEntries>;
+
+// --- Canonical products (de-duplicated catalog for public API) ---
+
+export const canonicalProducts = mcpNotaFiscal.table(
+  'canonical_products',
+  {
+    id: bigint({ mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+    storeId: bigint({ mode: 'number' })
+      .notNull()
+      .references(() => stores.id),
+    codigo: text().notNull(),
+    nome: text().notNull(),
+    unidade: text(),
+    categoria: text(),
+    contributorCount: integer().default(1).notNull(),
+    lastSeenAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [unique('canonical_products_store_codigo').on(table.storeId, table.codigo)],
+);
+
+export type CanonicalProduct = InferSelectModel<typeof canonicalProducts>;
+export type NewCanonicalProduct = InferInsertModel<typeof canonicalProducts>;
+
+// --- Public price entries (anonymized prices for public API) ---
+
+export const publicPriceEntries = mcpNotaFiscal.table('public_price_entries', {
+  id: bigint({ mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  canonicalProductId: bigint({ mode: 'number' })
+    .notNull()
+    .references(() => canonicalProducts.id),
+  storeId: bigint({ mode: 'number' })
+    .notNull()
+    .references(() => stores.id),
+  valorUnitario: numeric({ precision: 12, scale: 4 }).notNull(),
+  valorTotal: numeric({ precision: 12, scale: 2 }).notNull(),
+  quantidade: numeric({ precision: 12, scale: 4 }).notNull(),
+  dataCompra: date().notNull(),
+  contributorHash: text().notNull(),
+  createdAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
+
+export type PublicPriceEntry = InferSelectModel<typeof publicPriceEntries>;
+export type NewPublicPriceEntry = InferInsertModel<typeof publicPriceEntries>;
+
+// --- Shopping cache (Google Shopping results with lazy expiry) ---
+
+export const shoppingCache = mcpNotaFiscal.table('shopping_cache', {
+  id: bigint({ mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  queryKey: text().notNull().unique(),
+  results: jsonb().notNull(),
+  cachedAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  expiresAt: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
+});
+
+export type ShoppingCache = InferSelectModel<typeof shoppingCache>;
+export type NewShoppingCache = InferInsertModel<typeof shoppingCache>;
