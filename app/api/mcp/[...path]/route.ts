@@ -61,6 +61,8 @@ function buildDocs(serverName: string): Response | null {
   lines.push('');
   lines.push('## Quick Start');
   lines.push('');
+  lines.push('Add to your MCP client config (Claude, Cursor, etc):');
+  lines.push('');
   lines.push('```json');
   lines.push(JSON.stringify({
     mcpServers: {
@@ -73,6 +75,35 @@ function buildDocs(serverName: string): Response | null {
   lines.push('```');
   lines.push('');
   lines.push(`Get your API key at [thedevhype.com/onboarding](https://www.thedevhype.com/onboarding)`);
+  lines.push('');
+  lines.push('---');
+  lines.push('');
+  lines.push('## cURL Examples');
+  lines.push('');
+  lines.push('### List available tools');
+  lines.push('');
+  lines.push('```bash');
+  lines.push(`curl -X POST ${endpoint} \\`);
+  lines.push('  -H "Authorization: Bearer <your-api-key>" \\');
+  lines.push('  -H "Content-Type: application/json" \\');
+  lines.push('  -H "Accept: application/json, text/event-stream" \\');
+  lines.push('  -d \'{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}\'');
+  lines.push('```');
+  lines.push('');
+  lines.push('### Call a tool');
+  lines.push('');
+  if (server.tools.length > 0) {
+    const example = server.tools[0];
+    lines.push('```bash');
+    lines.push(`curl -X POST ${endpoint} \\`);
+    lines.push('  -H "Authorization: Bearer <your-api-key>" \\');
+    lines.push('  -H "Content-Type: application/json" \\');
+    lines.push('  -H "Accept: application/json, text/event-stream" \\');
+    lines.push(`  -d '${JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: example.name, arguments: {} } })}'`);
+    lines.push('```');
+    lines.push('');
+  }
+  lines.push('> Replace `<your-api-key>` with your Bearer token from the dashboard Config tab.');
   lines.push('');
 
   return new Response(lines.join('\n'), {

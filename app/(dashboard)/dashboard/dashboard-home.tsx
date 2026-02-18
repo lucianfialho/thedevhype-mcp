@@ -235,6 +235,26 @@ export function DashboardHome({ userName, isAdmin }: DashboardHomeProps) {
                   </svg>
                 </Link>
 
+                <Link
+                  href="/dashboard/familia"
+                  className={`col-span-2 flex items-center gap-3 rounded-2xl border px-5 py-4 backdrop-blur-sm transition-colors ${
+                    isNight
+                      ? 'border-white/15 bg-white/10 hover:bg-white/15'
+                      : 'border-slate-200/80 bg-white/60 hover:bg-white/80'
+                  }`}
+                >
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg font-semibold ${isNight ? 'bg-violet-500/30 text-violet-300' : 'bg-violet-100 text-violet-600'}`}>
+                    F
+                  </div>
+                  <div className="text-left">
+                    <p className={`text-base font-semibold leading-tight ${theme.homeTextPrimary}`}>Familia</p>
+                    <p className={`mt-0.5 text-sm leading-tight ${theme.homeTextSecondary}`}>Shared Workspace</p>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={`ml-auto ${isNight ? 'text-zinc-500' : 'text-slate-400'}`}>
+                    <path d="M6 4l4 4-4 4" />
+                  </svg>
+                </Link>
+
               </div>
             </div>
           </div>
