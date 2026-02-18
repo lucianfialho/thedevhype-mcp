@@ -58,10 +58,12 @@ export function SettingsTab({
   publicApiKey = null,
 }: SettingsTabProps) {
   const [enabled, setEnabled] = useState(initialEnabled);
+  const [confirmedEnabled, setConfirmedEnabled] = useState(initialEnabled);
   const [isPending, setIsPending] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(initialHasApiKey);
   const [newApiKey, setNewApiKey] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [contribute, setContribute] = useState(initialContribute);
@@ -89,6 +91,7 @@ export function SettingsTab({
 
       const data = await res.json();
       setEnabled(data.enabled);
+      setConfirmedEnabled(data.enabled);
     } catch {
       setEnabled(prev);
     } finally {
@@ -97,23 +100,45 @@ export function SettingsTab({
   }
 
   async function handleGenerateKey() {
+    if (isPending) return;
     setIsGenerating(true);
     setNewApiKey(null);
+    setGenerateError(null);
 
     try {
+      // If not yet confirmed enabled by backend, enable first
+      if (!confirmedEnabled) {
+        const enableRes = await fetch('/api/mcp-access/enable', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mcpName }),
+        });
+        if (!enableRes.ok) {
+          setGenerateError('Failed to enable server. Try again.');
+          return;
+        }
+        setConfirmedEnabled(true);
+      }
+
       const res = await fetch('/api/mcp-access/generate-key', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mcpName }),
       });
 
-      if (!res.ok) return;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setGenerateError(data.error || 'Failed to generate key. Try again.');
+        return;
+      }
 
       const data = await res.json();
       if (data.apiKey) {
         setNewApiKey(data.apiKey);
         setHasApiKey(true);
       }
+    } catch {
+      setGenerateError('Network error. Try again.');
     } finally {
       setIsGenerating(false);
     }
@@ -217,7 +242,7 @@ export function SettingsTab({
         </div>
       </div>
 
-      {enabled && (
+      {(enabled || confirmedEnabled) && (
         <>
           {/* Endpoint */}
           <div className="rounded-2xl border border-slate-200 p-4">
@@ -261,7 +286,7 @@ export function SettingsTab({
               {!newApiKey && (
                 <button
                   onClick={handleGenerateKey}
-                  disabled={isGenerating}
+                  disabled={isGenerating || isPending}
                   className="shrink-0 rounded-xl bg-slate-100 px-3 py-2 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-200 disabled:opacity-50"
                 >
                   {isGenerating ? '...' : hasApiKey ? 'Regenerate' : 'Generate'}
@@ -290,6 +315,12 @@ export function SettingsTab({
                     {copied ? 'Copied!' : 'Copy'}
                   </button>
                 </div>
+              </div>
+            )}
+
+            {generateError && (
+              <div className="mt-2 rounded-xl bg-red-50 px-3 py-2">
+                <p className="text-sm text-red-600">{generateError}</p>
               </div>
             )}
 
@@ -407,7 +438,7 @@ export function SettingsTab({
       )}
 
       {/* Disabled state */}
-      {!enabled && (
+      {!enabled && !confirmedEnabled && (
         <div className="rounded-2xl border border-dashed border-slate-200 py-10 text-center">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-2 text-slate-400">
             <path d="M12 2v4m0 12v4M2 12h4m12 0h4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" />
