@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# mcp config (local)
+.mcp.json
+
+# large media
+public/freepik_create-a-video_kling_1080p_9-16_24fps_940.mp4
