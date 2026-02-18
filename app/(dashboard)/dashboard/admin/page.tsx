@@ -3,12 +3,12 @@ import { auth } from '@/app/lib/auth/server';
 import { db } from '@/app/lib/db';
 import { userInNeonAuth } from '@/app/lib/db/public.schema';
 import { eq } from 'drizzle-orm';
-import { getUsers, getUserMcpAccess, getApiKeysAdmin, getApiUsageStats, getMcpUsageStats } from './actions';
+import { getUsers, getUserMcpAccess, getApiKeysAdmin, getApiUsageStats, getMcpUsageStats, getWaitlistEntries } from './actions';
 import { AdminDashboard } from './admin-dashboard';
 
 export const dynamic = 'force-dynamic';
 
-const TABS = ['usuarios', 'api-keys', 'uso', 'mcps', 'analytics'] as const;
+const TABS = ['waitlist', 'usuarios', 'api-keys', 'uso', 'mcps', 'analytics'] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function AdminPage({
@@ -17,7 +17,7 @@ export default async function AdminPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const params = await searchParams;
-  const tab = TABS.includes(params.tab as Tab) ? (params.tab as Tab) : 'usuarios';
+  const tab = TABS.includes(params.tab as Tab) ? (params.tab as Tab) : 'waitlist';
 
   const { data: session } = await auth.getSession();
   const userId = session?.user?.id;
@@ -31,12 +31,13 @@ export default async function AdminPage({
 
   if (userRecord?.role !== 'admin') redirect('/dashboard');
 
-  const [users, userMcps, apiKeysData, usageStats, mcpUsageStats] = await Promise.all([
+  const [users, userMcps, apiKeysData, usageStats, mcpUsageStats, waitlistEntries] = await Promise.all([
     getUsers(),
     getUserMcpAccess(),
     getApiKeysAdmin(),
     getApiUsageStats(),
     getMcpUsageStats(),
+    getWaitlistEntries(),
   ]);
 
   return (
@@ -47,6 +48,7 @@ export default async function AdminPage({
       initialApiKeys={apiKeysData}
       initialUsageStats={usageStats}
       initialMcpUsageStats={mcpUsageStats}
+      initialWaitlist={waitlistEntries}
     />
   );
 }

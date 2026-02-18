@@ -9,10 +9,12 @@ import { ApiKeysTab } from './tabs/api-keys-tab';
 import { UsageTab } from './tabs/usage-tab';
 import { McpsTab } from './tabs/mcps-tab';
 import { AnalyticsTab } from './tabs/analytics-tab';
-import { getUsers, getUserMcpAccess, getApiKeysAdmin } from './actions';
-import type { AdminUser, AdminApiKey, ApiUsageStats, UserMcpAccessRow, McpUsageStats } from './actions';
+import { WaitlistTab } from './tabs/waitlist-tab';
+import { getUsers, getUserMcpAccess, getApiKeysAdmin, getWaitlistEntries } from './actions';
+import type { AdminUser, AdminApiKey, ApiUsageStats, UserMcpAccessRow, McpUsageStats, WaitlistEntry } from './actions';
 
 const TABS = [
+  { id: 'waitlist', label: 'Waitlist' },
   { id: 'usuarios', label: 'Users' },
   { id: 'api-keys', label: 'API Keys' },
   { id: 'uso', label: 'API Usage' },
@@ -29,6 +31,7 @@ interface AdminDashboardProps {
   initialApiKeys: AdminApiKey[];
   initialUsageStats: ApiUsageStats;
   initialMcpUsageStats: McpUsageStats;
+  initialWaitlist: WaitlistEntry[];
 }
 
 export function AdminDashboard({
@@ -38,12 +41,14 @@ export function AdminDashboard({
   initialApiKeys,
   initialUsageStats,
   initialMcpUsageStats,
+  initialWaitlist,
 }: AdminDashboardProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [users, setUsers] = useState(initialUsers);
   const [userMcps, setUserMcps] = useState(initialUserMcps);
   const [apiKeysData, setApiKeysData] = useState(initialApiKeys);
+  const [waitlistData, setWaitlistData] = useState(initialWaitlist);
 
   function switchTab(tab: string) {
     setActiveTab(tab as Tab);
@@ -61,6 +66,11 @@ export function AdminDashboard({
     setApiKeysData(data);
   }, []);
 
+  const refreshWaitlist = useCallback(async () => {
+    const data = await getWaitlistEntries();
+    setWaitlistData(data);
+  }, []);
+
   return (
     <AppShell title="Admin">
       <div className="mb-4 shrink-0 flex items-center gap-3">
@@ -74,6 +84,9 @@ export function AdminDashboard({
       </div>
 
       <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {activeTab === 'waitlist' && (
+          <WaitlistTab entries={waitlistData} onRefresh={refreshWaitlist} />
+        )}
         {activeTab === 'usuarios' && (
           <UsersTab users={users} userMcps={userMcps} onRefresh={refreshUsers} />
         )}

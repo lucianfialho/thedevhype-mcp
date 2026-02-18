@@ -95,6 +95,22 @@ export function OttoDashboard({
         />
       </div>
 
+      {activeTab !== 'recipes' && (
+        <button
+          onClick={() => switchTab('recipes')}
+          className="cursor-pointer mb-4 flex w-full items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left transition-colors hover:bg-amber-100"
+        >
+          <span className="text-lg">🍳</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-amber-800">Ready-made recipes available</p>
+            <p className="text-xs text-amber-600">Pre-configured automations powered by Poke. Click to explore.</p>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-amber-400">
+            <path d="M6 4l4 4-4 4" />
+          </svg>
+        </button>
+      )}
+
       <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto">
         {activeTab === 'notas' && (
           <NotesTab entries={notes} onEntriesChange={setNotes} />

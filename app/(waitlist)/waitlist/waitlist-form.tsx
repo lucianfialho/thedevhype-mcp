@@ -53,17 +53,17 @@ export function WaitlistForm() {
   // Done screen
   if (position !== null) {
     return (
-      <div className="flex flex-col items-center py-4 text-center sm:py-8">
+      <div className="flex flex-col items-center py-8 text-center sm:py-16">
         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-4xl dark:bg-emerald-900/50">
           🎉
         </div>
-        <h2 className="mt-6 text-2xl font-bold text-slate-800 dark:text-zinc-100 sm:text-3xl">
+        <h2 className="mt-6 text-2xl font-bold tracking-tight dark:text-white sm:text-3xl">
           You&apos;re on the list!
         </h2>
-        <p className="mt-2 text-lg font-semibold text-slate-600 dark:text-zinc-300">
+        <p className="mt-2 text-lg font-semibold text-zinc-500">
           #{position} in line
         </p>
-        <p className="mx-auto mt-4 max-w-sm text-sm text-slate-500 dark:text-zinc-400">
+        <p className="mx-auto mt-4 max-w-sm text-sm text-zinc-500">
           We&apos;ll let you know when it&apos;s your turn. Keep an eye on your email.
         </p>
       </div>
@@ -74,7 +74,7 @@ export function WaitlistForm() {
     <div>
       {/* Step indicator */}
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs font-medium text-slate-400 dark:text-zinc-500">
+        <span className="text-xs font-medium text-zinc-400">
           Step {step + 1} of 3
         </span>
       </div>
@@ -84,8 +84,8 @@ export function WaitlistForm() {
             key={i}
             className={`h-1 flex-1 rounded-full transition-colors ${
               i <= step
-                ? 'bg-slate-800 dark:bg-zinc-200'
-                : 'bg-slate-200 dark:bg-zinc-700'
+                ? 'bg-zinc-900 dark:bg-white'
+                : 'bg-zinc-200 dark:bg-zinc-700'
             }`}
           />
         ))}
@@ -94,10 +94,10 @@ export function WaitlistForm() {
       {/* Step 1: What are you building? */}
       {step === 0 && (
         <div>
-          <h2 className="text-xl font-bold text-slate-800 dark:text-zinc-100 sm:text-2xl">
+          <h2 className="text-xl font-bold tracking-tight dark:text-white sm:text-2xl">
             What are you building?
           </h2>
-          <p className="mt-1.5 text-sm text-slate-500 dark:text-zinc-400">
+          <p className="mt-1.5 text-sm text-zinc-500">
             Help us understand how you&apos;ll use thedevhype.
           </p>
 
@@ -106,21 +106,21 @@ export function WaitlistForm() {
               <button
                 key={opt.label}
                 onClick={() => setBuilding(opt.label)}
-                className={`w-full rounded-2xl border p-4 text-left transition-all ${
+                className={`w-full rounded-lg border p-4 text-left transition-all ${
                   building === opt.label
-                    ? 'border-slate-800 bg-slate-800/5 dark:border-zinc-300 dark:bg-white/5'
-                    : 'border-slate-200 hover:border-slate-300 dark:border-zinc-700 dark:hover:border-zinc-600'
+                    ? 'border-zinc-900 bg-zinc-900/5 dark:border-white dark:bg-white/5'
+                    : 'border-zinc-200 hover:border-zinc-300 dark:border-zinc-800 dark:hover:border-zinc-700'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{opt.emoji}</span>
-                  <span className="text-sm font-medium text-slate-800 dark:text-zinc-100">
+                  <span className="text-sm font-medium dark:text-white">
                     {opt.label}
                   </span>
                   <div className={`ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                     building === opt.label
-                      ? 'border-slate-800 bg-slate-800 dark:border-zinc-200 dark:bg-zinc-200'
-                      : 'border-slate-300 dark:border-zinc-600'
+                      ? 'border-zinc-900 bg-zinc-900 dark:border-white dark:bg-white'
+                      : 'border-zinc-300 dark:border-zinc-600'
                   }`}>
                     {building === opt.label && (
                       <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-white dark:text-zinc-900">
@@ -136,7 +136,7 @@ export function WaitlistForm() {
           <button
             onClick={() => setStep(1)}
             disabled={!building}
-            className="mt-6 w-full rounded-2xl bg-slate-800 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="mt-6 w-full rounded-lg bg-zinc-900 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
           >
             Continue
           </button>
@@ -146,10 +146,10 @@ export function WaitlistForm() {
       {/* Step 2: Which AI tools do you use? */}
       {step === 1 && (
         <div>
-          <h2 className="text-xl font-bold text-slate-800 dark:text-zinc-100 sm:text-2xl">
+          <h2 className="text-xl font-bold tracking-tight dark:text-white sm:text-2xl">
             Which AI tools do you use daily?
           </h2>
-          <p className="mt-1.5 text-sm text-slate-500 dark:text-zinc-400">
+          <p className="mt-1.5 text-sm text-zinc-500">
             Select all that apply.
           </p>
 
@@ -158,20 +158,20 @@ export function WaitlistForm() {
               <button
                 key={tool}
                 onClick={() => toggleAiTool(tool)}
-                className={`w-full rounded-2xl border p-4 text-left transition-all ${
+                className={`w-full rounded-lg border p-4 text-left transition-all ${
                   aiTools.has(tool)
-                    ? 'border-slate-800 bg-slate-800/5 dark:border-zinc-300 dark:bg-white/5'
-                    : 'border-slate-200 hover:border-slate-300 dark:border-zinc-700 dark:hover:border-zinc-600'
+                    ? 'border-zinc-900 bg-zinc-900/5 dark:border-white dark:bg-white/5'
+                    : 'border-zinc-200 hover:border-zinc-300 dark:border-zinc-800 dark:hover:border-zinc-700'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-slate-800 dark:text-zinc-100">
+                  <span className="text-sm font-medium dark:text-white">
                     {tool}
                   </span>
                   <div className={`ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
                     aiTools.has(tool)
-                      ? 'border-slate-800 bg-slate-800 dark:border-zinc-200 dark:bg-zinc-200'
-                      : 'border-slate-300 dark:border-zinc-600'
+                      ? 'border-zinc-900 bg-zinc-900 dark:border-white dark:bg-white'
+                      : 'border-zinc-300 dark:border-zinc-600'
                   }`}>
                     {aiTools.has(tool) && (
                       <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-white dark:text-zinc-900">
@@ -187,14 +187,14 @@ export function WaitlistForm() {
           <div className="mt-6 flex gap-3">
             <button
               onClick={() => setStep(0)}
-              className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-medium text-slate-600 transition-colors hover:border-slate-300 dark:border-zinc-700 dark:text-zinc-400"
+              className="rounded-lg border border-zinc-200 px-5 py-3 text-sm font-medium text-zinc-500 transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:text-zinc-400"
             >
               Back
             </button>
             <button
               onClick={() => setStep(2)}
               disabled={aiTools.size === 0}
-              className="flex-1 rounded-2xl bg-slate-800 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              className="flex-1 rounded-lg bg-zinc-900 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
             >
               Continue
             </button>
@@ -205,10 +205,10 @@ export function WaitlistForm() {
       {/* Step 3: MCP excitement */}
       {step === 2 && (
         <div>
-          <h2 className="text-xl font-bold text-slate-800 dark:text-zinc-100 sm:text-2xl">
+          <h2 className="text-xl font-bold tracking-tight dark:text-white sm:text-2xl">
             What excites you most about MCP?
           </h2>
-          <p className="mt-1.5 text-sm text-slate-500 dark:text-zinc-400">
+          <p className="mt-1.5 text-sm text-zinc-500">
             Optional, but we&apos;d love to hear it.
           </p>
 
@@ -217,23 +217,23 @@ export function WaitlistForm() {
             onChange={(e) => setMcpExcitement(e.target.value.slice(0, 280))}
             placeholder="e.g. I want my AI to access my feeds and organize my notes automatically"
             rows={4}
-            className="mt-6 w-full resize-none rounded-2xl border border-slate-200 bg-transparent p-4 text-sm text-slate-800 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none dark:border-zinc-700 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
+            className="mt-6 w-full resize-none rounded-lg border border-zinc-200 bg-transparent p-4 text-sm placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none dark:border-zinc-800 dark:text-white dark:placeholder:text-zinc-500 dark:focus:border-zinc-600"
           />
-          <div className="mt-1 text-right text-xs text-slate-400 dark:text-zinc-500">
+          <div className="mt-1 text-right text-xs text-zinc-400">
             {mcpExcitement.length}/280
           </div>
 
           <div className="mt-6 flex gap-3">
             <button
               onClick={() => setStep(1)}
-              className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-medium text-slate-600 transition-colors hover:border-slate-300 dark:border-zinc-700 dark:text-zinc-400"
+              className="rounded-lg border border-zinc-200 px-5 py-3 text-sm font-medium text-zinc-500 transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:text-zinc-400"
             >
               Back
             </button>
             <button
               onClick={handleSubmit}
               disabled={submitting}
-              className="flex-1 rounded-2xl bg-slate-800 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              className="flex-1 rounded-lg bg-zinc-900 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
             >
               {submitting ? 'Submitting...' : 'Join the waitlist'}
             </button>
@@ -246,17 +246,17 @@ export function WaitlistForm() {
 
 export function WaitlistStatus({ position }: { position: number }) {
   return (
-    <div className="flex flex-col items-center py-4 text-center sm:py-8">
+    <div className="flex flex-col items-center py-8 text-center sm:py-16">
       <div className="flex h-20 w-20 items-center justify-center rounded-full bg-blue-100 text-4xl dark:bg-blue-900/50">
         ⏳
       </div>
-      <h2 className="mt-6 text-2xl font-bold text-slate-800 dark:text-zinc-100 sm:text-3xl">
+      <h2 className="mt-6 text-2xl font-bold tracking-tight dark:text-white sm:text-3xl">
         You&apos;re on the list!
       </h2>
-      <p className="mt-2 text-lg font-semibold text-slate-600 dark:text-zinc-300">
+      <p className="mt-2 text-lg font-semibold text-zinc-500">
         #{position} in line
       </p>
-      <p className="mx-auto mt-4 max-w-sm text-sm text-slate-500 dark:text-zinc-400">
+      <p className="mx-auto mt-4 max-w-sm text-sm text-zinc-500">
         We&apos;ll let you know when it&apos;s your turn. Keep an eye on your email.
       </p>
     </div>

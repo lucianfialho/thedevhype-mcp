@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { AdminUser, UserMcpAccessRow } from '../actions';
 import { banUser, unbanUser, setUserRole } from '../actions';
 
@@ -11,6 +12,7 @@ interface UsersTabProps {
 }
 
 export function UsersTab({ users, userMcps, onRefresh }: UsersTabProps) {
+  const router = useRouter();
   const [banModal, setBanModal] = useState<{ userId: string; name: string } | null>(null);
   const [banReason, setBanReason] = useState('');
   const [loading, setLoading] = useState<string | null>(null);
@@ -48,8 +50,6 @@ export function UsersTab({ users, userMcps, onRefresh }: UsersTabProps) {
               <th className="pb-2 pr-4 font-medium">User</th>
               <th className="pb-2 pr-4 font-medium">Role</th>
               <th className="pb-2 pr-4 font-medium">Status</th>
-              <th className="pb-2 pr-4 font-medium">MCPs</th>
-              <th className="pb-2 pr-4 font-medium">API Key</th>
               <th className="pb-2 font-medium">Actions</th>
             </tr>
           </thead>
@@ -60,7 +60,10 @@ export function UsersTab({ users, userMcps, onRefresh }: UsersTabProps) {
                 className="border-b border-slate-200"
               >
                 <td className="py-3 pr-4">
-                  <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => router.push(`/dashboard/admin/users/${user.id}`)}
+                    className="flex items-center gap-2 hover:opacity-70"
+                  >
                     {user.image && (
                       <img
                         src={user.image}
@@ -68,11 +71,8 @@ export function UsersTab({ users, userMcps, onRefresh }: UsersTabProps) {
                         className="h-6 w-6 rounded-full"
                       />
                     )}
-                    <div>
-                      <p className="font-medium text-slate-800">{user.name}</p>
-                      <p className="text-sm text-slate-500">{user.email}</p>
-                    </div>
-                  </div>
+                    <p className="font-medium text-slate-800">{user.name}</p>
+                  </button>
                 </td>
                 <td className="py-3 pr-4">
                   {user.role === 'admin' ? (
@@ -96,26 +96,6 @@ export function UsersTab({ users, userMcps, onRefresh }: UsersTabProps) {
                   ) : (
                     <span className="text-sm text-green-400">active</span>
                   )}
-                </td>
-                <td className="py-3 pr-4">
-                  <div className="flex flex-wrap gap-1">
-                    {userMcps
-                      .filter((m) => m.userId === user.id)
-                      .map((m) => (
-                        <span
-                          key={m.mcpName}
-                          className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500"
-                        >
-                          {m.mcpName}
-                        </span>
-                      ))}
-                    {userMcps.filter((m) => m.userId === user.id).length === 0 && (
-                      <span className="text-sm text-slate-400">—</span>
-                    )}
-                  </div>
-                </td>
-                <td className="py-3 pr-4">
-                  <span className="text-sm text-slate-400">{user.apiKeyCount > 0 ? 'yes' : 'no'}</span>
                 </td>
                 <td className="py-3">
                   <div className="flex items-center gap-1">

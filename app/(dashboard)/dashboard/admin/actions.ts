@@ -3,7 +3,7 @@
 import { auth } from '@/app/lib/auth/server';
 import { db } from '@/app/lib/db';
 import { eq, sql, desc, gte } from 'drizzle-orm';
-import { userInNeonAuth, apiKeys, apiUsageLog, userMcpAccess, mcpToolUsage } from '@/app/lib/db/public.schema';
+import { userInNeonAuth, apiKeys, apiUsageLog, userMcpAccess, mcpToolUsage, waitlist } from '@/app/lib/db/public.schema';
 import { articles, linkClicks } from '@/app/lib/mcp/servers/eloa.schema';
 
 async function requireAdmin() {
@@ -255,6 +255,107 @@ export async function toggleApiKeyEnabled(keyId: number, enabled: boolean) {
     .update(apiKeys)
     .set({ enabled })
     .where(eq(apiKeys.id, keyId));
+  return { success: true };
+}
+
+// ─── User Detail ───
+
+export async function getUserDetail(userId: string) {
+  await requireAdmin();
+
+  const [user] = await db
+    .select({
+      id: userInNeonAuth.id,
+      name: userInNeonAuth.name,
+      email: userInNeonAuth.email,
+      image: userInNeonAuth.image,
+      role: userInNeonAuth.role,
+      banned: userInNeonAuth.banned,
+      banReason: userInNeonAuth.banReason,
+      createdAt: userInNeonAuth.createdAt,
+    })
+    .from(userInNeonAuth)
+    .where(eq(userInNeonAuth.id, userId));
+
+  if (!user) return null;
+
+  const mcps = await db
+    .select({
+      mcpName: userMcpAccess.mcpName,
+      enabled: userMcpAccess.enabled,
+      hasApiKey: sql<boolean>`${userMcpAccess.apiKey} IS NOT NULL`,
+      createdAt: userMcpAccess.createdAt,
+    })
+    .from(userMcpAccess)
+    .where(eq(userMcpAccess.userId, userId));
+
+  const keys = await db
+    .select({
+      id: apiKeys.id,
+      name: apiKeys.name,
+      tier: apiKeys.tier,
+      enabled: apiKeys.enabled,
+      requestsToday: apiKeys.requestsToday,
+      dailyLimit: apiKeys.dailyLimit,
+      lastRequestAt: apiKeys.lastRequestAt,
+      createdAt: apiKeys.createdAt,
+    })
+    .from(apiKeys)
+    .where(eq(apiKeys.userId, userId));
+
+  const [wl] = await db
+    .select()
+    .from(waitlist)
+    .where(eq(waitlist.userId, userId));
+
+  return { ...user, mcps, apiKeys: keys, waitlist: wl ?? null };
+}
+
+export type UserDetail = NonNullable<Awaited<ReturnType<typeof getUserDetail>>>;
+
+// ─── Waitlist ───
+
+export async function getWaitlistEntries() {
+  await requireAdmin();
+
+  return db
+    .select({
+      id: waitlist.id,
+      userId: waitlist.userId,
+      userName: userInNeonAuth.name,
+      userEmail: userInNeonAuth.email,
+      userImage: userInNeonAuth.image,
+      building: waitlist.building,
+      aiTools: waitlist.aiTools,
+      mcpExcitement: waitlist.mcpExcitement,
+      status: waitlist.status,
+      approvedAt: waitlist.approvedAt,
+      createdAt: waitlist.createdAt,
+    })
+    .from(waitlist)
+    .innerJoin(userInNeonAuth, eq(waitlist.userId, userInNeonAuth.id))
+    .orderBy(desc(waitlist.createdAt));
+}
+
+export type WaitlistEntry = Awaited<ReturnType<typeof getWaitlistEntries>>[number];
+
+export async function approveWaitlistEntry(id: number) {
+  await requireAdmin();
+
+  await db
+    .update(waitlist)
+    .set({ status: 'approved', approvedAt: new Date().toISOString() })
+    .where(eq(waitlist.id, id));
+  return { success: true };
+}
+
+export async function rejectWaitlistEntry(id: number) {
+  await requireAdmin();
+
+  await db
+    .update(waitlist)
+    .set({ status: 'rejected' })
+    .where(eq(waitlist.id, id));
   return { success: true };
 }
 
