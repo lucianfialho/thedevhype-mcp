@@ -12,6 +12,7 @@ interface McpServer {
   name: string;
   description: string;
   icon: string | null;
+  badge: string | null;
   tools: McpTool[];
 }
 
@@ -382,6 +383,11 @@ export function OnboardingWizard({ servers, existingAccess }: OnboardingWizardPr
                         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-zinc-800 dark:text-zinc-400">
                           {server.tools.length} tools
                         </span>
+                        {server.badge && (
+                          <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700 dark:bg-violet-900/50 dark:text-violet-300">
+                            {server.badge}
+                          </span>
+                        )}
                       </div>
                       <p className="mt-0.5 text-sm leading-snug text-slate-500 dark:text-zinc-400">{server.description}</p>
                     </div>
@@ -424,8 +430,24 @@ export function OnboardingWizard({ servers, existingAccess }: OnboardingWizardPr
             </div>
           )}
 
-          <div className="mt-6 space-y-3">
-            {selectedServers.map((server) => {
+          {/* Servers that already have keys */}
+          {selectedServers.some((s) => existingKeys.has(s.name)) && (
+            <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800/50 dark:bg-emerald-950/50">
+              <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Already configured:</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {selectedServers.filter((s) => existingKeys.has(s.name)).map((s) => (
+                  <span key={s.name} className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-sm font-medium capitalize text-slate-700 dark:bg-zinc-800 dark:text-zinc-200">
+                    {s.icon && <img src={s.icon} alt="" className="h-4 w-4 rounded-full" />}
+                    {s.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Servers that need keys */}
+          <div className="mt-4 space-y-3">
+            {selectedServers.filter((s) => !existingKeys.has(s.name)).map((server) => {
               const key = apiKeys[server.name];
               const isGenerating = generating === server.name;
               const isCopied = copiedKey === server.name;

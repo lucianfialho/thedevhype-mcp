@@ -24,6 +24,7 @@ export default async function OnboardingPage() {
     name: s.name,
     description: s.description,
     icon: s.icon || null,
+    badge: s.badge || null,
     tools: s.tools.map((t) => ({ name: t.name, description: t.description })),
   }));
 

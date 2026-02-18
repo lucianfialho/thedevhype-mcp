@@ -12,6 +12,7 @@ export interface McpServerDefinition {
   description: string;
   category: string;
   icon?: string;
+  badge?: string;
   tools: McpToolInfo[];
   init: McpServerInitFn;
 }

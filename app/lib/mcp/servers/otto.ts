@@ -16,6 +16,7 @@ export const ottoServer: McpServerDefinition = {
     'Otto — Second Brain: salva notas, links e destaques em markdown com busca full-text e conexoes entre ideias',
   category: 'Knowledge Tools',
   icon: '/otto.png',
+  badge: 'New',
   tools: [
     { name: 'criar_nota', description: 'Cria uma nota markdown com titulo e conteudo' },
     { name: 'editar_nota', description: 'Edita o conteudo de uma entrada existente' },
