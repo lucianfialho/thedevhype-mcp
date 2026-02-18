@@ -2,15 +2,16 @@
 
 import { useState } from 'react';
 import { getPrecos } from '../actions';
+import { TabSelect } from '../../components/ui';
 
 type Period = '7' | '30' | '90' | '365';
 
-const PERIOD_LABELS: Record<Period, string> = {
-  '7': '7 dias',
-  '30': '30 dias',
-  '90': '90 dias',
-  '365': '1 ano',
-};
+const PERIOD_OPTIONS = [
+  { id: '7', label: '7 days' },
+  { id: '30', label: '30 days' },
+  { id: '90', label: '90 days' },
+  { id: '365', label: '1 year' },
+] as const;
 
 interface ProdutoPreco {
   produtoNome: string;
@@ -20,12 +21,16 @@ interface ProdutoPreco {
   entries: Array<{ storeName: string; valorUnitario: string; dataCompra: string }>;
 }
 
-export function PrecosTab() {
+interface PrecosTabProps {
+  initialPrecos: ProdutoPreco[];
+}
+
+export function PrecosTab({ initialPrecos }: PrecosTabProps) {
   const [busca, setBusca] = useState('');
   const [period, setPeriod] = useState<Period>('90');
-  const [resultados, setResultados] = useState<ProdutoPreco[]>([]);
+  const [resultados, setResultados] = useState<ProdutoPreco[]>(initialPrecos);
   const [loading, setLoading] = useState(false);
-  const [searched, setSearched] = useState(false);
+  const [searched, setSearched] = useState(initialPrecos.length > 0);
 
   async function handleSearch() {
     if (!busca.trim()) return;
@@ -39,108 +44,66 @@ export function PrecosTab() {
   return (
     <div>
       {/* Search */}
-      <div className="mb-4 flex gap-2">
-        <input
-          type="text"
-          placeholder="Buscar produto para comparar precos..."
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-          className="flex-1 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-        />
-        <div className="flex gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
-          {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-                period === p
-                  ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100'
-                  : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-              }`}
-            >
-              {PERIOD_LABELS[p]}
-            </button>
-          ))}
+      <div className="mb-4 space-y-2">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Search product to compare prices..."
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-800 outline-none placeholder:text-slate-400"
+          />
+          <button
+            onClick={handleSearch}
+            className="shrink-0 rounded-xl bg-slate-800 px-4 py-3 text-base font-medium text-white transition-colors hover:bg-slate-700"
+          >
+            Search
+          </button>
         </div>
-        <button
-          onClick={handleSearch}
-          className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-        >
-          Buscar
-        </button>
+        <TabSelect
+          options={PERIOD_OPTIONS}
+          value={period}
+          onChange={(id) => setPeriod(id as Period)}
+          fullWidth
+        />
       </div>
 
       {loading ? (
-        <p className="py-8 text-center text-sm text-zinc-400">Carregando...</p>
+        <p className="py-8 text-center text-base text-slate-500">Loading...</p>
       ) : !searched ? (
-        <p className="py-12 text-center text-sm text-zinc-400">
-          Busque um produto para ver o historico de precos.
+        <p className="py-12 text-center text-base text-slate-500">
+          Search for a product to see price history.
         </p>
       ) : resultados.length === 0 ? (
-        <p className="py-8 text-center text-sm text-zinc-400">Nenhum resultado encontrado.</p>
+        <p className="py-8 text-center text-base text-slate-500">No results found.</p>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-3">
           {resultados.map((produto) => (
-            <div key={produto.produtoNome}>
-              <h3 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+            <div
+              key={produto.produtoNome}
+              className="rounded-2xl border border-slate-200 px-4 py-4"
+            >
+              <p className="text-base font-medium text-slate-800">
                 {produto.produtoNome}
-              </h3>
-
-              {/* Min/Max/Avg cards */}
-              <div className="mb-4 grid grid-cols-3 gap-3">
-                <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-                  <p className="text-xs text-zinc-400">Minimo</p>
-                  <p className="mt-1 text-lg font-bold text-green-600 dark:text-green-400">
-                    R$ {produto.min.toFixed(2)}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-                  <p className="text-xs text-zinc-400">Maximo</p>
-                  <p className="mt-1 text-lg font-bold text-red-600 dark:text-red-400">
-                    R$ {produto.max.toFixed(2)}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-                  <p className="text-xs text-zinc-400">Media</p>
-                  <p className="mt-1 text-lg font-bold text-zinc-900 dark:text-zinc-100">
-                    R$ {produto.avg.toFixed(2)}
-                  </p>
-                </div>
+              </p>
+              <div className="mt-2 flex items-center gap-4">
+                <span className="flex items-center gap-1.5 text-sm text-slate-400">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#16a34a" strokeWidth="2"><path d="M8 12V4M5 7l3-3 3 3" /></svg>
+                  <strong className="text-base text-green-600">R$ {produto.min.toFixed(2)}</strong>
+                </span>
+                <span className="flex items-center gap-1.5 text-sm text-slate-400">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#dc2626" strokeWidth="2"><path d="M8 4v8M5 9l3 3 3-3" /></svg>
+                  <strong className="text-base text-red-600">R$ {produto.max.toFixed(2)}</strong>
+                </span>
+                <span className="flex items-center gap-1.5 text-sm text-slate-400">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 8h10" /></svg>
+                  <strong className="text-base text-slate-800">R$ {produto.avg.toFixed(2)}</strong>
+                </span>
               </div>
-
-              {/* History table */}
-              <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
-                      <th className="px-4 py-2 text-xs font-medium text-zinc-500">Data</th>
-                      <th className="px-4 py-2 text-xs font-medium text-zinc-500">Loja</th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-zinc-500">
-                        Valor
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {produto.entries.map((entry, i) => (
-                      <tr
-                        key={i}
-                        className="border-b border-zinc-100 last:border-0 dark:border-zinc-800"
-                      >
-                        <td className="px-4 py-2 text-zinc-700 dark:text-zinc-300">
-                          {new Date(entry.dataCompra + 'T00:00:00').toLocaleDateString('pt-BR')}
-                        </td>
-                        <td className="px-4 py-2 text-zinc-700 dark:text-zinc-300">
-                          {entry.storeName}
-                        </td>
-                        <td className="px-4 py-2 text-right font-medium text-zinc-900 dark:text-zinc-100">
-                          R$ {Number(entry.valorUnitario).toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <p className="mt-1.5 text-sm text-slate-500">
+                {produto.entries.length} {produto.entries.length === 1 ? 'entry' : 'entries'}
+              </p>
             </div>
           ))}
         </div>

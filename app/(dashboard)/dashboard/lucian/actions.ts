@@ -138,6 +138,44 @@ export async function getProdutosSummary() {
   };
 }
 
+// ─── Produtos com Precos ───
+
+export async function getProdutosWithPrices(categoria?: string, busca?: string, limit = 50) {
+  const userId = await requireUserId();
+
+  const since = new Date();
+  since.setDate(since.getDate() - 90);
+  const sinceStr = since.toISOString().slice(0, 10);
+
+  const conditions = [eq(products.userId, userId)];
+  if (categoria) conditions.push(eq(products.categoria, categoria));
+  if (busca) conditions.push(ilike(products.nome, `%${busca}%`));
+
+  const rows = await db
+    .select({
+      id: products.id,
+      codigo: products.codigo,
+      nome: products.nome,
+      unidade: products.unidade,
+      categoria: products.categoria,
+      storeId: products.storeId,
+      storeName: stores.nome,
+      minPrice: sql<number | null>`MIN(CASE WHEN ${priceEntries.dataCompra} >= ${sinceStr} THEN ${priceEntries.valorUnitario}::numeric END)::float`,
+      maxPrice: sql<number | null>`MAX(CASE WHEN ${priceEntries.dataCompra} >= ${sinceStr} THEN ${priceEntries.valorUnitario}::numeric END)::float`,
+      avgPrice: sql<number | null>`AVG(CASE WHEN ${priceEntries.dataCompra} >= ${sinceStr} THEN ${priceEntries.valorUnitario}::numeric END)::float`,
+      entryCount: sql<number>`COUNT(CASE WHEN ${priceEntries.dataCompra} >= ${sinceStr} THEN 1 END)::int`,
+    })
+    .from(products)
+    .innerJoin(stores, eq(products.storeId, stores.id))
+    .leftJoin(priceEntries, eq(priceEntries.productId, products.id))
+    .where(and(...conditions))
+    .groupBy(products.id, products.codigo, products.nome, products.unidade, products.categoria, products.storeId, stores.nome)
+    .orderBy(products.nome)
+    .limit(limit);
+
+  return rows;
+}
+
 // ─── Precos ───
 
 export async function getPrecos(produtoNome: string, periodDias = 90) {
@@ -205,6 +243,73 @@ export async function getPrecos(produtoNome: string, periodDias = 90) {
     avg: g.count > 0 ? g.sum / g.count : 0,
     entries: g.entries,
   }));
+}
+
+export async function getRecentPrecos(periodDias = 90, limit = 10) {
+  const userId = await requireUserId();
+
+  const since = new Date();
+  since.setDate(since.getDate() - periodDias);
+
+  const rows = await db
+    .select({
+      productId: products.id,
+      produtoNome: products.nome,
+      storeName: stores.nome,
+      valorUnitario: priceEntries.valorUnitario,
+      dataCompra: priceEntries.dataCompra,
+    })
+    .from(priceEntries)
+    .innerJoin(products, eq(priceEntries.productId, products.id))
+    .innerJoin(stores, eq(priceEntries.storeId, stores.id))
+    .where(
+      and(
+        eq(priceEntries.userId, userId),
+        sql`${priceEntries.dataCompra} >= ${since.toISOString().slice(0, 10)}`,
+      ),
+    )
+    .orderBy(desc(priceEntries.dataCompra));
+
+  const grouped: Record<
+    string,
+    {
+      produtoNome: string;
+      min: number;
+      max: number;
+      sum: number;
+      count: number;
+      entries: Array<{ storeName: string; valorUnitario: string; dataCompra: string }>;
+    }
+  > = {};
+
+  for (const r of rows) {
+    const key = r.produtoNome;
+    const valor = Number(r.valorUnitario);
+    if (!grouped[key]) {
+      grouped[key] = { produtoNome: key, min: valor, max: valor, sum: 0, count: 0, entries: [] };
+    }
+    const g = grouped[key];
+    g.min = Math.min(g.min, valor);
+    g.max = Math.max(g.max, valor);
+    g.sum += valor;
+    g.count++;
+    g.entries.push({
+      storeName: r.storeName,
+      valorUnitario: r.valorUnitario,
+      dataCompra: r.dataCompra,
+    });
+  }
+
+  return Object.values(grouped)
+    .map((g) => ({
+      produtoNome: g.produtoNome,
+      min: g.min,
+      max: g.max,
+      avg: g.count > 0 ? g.sum / g.count : 0,
+      entries: g.entries,
+    }))
+    .sort((a, b) => b.entries.length - a.entries.length)
+    .slice(0, limit);
 }
 
 // ─── Gastos ───

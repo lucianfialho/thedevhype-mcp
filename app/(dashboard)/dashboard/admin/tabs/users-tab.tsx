@@ -42,22 +42,22 @@ export function UsersTab({ users, userMcps, onRefresh }: UsersTabProps) {
   return (
     <>
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
+        <table className="w-full text-left text-base">
           <thead>
-            <tr className="border-b border-zinc-200 text-xs text-zinc-500 dark:border-zinc-700">
-              <th className="pb-2 pr-4 font-medium">Usuario</th>
+            <tr className="border-b border-slate-200 text-sm text-slate-400">
+              <th className="pb-2 pr-4 font-medium">User</th>
               <th className="pb-2 pr-4 font-medium">Role</th>
               <th className="pb-2 pr-4 font-medium">Status</th>
               <th className="pb-2 pr-4 font-medium">MCPs</th>
               <th className="pb-2 pr-4 font-medium">API Key</th>
-              <th className="pb-2 font-medium">Acoes</th>
+              <th className="pb-2 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
             {users.map((user) => (
               <tr
                 key={user.id}
-                className="border-b border-zinc-100 dark:border-zinc-800"
+                className="border-b border-slate-200"
               >
                 <td className="py-3 pr-4">
                   <div className="flex items-center gap-2">
@@ -69,32 +69,32 @@ export function UsersTab({ users, userMcps, onRefresh }: UsersTabProps) {
                       />
                     )}
                     <div>
-                      <p className="font-medium text-zinc-900 dark:text-zinc-100">{user.name}</p>
-                      <p className="text-xs text-zinc-400">{user.email}</p>
+                      <p className="font-medium text-slate-800">{user.name}</p>
+                      <p className="text-sm text-slate-500">{user.email}</p>
                     </div>
                   </div>
                 </td>
                 <td className="py-3 pr-4">
                   {user.role === 'admin' ? (
-                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700">
                       admin
                     </span>
                   ) : (
-                    <span className="text-xs text-zinc-400">user</span>
+                    <span className="text-sm text-slate-500">user</span>
                   )}
                 </td>
                 <td className="py-3 pr-4">
                   {user.banned ? (
                     <div>
-                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900 dark:text-red-300">
-                        banido
+                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-700">
+                        banned
                       </span>
                       {user.banReason && (
-                        <p className="mt-0.5 text-[10px] text-zinc-400">{user.banReason}</p>
+                        <p className="mt-0.5 text-[10px] text-slate-500">{user.banReason}</p>
                       )}
                     </div>
                   ) : (
-                    <span className="text-xs text-green-600 dark:text-green-400">ativo</span>
+                    <span className="text-sm text-green-400">active</span>
                   )}
                 </td>
                 <td className="py-3 pr-4">
@@ -104,18 +104,18 @@ export function UsersTab({ users, userMcps, onRefresh }: UsersTabProps) {
                       .map((m) => (
                         <span
                           key={m.mcpName}
-                          className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                          className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500"
                         >
                           {m.mcpName}
                         </span>
                       ))}
                     {userMcps.filter((m) => m.userId === user.id).length === 0 && (
-                      <span className="text-xs text-zinc-300 dark:text-zinc-600">—</span>
+                      <span className="text-sm text-slate-400">—</span>
                     )}
                   </div>
                 </td>
                 <td className="py-3 pr-4">
-                  <span className="text-xs text-zinc-500">{user.apiKeyCount > 0 ? 'sim' : 'nao'}</span>
+                  <span className="text-sm text-slate-400">{user.apiKeyCount > 0 ? 'yes' : 'no'}</span>
                 </td>
                 <td className="py-3">
                   <div className="flex items-center gap-1">
@@ -123,7 +123,7 @@ export function UsersTab({ users, userMcps, onRefresh }: UsersTabProps) {
                       <button
                         onClick={() => handleUnban(user.id)}
                         disabled={loading === user.id}
-                        className="rounded bg-green-50 px-2 py-1 text-[10px] font-medium text-green-700 hover:bg-green-100 disabled:opacity-50 dark:bg-green-900/30 dark:text-green-400"
+                        className="rounded bg-green-100 px-2 py-1 text-[10px] font-medium text-green-600 hover:bg-green-200 disabled:opacity-50"
                       >
                         Unban
                       </button>
@@ -131,7 +131,7 @@ export function UsersTab({ users, userMcps, onRefresh }: UsersTabProps) {
                       <button
                         onClick={() => setBanModal({ userId: user.id, name: user.name })}
                         disabled={loading === user.id}
-                        className="rounded bg-red-50 px-2 py-1 text-[10px] font-medium text-red-700 hover:bg-red-100 disabled:opacity-50 dark:bg-red-900/30 dark:text-red-400"
+                        className="rounded bg-red-100 px-2 py-1 text-[10px] font-medium text-red-600 hover:bg-red-200 disabled:opacity-50"
                       >
                         Ban
                       </button>
@@ -139,9 +139,9 @@ export function UsersTab({ users, userMcps, onRefresh }: UsersTabProps) {
                     <button
                       onClick={() => handleToggleAdmin(user.id, user.role)}
                       disabled={loading === user.id}
-                      className="rounded bg-zinc-100 px-2 py-1 text-[10px] font-medium text-zinc-600 hover:bg-zinc-200 disabled:opacity-50 dark:bg-zinc-800 dark:text-zinc-400"
+                      className="rounded bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-500 hover:bg-slate-200 disabled:opacity-50"
                     >
-                      {user.role === 'admin' ? 'Remover admin' : 'Promover admin'}
+                      {user.role === 'admin' ? 'Remove admin' : 'Make admin'}
                     </button>
                   </div>
                 </td>
@@ -154,31 +154,31 @@ export function UsersTab({ users, userMcps, onRefresh }: UsersTabProps) {
       {/* Ban Modal */}
       {banModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="mx-4 w-full max-w-sm rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900">
-            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-              Banir {banModal.name}
+          <div className="mx-4 w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
+            <h3 className="text-base font-semibold text-slate-800">
+              Ban {banModal.name}
             </h3>
-            <p className="mt-1 text-xs text-zinc-500">Informe o motivo do ban:</p>
+            <p className="mt-1 text-sm text-slate-400">Provide the ban reason:</p>
             <textarea
               value={banReason}
               onChange={(e) => setBanReason(e.target.value)}
-              placeholder="Motivo..."
+              placeholder="Reason..."
               rows={3}
-              className="mt-3 w-full rounded-md border border-zinc-200 px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800"
+              className="mt-3 w-full rounded-md border border-slate-200 bg-slate-100 px-3 py-2 text-base text-slate-800 focus:border-slate-400 focus:outline-none"
             />
             <div className="mt-4 flex justify-end gap-2">
               <button
                 onClick={() => { setBanModal(null); setBanReason(''); }}
-                className="rounded-md px-3 py-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-700"
+                className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-400 hover:text-slate-600"
               >
-                Cancelar
+                Cancel
               </button>
               <button
                 onClick={handleBan}
                 disabled={!banReason.trim() || loading === banModal.userId}
-                className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
               >
-                Confirmar Ban
+                Confirm Ban
               </button>
             </div>
           </div>

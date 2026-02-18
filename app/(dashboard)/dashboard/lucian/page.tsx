@@ -1,15 +1,14 @@
-import Link from 'next/link';
 import { auth } from '@/app/lib/auth/server';
 import { db } from '@/app/lib/db';
 import { userMcpAccess, apiKeys } from '@/app/lib/db/public.schema';
 import { eq, and } from 'drizzle-orm';
 import { registry } from '@/app/lib/mcp/servers';
 import { LucianDashboard } from './lucian-dashboard';
-import { getNotas, getNotasSummary, getProdutos, getProdutosSummary, getGastosData, getGastosTrend, getActiveList, getListSummary, getUserLucianUsage } from './actions';
+import { getProdutosWithPrices, getProdutosSummary, getGastosData, getGastosTrend, getActiveList, getListSummary, getUserLucianUsage } from './actions';
 
 export const dynamic = 'force-dynamic';
 
-const TABS = ['gastos', 'notas', 'produtos', 'precos', 'lista', 'usage', 'config'] as const;
+const TABS = ['gastos', 'produtos', 'lista', 'usage', 'config'] as const;
 type Tab = (typeof TABS)[number];
 
 function maskApiKey(key: string): string {
@@ -36,11 +35,9 @@ export default async function LucianPage({
         .where(and(eq(userMcpAccess.userId, userId), eq(userMcpAccess.mcpName, 'lucian'))))[0]
     : undefined;
 
-  const [notasData, notasSummary, produtosData, produtosSummary, gastosResult, gastosTrendData, listItems, listSummaryData, userApiKey, usageStats] =
+  const [produtosData, produtosSummary, gastosResult, gastosTrendData, listItems, listSummaryData, userApiKey, usageStats] =
     await Promise.all([
-      getNotas(),
-      getNotasSummary(),
-      getProdutos(),
+      getProdutosWithPrices(),
       getProdutosSummary(),
       getGastosData(),
       getGastosTrend(),
@@ -70,42 +67,17 @@ export default async function LucianPage({
     : null;
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-4 sm:p-6">
-      <Link
-        href="/dashboard"
-        className="mb-4 inline-flex items-center gap-1 text-sm text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M10 3L5 8l5 5" />
-        </svg>
-        Back
-      </Link>
-      <div className="mb-6 flex items-center gap-3 sm:gap-4">
-        <img
-          src="/lucian.png"
-          alt="Lucian"
-          className="h-10 w-10 shrink-0 rounded-full sm:h-12 sm:w-12"
-        />
-        <div>
-          <h2 className="text-xl font-bold sm:text-2xl">Lucian</h2>
-          <p className="text-xs text-zinc-500 sm:text-sm">Virtual Grocery Manager</p>
-        </div>
-      </div>
-
-      <LucianDashboard
-        initialTab={tab}
-        initialNotas={notasData}
-        notasSummary={notasSummary}
-        initialProdutos={produtosData}
-        produtosSummary={produtosSummary}
-        initialGastos={gastosResult.gastos}
-        gastosSummary={gastosResult.summary}
-        gastosTrendData={gastosTrendData}
-        initialListItems={listItems}
-        listSummary={listSummaryData}
-        mcpConfig={mcpConfig}
-        initialUsageStats={usageStats}
-      />
-    </main>
+    <LucianDashboard
+      initialTab={tab}
+      initialProdutos={produtosData}
+      produtosSummary={produtosSummary}
+      initialGastos={gastosResult.gastos}
+      gastosSummary={gastosResult.summary}
+      gastosTrendData={gastosTrendData}
+      initialListItems={listItems}
+      listSummary={listSummaryData}
+      mcpConfig={mcpConfig}
+      initialUsageStats={usageStats}
+    />
   );
 }

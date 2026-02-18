@@ -58,28 +58,6 @@ export function NotasTab({ initialNotas, summary, onSummaryChange }: NotasTabPro
 
   return (
     <div>
-      {/* Summary cards */}
-      <div className="mb-6 grid grid-cols-3 gap-3">
-        <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-          <p className="text-xs text-zinc-400">Total notas</p>
-          <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-            {summary.totalNotas}
-          </p>
-        </div>
-        <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-          <p className="text-xs text-zinc-400">Total gasto</p>
-          <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-            R$ {summary.totalValor.toFixed(2)}
-          </p>
-        </div>
-        <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-          <p className="text-xs text-zinc-400">Lojas</p>
-          <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-            {summary.totalLojas}
-          </p>
-        </div>
-      </div>
-
       {/* Filter */}
       <div className="mb-4 flex gap-2">
         <input
@@ -88,11 +66,11 @@ export function NotasTab({ initialNotas, summary, onSummaryChange }: NotasTabPro
           value={filtroLoja}
           onChange={(e) => setFiltroLoja(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleFilter()}
-          className="flex-1 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          className="flex-1 rounded-xl border-0 bg-slate-100 px-4 py-3 text-sm text-slate-800 outline-none placeholder:text-slate-400"
         />
         <button
           onClick={handleFilter}
-          className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          className="rounded-xl bg-slate-800 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-700"
         >
           Filtrar
         </button>
@@ -100,32 +78,32 @@ export function NotasTab({ initialNotas, summary, onSummaryChange }: NotasTabPro
 
       {/* Notas list */}
       {loading ? (
-        <p className="py-8 text-center text-sm text-zinc-400">Carregando...</p>
+        <p className="py-8 text-center text-sm text-slate-500">Carregando...</p>
       ) : notas.length === 0 ? (
-        <p className="py-8 text-center text-sm text-zinc-400">Nenhuma nota encontrada.</p>
+        <p className="py-8 text-center text-sm text-slate-500">Nenhuma nota encontrada.</p>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {notas.map((nota) => (
             <div
               key={nota.id}
-              className="flex items-center justify-between rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-800"
+              className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-4"
             >
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                <p className="truncate text-sm font-medium text-slate-800">
                   {nota.storeName}
                 </p>
-                <p className="mt-0.5 text-xs text-zinc-400">
+                <p className="mt-0.5 text-xs text-slate-500">
                   {new Date(nota.createdAt).toLocaleDateString('pt-BR')} · {nota.totalItens} itens
                 </p>
               </div>
               <div className="ml-4 flex shrink-0 items-center gap-3">
-                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                <p className="text-sm font-semibold text-slate-800">
                   R$ {nota.valorAPagar.toFixed(2)}
                 </p>
                 <button
                   onClick={() => handleDelete(nota.id)}
                   disabled={deleting === nota.id}
-                  className="rounded p-1 text-zinc-300 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:text-zinc-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                  className="rounded p-1 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-400 disabled:opacity-50"
                   title="Excluir nota"
                 >
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -139,7 +117,7 @@ export function NotasTab({ initialNotas, summary, onSummaryChange }: NotasTabPro
           {notas.length >= limit && (
             <button
               onClick={handleLoadMore}
-              className="w-full rounded-lg border border-zinc-200 py-2 text-sm text-zinc-500 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
+              className="w-full rounded-2xl bg-slate-100 py-2.5 text-sm text-slate-500 transition-colors hover:bg-slate-200"
             >
               Carregar mais
             </button>

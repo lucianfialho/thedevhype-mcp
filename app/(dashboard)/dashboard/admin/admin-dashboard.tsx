@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { AppShell, TabSelect } from '../components/ui';
 import { UsersTab } from './tabs/users-tab';
 import { ApiKeysTab } from './tabs/api-keys-tab';
 import { UsageTab } from './tabs/usage-tab';
@@ -11,9 +13,9 @@ import { getUsers, getUserMcpAccess, getApiKeysAdmin } from './actions';
 import type { AdminUser, AdminApiKey, ApiUsageStats, UserMcpAccessRow, McpUsageStats } from './actions';
 
 const TABS = [
-  { id: 'usuarios', label: 'Usuarios' },
+  { id: 'usuarios', label: 'Users' },
   { id: 'api-keys', label: 'API Keys' },
-  { id: 'uso', label: 'Uso da API' },
+  { id: 'uso', label: 'API Usage' },
   { id: 'mcps', label: 'MCPs' },
   { id: 'analytics', label: 'Analytics' },
 ] as const;
@@ -43,8 +45,8 @@ export function AdminDashboard({
   const [userMcps, setUserMcps] = useState(initialUserMcps);
   const [apiKeysData, setApiKeysData] = useState(initialApiKeys);
 
-  function switchTab(tab: Tab) {
-    setActiveTab(tab);
+  function switchTab(tab: string) {
+    setActiveTab(tab as Tab);
     router.push(`/dashboard/admin?tab=${tab}`, { scroll: false });
   }
 
@@ -60,38 +62,32 @@ export function AdminDashboard({
   }, []);
 
   return (
-    <>
-      {/* Tab bar */}
-      <div className="mb-6 flex gap-1 overflow-x-auto rounded-lg border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-700 dark:bg-zinc-800/50">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => switchTab(tab.id)}
-            className={`flex-1 whitespace-nowrap rounded-md px-3 py-2 text-xs font-medium transition-colors ${
-              activeTab === tab.id
-                ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100'
-                : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+    <AppShell title="Admin">
+      <div className="mb-4 shrink-0 flex items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-600">
+          A
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-bold text-slate-800">Admin</h2>
+        </div>
+        <TabSelect options={TABS} value={activeTab} onChange={switchTab} />
       </div>
 
-      {/* Tab content */}
-      {activeTab === 'usuarios' && (
-        <UsersTab users={users} userMcps={userMcps} onRefresh={refreshUsers} />
-      )}
-      {activeTab === 'api-keys' && (
-        <ApiKeysTab apiKeys={apiKeysData} onRefresh={refreshApiKeys} />
-      )}
-      {activeTab === 'uso' && (
-        <UsageTab stats={initialUsageStats} />
-      )}
-      {activeTab === 'mcps' && (
-        <McpsTab stats={initialMcpUsageStats} />
-      )}
-      {activeTab === 'analytics' && <AnalyticsTab />}
-    </>
+      <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {activeTab === 'usuarios' && (
+          <UsersTab users={users} userMcps={userMcps} onRefresh={refreshUsers} />
+        )}
+        {activeTab === 'api-keys' && (
+          <ApiKeysTab apiKeys={apiKeysData} onRefresh={refreshApiKeys} />
+        )}
+        {activeTab === 'uso' && (
+          <UsageTab stats={initialUsageStats} />
+        )}
+        {activeTab === 'mcps' && (
+          <McpsTab stats={initialMcpUsageStats} />
+        )}
+        {activeTab === 'analytics' && <AnalyticsTab />}
+      </div>
+    </AppShell>
   );
 }

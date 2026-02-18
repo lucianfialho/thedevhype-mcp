@@ -2,19 +2,20 @@
 
 import { useState, useTransition } from 'react';
 import { getGastosTrend, type Granularidade } from '../actions';
+import { MiniSelect } from '../../components/ui';
 
 const MONTH_SHORT: Record<string, string> = {
-  '01': 'Jan', '02': 'Fev', '03': 'Mar', '04': 'Abr',
-  '05': 'Mai', '06': 'Jun', '07': 'Jul', '08': 'Ago',
-  '09': 'Set', '10': 'Out', '11': 'Nov', '12': 'Dez',
+  '01': 'Jan', '02': 'Feb', '03': 'Mar', '04': 'Apr',
+  '05': 'May', '06': 'Jun', '07': 'Jul', '08': 'Aug',
+  '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dec',
 };
 
-const WEEKDAY_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const GRANULARIDADE_LABELS: Record<Granularidade, string> = {
-  diario: 'Diario',
-  semanal: 'Semanal',
-  mensal: 'Mensal',
+  diario: 'Daily',
+  semanal: 'Weekly',
+  mensal: 'Monthly',
 };
 
 const PERIOD_OPTIONS: Record<Granularidade, Array<{ dias: number; label: string }>> = {
@@ -24,14 +25,14 @@ const PERIOD_OPTIONS: Record<Granularidade, Array<{ dias: number; label: string 
     { dias: 30, label: '30d' },
   ],
   semanal: [
-    { dias: 28, label: '4 sem' },
-    { dias: 56, label: '8 sem' },
-    { dias: 84, label: '12 sem' },
+    { dias: 28, label: '4 wk' },
+    { dias: 56, label: '8 wk' },
+    { dias: 84, label: '12 wk' },
   ],
   mensal: [
     { dias: 90, label: '3m' },
     { dias: 180, label: '6m' },
-    { dias: 365, label: '1a' },
+    { dias: 365, label: '1y' },
   ],
 };
 
@@ -111,42 +112,28 @@ export function GastosTrendChart({ data: initialData }: { data: GastosTrendData 
     <div className="mb-6 space-y-4">
       {/* Granularity + Period controls */}
       <div className="flex flex-wrap gap-2">
-        <div className="flex gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
-          {(Object.keys(GRANULARIDADE_LABELS) as Granularidade[]).map((g) => (
-            <button
-              key={g}
-              onClick={() => handleChange(g, PERIOD_OPTIONS[g][1].dias)}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                granularidade === g
-                  ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100'
-                  : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-              }`}
-            >
-              {GRANULARIDADE_LABELS[g]}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
-          {PERIOD_OPTIONS[granularidade].map((opt) => (
-            <button
-              key={opt.dias}
-              onClick={() => handleChange(granularidade, opt.dias)}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                dias === opt.dias
-                  ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100'
-                  : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        <MiniSelect
+          value={granularidade}
+          options={(Object.keys(GRANULARIDADE_LABELS) as Granularidade[]).map((g) => ({
+            value: g,
+            label: GRANULARIDADE_LABELS[g],
+          }))}
+          onChange={(g) => handleChange(g, PERIOD_OPTIONS[g][1].dias)}
+        />
+        <MiniSelect
+          value={dias}
+          options={PERIOD_OPTIONS[granularidade].map((opt) => ({
+            value: opt.dias,
+            label: opt.label,
+          }))}
+          onChange={(d) => handleChange(granularidade, d)}
+        />
       </div>
 
       <div className={isPending ? 'opacity-60 transition-opacity' : ''}>
         {timeline.length === 0 ? (
-          <p className="py-6 text-center text-sm text-zinc-400">
-            Sem dados de tendencia para este periodo.
+          <p className="py-6 text-center text-base text-slate-500">
+            No trend data for this period.
           </p>
         ) : (
           <>
@@ -154,18 +141,18 @@ export function GastosTrendChart({ data: initialData }: { data: GastosTrendData 
             <ComparisonCard comparison={comparison} granularidade={granularidade} />
 
             {/* Line chart */}
-            <div className="mt-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-              <h3 className="mb-3 text-sm font-medium text-zinc-600 dark:text-zinc-400">
-                Tendencia {GRANULARIDADE_LABELS[granularidade].toLowerCase()}
+            <div className="mt-4 rounded-2xl border border-slate-200 p-4">
+              <h3 className="mb-3 text-base font-medium text-slate-500">
+                {GRANULARIDADE_LABELS[granularidade]} trend
               </h3>
               <LineChart timeline={timeline} granularidade={granularidade} />
             </div>
 
             {/* Category stacked bars */}
             {categories.length > 0 && byCategory.length > 0 && (
-              <div className="mt-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-                <h3 className="mb-3 text-sm font-medium text-zinc-600 dark:text-zinc-400">
-                  Top categorias por periodo
+              <div className="mt-4 rounded-2xl border border-slate-200 p-4">
+                <h3 className="mb-3 text-base font-medium text-slate-500">
+                  Top categories by period
                 </h3>
                 <CategoryStackedBars
                   timeline={timeline}
@@ -196,34 +183,20 @@ function ComparisonCard({
   const isZero = change === 0 && previous.total === 0;
 
   return (
-    <div className="grid grid-cols-2 gap-3">
-      <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-        <p className="text-xs text-zinc-400">{fmtPeriodFull(current.period, granularidade)}</p>
-        <p className="mt-1 text-xl font-bold text-zinc-900 dark:text-zinc-100">
-          {fmtCurrency(current.total)}
-        </p>
-        <p className="text-xs text-zinc-400">{current.compras} compras</p>
-      </div>
-      <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-        <p className="text-xs text-zinc-400">{fmtPeriodFull(previous.period, granularidade)}</p>
-        <p className="mt-1 text-xl font-bold text-zinc-900 dark:text-zinc-100">
-          {fmtCurrency(previous.total)}
-        </p>
-        <div className="mt-1 flex items-center gap-1.5">
-          <p className="text-xs text-zinc-400">{previous.compras} compras</p>
-          {!isZero && (
-            <span
-              className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-xs font-medium ${
-                isUp
-                  ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                  : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-              }`}
-            >
-              {isUp ? '↑' : '↓'} {Math.abs(change).toFixed(1)}%
-            </span>
-          )}
-        </div>
-      </div>
+    <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-slate-500">
+      <span>{fmtPeriodFull(current.period, granularidade)} <strong className="text-base text-slate-800">{fmtCurrency(current.total)}</strong></span>
+      <span>vs {fmtPeriodFull(previous.period, granularidade)} <strong className="text-base text-slate-800">{fmtCurrency(previous.total)}</strong></span>
+      {!isZero && (
+        <span
+          className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-sm font-medium ${
+            isUp
+              ? 'bg-red-100 text-red-600'
+              : 'bg-green-100 text-green-600'
+          }`}
+        >
+          {isUp ? '↑' : '↓'} {Math.abs(change).toFixed(1)}%
+        </span>
+      )}
     </div>
   );
 }
@@ -279,10 +252,10 @@ function LineChart({
         <g key={i}>
           <line
             x1={PX} x2={W - PX} y1={t.y} y2={t.y}
-            className="stroke-zinc-200 dark:stroke-zinc-800"
+            className="stroke-slate-200"
             strokeWidth={0.5}
           />
-          <text x={PX - 6} y={t.y + 3} textAnchor="end" className="fill-zinc-400 text-[9px]">
+          <text x={PX - 6} y={t.y + 3} textAnchor="end" className="fill-slate-500 text-[9px]">
             {t.val >= 1000 ? `${(t.val / 1000).toFixed(1)}k` : t.val.toFixed(0)}
           </text>
         </g>
@@ -292,7 +265,7 @@ function LineChart({
       <path
         d={linePath}
         fill="none"
-        className="stroke-zinc-600 dark:stroke-zinc-400"
+        className="stroke-slate-500"
         strokeWidth={2}
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -301,7 +274,7 @@ function LineChart({
       {/* Area fill */}
       <path
         d={`${linePath} L ${points[points.length - 1].x} ${PY + chartH} L ${points[0].x} ${PY + chartH} Z`}
-        className="fill-zinc-200/40 dark:fill-zinc-700/30"
+        className="fill-slate-200/50"
       />
 
       {/* Points + labels */}
@@ -311,11 +284,11 @@ function LineChart({
           <circle
             cx={p.x} cy={p.y}
             r={hovered === i ? 5 : timeline.length > 20 ? 2 : 3.5}
-            className="fill-zinc-600 dark:fill-zinc-300"
+            className="fill-slate-600"
           />
           {/* X label (show every Nth) */}
           {i % step === 0 && (
-            <text x={p.x} y={H - 4} textAnchor="middle" className="fill-zinc-400 text-[9px]">
+            <text x={p.x} y={H - 4} textAnchor="middle" className="fill-slate-500 text-[9px]">
               {fmtPeriodLabel(p.period, granularidade)}
             </text>
           )}
@@ -324,11 +297,11 @@ function LineChart({
             <>
               <rect
                 x={p.x - 42} y={p.y - 22} width={84} height={16} rx={4}
-                className="fill-zinc-800 dark:fill-zinc-200"
+                className="fill-slate-800"
               />
               <text
                 x={p.x} y={p.y - 11} textAnchor="middle"
-                className="fill-zinc-100 dark:fill-zinc-900 text-[9px] font-medium"
+                className="fill-white text-[9px] font-medium"
               >
                 {fmtCurrency(p.total)}
               </text>
@@ -380,7 +353,7 @@ function CategoryStackedBars({
             <span
               className={`inline-block h-2.5 w-2.5 rounded-sm ${CATEGORY_COLORS[i % CATEGORY_COLORS.length].bg}`}
             />
-            <span className="text-xs text-zinc-500 dark:text-zinc-400">{cat}</span>
+            <span className="text-sm text-slate-500">{cat}</span>
           </div>
         ))}
       </div>
@@ -390,10 +363,10 @@ function CategoryStackedBars({
         const cats = catMap.get(p) || new Map<string, number>();
         return (
           <div key={p} className="flex items-center gap-3">
-            <span className="w-20 shrink-0 text-xs text-zinc-500 dark:text-zinc-400">
+            <span className="w-20 shrink-0 text-sm text-slate-500">
               {fmtPeriodLabel(p, granularidade)}
             </span>
-            <div className="relative flex h-5 flex-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+            <div className="relative flex h-5 flex-1 overflow-hidden rounded-full bg-slate-100">
               {categories.map((cat, i) => {
                 const val = cats.get(cat) || 0;
                 const pct = (val / maxPeriodTotal) * 100;
@@ -411,7 +384,7 @@ function CategoryStackedBars({
                 );
               })}
             </div>
-            <span className="w-20 shrink-0 text-right text-xs text-zinc-500">
+            <span className="w-20 shrink-0 text-right text-sm text-slate-400">
               {fmtCurrency(categories.reduce((s, c) => s + (cats.get(c) || 0), 0))}
             </span>
           </div>

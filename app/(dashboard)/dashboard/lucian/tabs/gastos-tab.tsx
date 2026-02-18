@@ -3,21 +3,22 @@
 import { useState, useRef, useTransition } from 'react';
 import { getGastosData } from '../actions';
 import { GastosTrendChart, type GastosTrendData } from './gastos-trend-chart';
+import { MiniSelect } from '../../components/ui';
 
 type Period = '7' | '30' | '90' | '365';
 type Agrupamento = 'categoria' | 'loja' | 'mes';
 
 const PERIOD_LABELS: Record<Period, string> = {
-  '7': '7 dias',
-  '30': '30 dias',
-  '90': '90 dias',
-  '365': '1 ano',
+  '7': '7 days',
+  '30': '30 days',
+  '90': '90 days',
+  '365': '1 year',
 };
 
 const AGRUPAMENTO_LABELS: Record<Agrupamento, string> = {
-  categoria: 'Categoria',
-  loja: 'Loja',
-  mes: 'Mes',
+  categoria: 'Category',
+  loja: 'Store',
+  mes: 'Month',
 };
 
 interface GastoRow {
@@ -70,85 +71,49 @@ export function GastosTab({ initialGastos, initialSummary, trendData }: GastosTa
       {/* Trend charts */}
       <GastosTrendChart data={trendData} />
 
-      {/* Summary cards */}
-      <div className="mb-6 grid grid-cols-3 gap-3">
-        <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-          <p className="text-xs text-zinc-400">Total gasto</p>
-          <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-            R$ {summary.totalGeral.toFixed(2)}
-          </p>
-        </div>
-        <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-          <p className="text-xs text-zinc-400">Compras</p>
-          <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-            {summary.comprasCount}
-          </p>
-        </div>
-        <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-          <p className="text-xs text-zinc-400">Media/compra</p>
-          <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-            R$ {summary.mediaCompra.toFixed(2)}
-          </p>
-        </div>
-      </div>
-
       {/* Period + Agrupamento filters */}
       <div className="mb-4 flex flex-wrap gap-2">
-        <div className="flex gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
-          {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => handleChange(p, agrupamento)}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                period === p
-                  ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100'
-                  : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-              }`}
-            >
-              {PERIOD_LABELS[p]}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
-          {(Object.keys(AGRUPAMENTO_LABELS) as Agrupamento[]).map((a) => (
-            <button
-              key={a}
-              onClick={() => handleChange(period, a)}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                agrupamento === a
-                  ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100'
-                  : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-              }`}
-            >
-              {AGRUPAMENTO_LABELS[a]}
-            </button>
-          ))}
-        </div>
+        <MiniSelect
+          value={period}
+          options={(Object.keys(PERIOD_LABELS) as Period[]).map((p) => ({
+            value: p,
+            label: PERIOD_LABELS[p],
+          }))}
+          onChange={(p) => handleChange(p, agrupamento)}
+        />
+        <MiniSelect
+          value={agrupamento}
+          options={(Object.keys(AGRUPAMENTO_LABELS) as Agrupamento[]).map((a) => ({
+            value: a,
+            label: AGRUPAMENTO_LABELS[a],
+          }))}
+          onChange={(a) => handleChange(period, a)}
+        />
       </div>
 
       {/* Gastos table with percentage bars */}
-      <div className={isPending ? 'opacity-60 transition-opacity' : ''}>
+      <div className={`rounded-2xl border border-slate-200 p-4 ${isPending ? 'opacity-60 transition-opacity' : ''}`}>
         {gastos.length === 0 ? (
-          <p className="py-8 text-center text-sm text-zinc-400">
-            Nenhum gasto encontrado neste periodo.
+          <p className="py-4 text-center text-base text-slate-500">
+            No spending found for this period.
           </p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {gastos.map((g) => (
               <div key={g.label} className="flex items-center gap-3">
-                <span className="w-32 shrink-0 truncate text-xs text-zinc-600 dark:text-zinc-400">
+                <span className="w-28 shrink-0 truncate text-sm text-slate-500">
                   {g.label}
                 </span>
-                <div className="relative h-5 flex-1 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                <div className="relative h-5 flex-1 rounded-full bg-slate-100">
                   <div
-                    className="h-full rounded-full bg-zinc-400 dark:bg-zinc-600"
+                    className="h-full rounded-full bg-slate-400"
                     style={{ width: `${(g.total / maxTotal) * 100}%` }}
                   />
                 </div>
-                <span className="w-24 shrink-0 text-right text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                <span className="w-20 shrink-0 text-right text-sm font-medium text-slate-600">
                   R$ {g.total.toFixed(2)}
                 </span>
-                <span className="w-12 shrink-0 text-right text-xs text-zinc-400">
+                <span className="w-10 shrink-0 text-right text-sm text-slate-500">
                   {g.percentual.toFixed(0)}%
                 </span>
               </div>

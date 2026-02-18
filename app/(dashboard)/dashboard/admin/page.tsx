@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { auth } from '@/app/lib/auth/server';
 import { db } from '@/app/lib/db';
@@ -41,29 +40,13 @@ export default async function AdminPage({
   ]);
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-4 sm:p-6">
-      <Link
-        href="/dashboard"
-        className="mb-4 inline-flex items-center gap-1 text-sm text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M10 3L5 8l5 5" />
-        </svg>
-        Back
-      </Link>
-      <div className="mb-6">
-        <h2 className="text-xl font-bold sm:text-2xl">Admin</h2>
-        <p className="text-xs text-zinc-500 sm:text-sm">Gerenciar usuarios, API keys e uso</p>
-      </div>
-
-      <AdminDashboard
-        initialTab={tab}
-        initialUsers={users}
-        initialUserMcps={userMcps}
-        initialApiKeys={apiKeysData}
-        initialUsageStats={usageStats}
-        initialMcpUsageStats={mcpUsageStats}
-      />
-    </main>
+    <AdminDashboard
+      initialTab={tab}
+      initialUsers={users}
+      initialUserMcps={userMcps}
+      initialApiKeys={apiKeysData}
+      initialUsageStats={usageStats}
+      initialMcpUsageStats={mcpUsageStats}
+    />
   );
 }

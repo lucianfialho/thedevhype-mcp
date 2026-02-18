@@ -120,3 +120,16 @@ export const mcpToolUsage = pgTable('mcp_tool_usage', {
 
 export type McpToolUsage = InferSelectModel<typeof mcpToolUsage>;
 export type NewMcpToolUsage = InferInsertModel<typeof mcpToolUsage>;
+
+// --- User profiles (onboarding state) ---
+
+export const userProfiles = pgTable('user_profiles', {
+  userId: uuid().primaryKey().references(() => userInNeonAuth.id),
+  onboardingCompletedAt: timestamp({ withTimezone: true, mode: 'string' }),
+  createdAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
+
+export type UserProfile = InferSelectModel<typeof userProfiles>;
+export type NewUserProfile = InferInsertModel<typeof userProfiles>;

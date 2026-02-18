@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { AppShell, TabSelect } from '../components/ui';
 import { SettingsTab } from '../eloa/tabs/settings-tab';
-import { NotasTab } from './tabs/notas-tab';
 import { ProdutosTab } from './tabs/produtos-tab';
-import { PrecosTab } from './tabs/precos-tab';
 import { GastosTab } from './tabs/gastos-tab';
 import type { GastosTrendData } from './tabs/gastos-trend-chart';
 import { ListaTab } from './tabs/lista-tab';
@@ -13,32 +13,17 @@ import { UserUsageTab } from '../components/user-usage-tab';
 import type { UserMcpUsageStats } from '../components/user-mcp-usage';
 
 const TABS = [
-  { id: 'gastos', label: 'Gastos' },
-  { id: 'notas', label: 'Notas' },
-  { id: 'produtos', label: 'Produtos' },
-  { id: 'precos', label: 'Precos' },
-  { id: 'lista', label: 'Lista' },
+  { id: 'gastos', label: 'Spending' },
+  { id: 'produtos', label: 'Products' },
+  { id: 'lista', label: 'Shopping List' },
   { id: 'usage', label: 'Usage' },
-  { id: 'config', label: 'Configuracoes' },
+  { id: 'config', label: 'Config' },
 ] as const;
 
 type Tab = (typeof TABS)[number]['id'];
 
 interface LucianDashboardProps {
   initialTab: Tab;
-  initialNotas: Array<{
-    id: number;
-    storeName: string;
-    cnpj: string;
-    totalItens: number;
-    valorAPagar: number;
-    createdAt: string;
-  }>;
-  notasSummary: {
-    totalNotas: number;
-    totalValor: number;
-    totalLojas: number;
-  };
   initialProdutos: Array<{
     id: number;
     codigo: string;
@@ -47,6 +32,10 @@ interface LucianDashboardProps {
     categoria: string | null;
     storeId: number;
     storeName: string;
+    minPrice: number | null;
+    maxPrice: number | null;
+    avgPrice: number | null;
+    entryCount: number;
   }>;
   produtosSummary: {
     total: number;
@@ -96,8 +85,6 @@ interface LucianDashboardProps {
 
 export function LucianDashboard({
   initialTab,
-  initialNotas,
-  notasSummary,
   initialProdutos,
   produtosSummary,
   initialGastos,
@@ -111,58 +98,49 @@ export function LucianDashboard({
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
 
-  function switchTab(tab: Tab) {
-    setActiveTab(tab);
+  function switchTab(tab: string) {
+    setActiveTab(tab as Tab);
     router.push(`/dashboard/lucian?tab=${tab}`, { scroll: false });
   }
 
   return (
-    <>
-      <div className="mb-6 flex gap-1 overflow-x-auto rounded-lg border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => switchTab(tab.id)}
-            className={`flex-1 whitespace-nowrap rounded-md px-3 py-2 text-xs font-medium transition-colors sm:text-sm ${
-              activeTab === tab.id
-                ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100'
-                : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+    <AppShell title="Lucian">
+      <div className="mb-4 shrink-0 flex items-center gap-3">
+        <img src="/lucian.png" alt="Lucian" className="h-10 w-10 rounded-full" />
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-bold text-slate-800">Lucian</h2>
+          <p className="text-sm text-slate-500">Virtual Grocery Manager</p>
+        </div>
+        <TabSelect options={TABS} value={activeTab} onChange={switchTab} />
       </div>
 
-      {activeTab === 'notas' && (
-        <NotasTab initialNotas={initialNotas} summary={notasSummary} />
-      )}
-      {activeTab === 'produtos' && (
-        <ProdutosTab initialProdutos={initialProdutos} summary={produtosSummary} />
-      )}
-      {activeTab === 'precos' && <PrecosTab />}
-      {activeTab === 'gastos' && (
-        <GastosTab initialGastos={initialGastos} initialSummary={gastosSummary} trendData={gastosTrendData} />
-      )}
-      {activeTab === 'lista' && (
-        <ListaTab initialItems={initialListItems} initialSummary={listSummary} />
-      )}
-      {activeTab === 'usage' && <UserUsageTab stats={initialUsageStats} />}
-      {activeTab === 'config' && mcpConfig && (
-        <SettingsTab
-          mcpName="lucian"
-          mcpUrl={mcpConfig.mcpUrl}
-          tools={mcpConfig.tools}
-          initialEnabled={mcpConfig.enabled}
-          initialHasApiKey={mcpConfig.hasApiKey}
-          maskedApiKey={mcpConfig.maskedApiKey}
-          showContributeToggle
-          initialContribute={mcpConfig.contributePublicData}
-          showDefaultState
-          initialDefaultState={mcpConfig.defaultState}
-          publicApiKey={mcpConfig.publicApiKey}
-        />
-      )}
-    </>
+      <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {activeTab === 'produtos' && (
+          <ProdutosTab initialProdutos={initialProdutos} summary={produtosSummary} />
+        )}
+        {activeTab === 'gastos' && (
+          <GastosTab initialGastos={initialGastos} initialSummary={gastosSummary} trendData={gastosTrendData} />
+        )}
+        {activeTab === 'lista' && (
+          <ListaTab initialItems={initialListItems} initialSummary={listSummary} />
+        )}
+        {activeTab === 'usage' && <UserUsageTab stats={initialUsageStats} />}
+        {activeTab === 'config' && mcpConfig && (
+          <SettingsTab
+            mcpName="lucian"
+            mcpUrl={mcpConfig.mcpUrl}
+            tools={mcpConfig.tools}
+            initialEnabled={mcpConfig.enabled}
+            initialHasApiKey={mcpConfig.hasApiKey}
+            maskedApiKey={mcpConfig.maskedApiKey}
+            showContributeToggle
+            initialContribute={mcpConfig.contributePublicData}
+            showDefaultState
+            initialDefaultState={mcpConfig.defaultState}
+            publicApiKey={mcpConfig.publicApiKey}
+          />
+        )}
+      </div>
+    </AppShell>
   );
 }

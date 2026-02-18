@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { authClient } from '@/app/lib/auth/client';
 
 function GitHubIcon({ className }: { className?: string }) {
@@ -70,94 +71,302 @@ function Hero() {
   );
 }
 
-function ProductMockup() {
+function BrowserMockup({ url, children }: { url: string; children: React.ReactNode }) {
   return (
-    <section className="mx-auto max-w-5xl px-6 pb-20">
-      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-2xl shadow-zinc-200/50 dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-none">
-        {/* Browser chrome */}
-        <div className="flex items-center gap-2 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
-          <div className="flex gap-1.5">
-            <div className="h-3 w-3 rounded-full bg-zinc-200 dark:bg-zinc-700" />
-            <div className="h-3 w-3 rounded-full bg-zinc-200 dark:bg-zinc-700" />
-            <div className="h-3 w-3 rounded-full bg-zinc-200 dark:bg-zinc-700" />
-          </div>
-          <div className="ml-4 flex-1 rounded-md bg-zinc-100 px-3 py-1 text-xs text-zinc-400 dark:bg-zinc-800">
-            thedevhype.com/dashboard
-          </div>
+    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-2xl shadow-zinc-200/50 dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-none">
+      <div className="flex items-center gap-2 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
+        <div className="flex gap-1.5">
+          <div className="h-3 w-3 rounded-full bg-zinc-200 dark:bg-zinc-700" />
+          <div className="h-3 w-3 rounded-full bg-zinc-200 dark:bg-zinc-700" />
+          <div className="h-3 w-3 rounded-full bg-zinc-200 dark:bg-zinc-700" />
         </div>
-
-        {/* Fake dashboard content */}
-        <div className="p-6 sm:p-8">
-          <div className="mb-6">
-            <div className="text-lg font-bold">Dashboard</div>
-            <div className="mt-1 text-sm text-zinc-400">Welcome back.</div>
-          </div>
-
-          <div className="space-y-3">
-            {/* Eloa card */}
-            <div className="flex items-center gap-4 rounded-lg border border-zinc-100 p-4 dark:border-zinc-800">
-              <img src="/eloa.png" alt="Eloa" className="h-12 w-12 rounded-full" />
-              <div className="min-w-0 flex-1">
-                <div className="font-semibold">Eloa</div>
-                <div className="text-sm text-zinc-400">AI Content Curator — RSS feeds, bookmarks & search</div>
-              </div>
-              <div className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
-                Active
-              </div>
-            </div>
-
-            {/* Lucian card */}
-            <div className="flex items-center gap-4 rounded-lg border border-zinc-100 p-4 dark:border-zinc-800">
-              <img src="/lucian.png" alt="Lucian" className="h-12 w-12 rounded-full" />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">Lucian</span>
-                  <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                    🇧🇷 Brazil only
-                  </span>
-                </div>
-                <div className="text-sm text-zinc-400">Virtual Grocery Manager — NFC-e receipts, price tracking</div>
-              </div>
-              <div className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
-                Active
-              </div>
-            </div>
-          </div>
+        <div className="ml-4 flex-1 rounded-md bg-zinc-100 px-3 py-1 text-xs text-zinc-400 dark:bg-zinc-800">
+          {url}
         </div>
       </div>
-    </section>
+      <div className="p-4 sm:p-6">{children}</div>
+    </div>
   );
 }
 
-function AssistantsSection() {
+function TabBar({ tabs, active, onChange }: { tabs: string[]; active: number; onChange: (i: number) => void }) {
   return (
-    <section className="border-t border-zinc-100 py-20 dark:border-zinc-800">
-      <div className="mx-auto max-w-4xl px-6">
-        <h2 className="text-center text-3xl font-bold sm:text-4xl">
-          Meet your assistants
-        </h2>
-        <p className="mx-auto mt-4 max-w-xl text-center text-zinc-500">
-          Each MCP server is a specialized AI assistant you can connect to Claude, Cursor, or any MCP-compatible client.
-        </p>
+    <div className="mb-6 flex gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
+      {tabs.map((t, i) => (
+        <button
+          key={t}
+          onClick={() => onChange(i)}
+          className={`cursor-pointer flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+            i === active
+              ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-white'
+              : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'
+          }`}
+        >
+          {t}
+        </button>
+      ))}
+    </div>
+  );
+}
 
-        <div className="mt-14 grid gap-8 sm:grid-cols-2">
-          {/* Eloa */}
-          <div className="rounded-xl border border-zinc-200 p-6 transition-shadow hover:shadow-lg dark:border-zinc-800">
-            <div className="flex items-center gap-3">
-              <img src="/eloa.png" alt="Eloa" className="h-16 w-16 rounded-full" />
-              <div>
-                <h3 className="text-xl font-bold">Eloa</h3>
-                <p className="text-sm text-zinc-500">AI Content Curator</p>
-              </div>
+/* ─── Lucian Showcase (Gastos | Precos | Lista | Notas) ─── */
+
+function LucianGastos() {
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+          <div className="text-xs text-zinc-400">Total spent</div>
+          <div className="mt-1 text-lg font-bold">R$ 2.847,32</div>
+        </div>
+        <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+          <div className="text-xs text-zinc-400">Purchases</div>
+          <div className="mt-1 text-lg font-bold">14</div>
+        </div>
+        <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+          <div className="text-xs text-zinc-400">Average</div>
+          <div className="mt-1 text-lg font-bold">R$ 203,38</div>
+        </div>
+      </div>
+
+      {/* Mini line chart */}
+      <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="mb-2 text-xs font-medium text-zinc-400">Last 6 months</div>
+        <svg viewBox="0 0 300 80" className="w-full" fill="none">
+          <polyline
+            points="10,60 60,45 120,55 180,30 240,35 290,15"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-emerald-500"
+          />
+          {[
+            [10, 60], [60, 45], [120, 55], [180, 30], [240, 35], [290, 15],
+          ].map(([cx, cy], i) => (
+            <circle key={i} cx={cx} cy={cy} r="3" fill="currentColor" className="text-emerald-500" />
+          ))}
+          {['Set', 'Out', 'Nov', 'Dez', 'Jan', 'Fev'].map((m, i) => (
+            <text key={m} x={10 + i * 56} y={76} fontSize="9" fill="currentColor" className="text-zinc-400">
+              {m}
+            </text>
+          ))}
+        </svg>
+      </div>
+
+      {/* Category bars */}
+      <div className="space-y-2.5">
+        {[
+          { name: 'Alimentos', pct: 45, color: 'bg-emerald-500' },
+          { name: 'Limpeza', pct: 22, color: 'bg-blue-500' },
+          { name: 'Higiene', pct: 18, color: 'bg-amber-500' },
+          { name: 'Bebidas', pct: 15, color: 'bg-purple-500' },
+        ].map((c) => (
+          <div key={c.name}>
+            <div className="mb-1 flex justify-between text-xs">
+              <span className="text-zinc-600 dark:text-zinc-400">{c.name}</span>
+              <span className="text-zinc-400">{c.pct}%</span>
             </div>
-            <ul className="mt-5 space-y-3">
-              {[
-                'Curated RSS feed reader',
-                'Smart bookmarks with tags',
-                'Full-text content search',
-                'Analytics dashboard',
-                'MCP integration for Claude',
-              ].map((f) => (
+            <div className="h-2 rounded-full bg-zinc-100 dark:bg-zinc-800">
+              <div className={`h-2 rounded-full ${c.color}`} style={{ width: `${c.pct}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LucianPrecos() {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="font-semibold">Arroz Tio João 5kg</div>
+        <div className="mt-1 text-xs text-zinc-400">Last updated: Feb 15, 2026</div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-900 dark:bg-emerald-950">
+          <div className="text-xs text-emerald-600 dark:text-emerald-400">Lowest</div>
+          <div className="mt-1 text-lg font-bold text-emerald-700 dark:text-emerald-300">R$ 22,90</div>
+        </div>
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950">
+          <div className="text-xs text-red-600 dark:text-red-400">Highest</div>
+          <div className="mt-1 text-lg font-bold text-red-700 dark:text-red-300">R$ 31,50</div>
+        </div>
+        <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-900">
+          <div className="text-xs text-zinc-500">Average</div>
+          <div className="mt-1 text-lg font-bold">R$ 26,80</div>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-zinc-200 dark:border-zinc-800">
+        <div className="border-b border-zinc-100 px-4 py-2 text-xs font-medium text-zinc-400 dark:border-zinc-800">
+          History
+        </div>
+        {[
+          { date: '15/02', store: 'Pão de Açúcar', price: 'R$ 24,90' },
+          { date: '10/02', store: 'Carrefour', price: 'R$ 22,90' },
+          { date: '03/02', store: 'Extra', price: 'R$ 31,50' },
+        ].map((h) => (
+          <div key={h.date + h.store} className="flex items-center justify-between border-b border-zinc-50 px-4 py-2.5 last:border-0 dark:border-zinc-800/50">
+            <span className="text-xs text-zinc-400">{h.date}</span>
+            <span className="text-sm text-zinc-600 dark:text-zinc-300">{h.store}</span>
+            <span className="text-sm font-medium">{h.price}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LucianLista() {
+  const items = [
+    { name: 'Arroz Tio João 5kg', qty: '1x', price: 'R$ 22,90', store: 'Carrefour', checked: true },
+    { name: 'Feijão Carioca 1kg', qty: '2x', price: 'R$ 8,50', store: 'Extra', checked: true },
+    { name: 'Leite Integral 1L', qty: '6x', price: 'R$ 5,20', store: 'Pão de Açúcar', checked: false },
+    { name: 'Azeite Extra Virgem', qty: '1x', price: 'R$ 28,90', store: 'Carrefour', checked: false },
+    { name: 'Café Melitta 500g', qty: '1x', price: 'R$ 18,40', store: 'Extra', checked: false },
+  ];
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg border border-zinc-200 dark:border-zinc-800">
+        {items.map((item, i) => (
+          <div
+            key={item.name}
+            className={`flex items-center gap-3 px-4 py-3 ${i < items.length - 1 ? 'border-b border-zinc-100 dark:border-zinc-800' : ''}`}
+          >
+            <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+              item.checked
+                ? 'border-emerald-500 bg-emerald-500'
+                : 'border-zinc-300 dark:border-zinc-600'
+            }`}>
+              {item.checked && (
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <path d="M2 5l2.5 2.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </div>
+            <div className={`min-w-0 flex-1 ${item.checked ? 'line-through opacity-50' : ''}`}>
+              <div className="text-sm font-medium">{item.name}</div>
+              <div className="text-xs text-zinc-400">{item.qty} &middot; {item.store}</div>
+            </div>
+            <span className="shrink-0 text-sm font-medium text-zinc-500">{item.price}</span>
+          </div>
+        ))}
+      </div>
+      <div className="text-center text-sm text-zinc-400">
+        5 items &middot; <span className="font-medium text-zinc-600 dark:text-zinc-300">R$ 87,40</span> estimated
+      </div>
+    </div>
+  );
+}
+
+function LucianNotas() {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[
+          { store: 'Pão de Açúcar', date: '15/02/2026', items: 8, total: 'R$ 247,30' },
+          { store: 'Carrefour', date: '10/02/2026', items: 12, total: 'R$ 389,50' },
+          { store: 'Extra', date: '03/02/2026', items: 5, total: 'R$ 156,80' },
+        ].map((n) => (
+          <div key={n.store + n.date} className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+            <div className="font-medium text-sm">{n.store}</div>
+            <div className="mt-1 text-xs text-zinc-400">{n.date}</div>
+            <div className="mt-2 flex items-baseline justify-between">
+              <span className="text-xs text-zinc-400">{n.items} items</span>
+              <span className="text-sm font-bold">{n.total}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-lg border border-zinc-200 p-3 text-center dark:border-zinc-800">
+          <div className="text-lg font-bold">42</div>
+          <div className="text-xs text-zinc-400">receipts</div>
+        </div>
+        <div className="rounded-lg border border-zinc-200 p-3 text-center dark:border-zinc-800">
+          <div className="text-lg font-bold">R$ 8.234</div>
+          <div className="text-xs text-zinc-400">total</div>
+        </div>
+        <div className="rounded-lg border border-zinc-200 p-3 text-center dark:border-zinc-800">
+          <div className="text-lg font-bold">6</div>
+          <div className="text-xs text-zinc-400">stores</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LucianShowcase() {
+  const [tab, setTab] = useState(0);
+  const tabs = ['Spending', 'Prices', 'Shopping List', 'Receipts'];
+  const content = [<LucianGastos key="g" />, <LucianPrecos key="p" />, <LucianLista key="l" />, <LucianNotas key="n" />];
+
+  const descriptions = [
+    {
+      title: 'Track your spending',
+      text: 'See how much you spent this month, how many purchases you made, and your average ticket. Follow the trend over the last 6 months and discover where your money goes by category.',
+      features: ['Monthly total and average per purchase', 'Trend chart over time', 'Breakdown by category'],
+    },
+    {
+      title: 'Compare prices',
+      text: 'Know where each product is cheapest. Lucian cross-references all your receipts and shows the lowest, highest, and average price with a history by store.',
+      features: ['Lowest and highest price found', 'Average price across stores', 'History with date and store'],
+    },
+    {
+      title: 'Smart shopping list',
+      text: 'Build your list and Lucian suggests the cheapest store for each item based on your real purchase history. Check items off as you shop.',
+      features: ['Estimated price per item', 'Cheapest store suggested', 'Estimated list total'],
+    },
+    {
+      title: 'Your receipts',
+      text: 'All receipts automatically extracted from Brazilian NFC-e. See a summary of each purchase, item count, and total spent per store over time.',
+      features: ['Automatic NFC-e extraction', 'Summary by store and date', 'Overall totals and stats'],
+    },
+  ];
+
+  return (
+    <section className="border-t border-zinc-100 py-16 dark:border-zinc-800">
+      <div className="mx-auto max-w-6xl px-6">
+        {/* Section headline */}
+        <div className="mb-12 text-center">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            Know where your money goes
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-lg text-zinc-500">
+            Scan your grocery receipts and Lucian does the rest — tracks prices, compares stores, and shows exactly how you spend.
+          </p>
+        </div>
+
+        {/* Agent card */}
+        <div className="mb-10 flex items-center gap-4">
+          <img src="/lucian.png" alt="Lucian" className="h-14 w-14 rounded-full" />
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-2xl font-bold">Lucian</h3>
+              <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                🇧🇷 Brazil only
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-zinc-500">Virtual Grocery Manager — NFC-e receipts, price tracking & spending analysis</p>
+          </div>
+        </div>
+
+        {/* Tabs (full width) */}
+        <TabBar tabs={tabs} active={tab} onChange={setTab} />
+
+        {/* Split: text + mockup */}
+        <div className="mt-6 grid items-start gap-8 lg:grid-cols-5">
+          {/* Text side */}
+          <div className="lg:col-span-2 lg:py-4">
+            <h3 className="text-xl font-bold">{descriptions[tab].title}</h3>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-500">{descriptions[tab].text}</p>
+            <ul className="mt-5 space-y-2.5">
+              {descriptions[tab].features.map((f) => (
                 <li key={f} className="flex items-start gap-2.5 text-sm text-zinc-600 dark:text-zinc-400">
                   <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="mt-0.5 shrink-0">
                     <path d="M5 9l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500" />
@@ -168,28 +377,203 @@ function AssistantsSection() {
             </ul>
           </div>
 
-          {/* Lucian */}
-          <div className="rounded-xl border border-zinc-200 p-6 transition-shadow hover:shadow-lg dark:border-zinc-800">
-            <div className="flex items-center gap-3">
-              <img src="/lucian.png" alt="Lucian" className="h-16 w-16 rounded-full" />
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-bold">Lucian</h3>
-                  <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                    🇧🇷 Brazil only
-                  </span>
-                </div>
-                <p className="text-sm text-zinc-500">Virtual Grocery Manager</p>
+          {/* Mockup side */}
+          <div className="lg:col-span-3">
+            <BrowserMockup url="thedevhype.com/dashboard/lucian">
+              {content[tab]}
+            </BrowserMockup>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Eloa Showcase (Feed | Bookmarks | Busca) ─── */
+
+function EloaFeed() {
+  const articles = [
+    { title: 'GA4 BigQuery Export: Complete Guide 2026', source: 'Analytics Mania', time: '2h ago', unread: true },
+    { title: 'Server-side Tagging Best Practices', source: 'Simo Ahava', time: '5h ago', unread: true },
+    { title: 'Understanding Consent Mode v2', source: 'Measure School', time: '1d ago', unread: false },
+  ];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2">
+        <span className="rounded-full bg-zinc-900 px-3 py-1 text-xs font-medium text-white dark:bg-white dark:text-zinc-900">All sources</span>
+        <span className="rounded-full border border-zinc-200 px-3 py-1 text-xs text-zinc-500 dark:border-zinc-700">Unread</span>
+      </div>
+
+      <div className="rounded-lg border border-zinc-200 dark:border-zinc-800">
+        {articles.map((a, i) => (
+          <div
+            key={a.title}
+            className={`flex items-start gap-3 px-4 py-3 ${i < articles.length - 1 ? 'border-b border-zinc-100 dark:border-zinc-800' : ''}`}
+          >
+            {a.unread && <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" />}
+            {!a.unread && <div className="mt-1.5 h-2 w-2 shrink-0" />}
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-medium">{a.title}</div>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                  {a.source}
+                </span>
+                <span className="text-xs text-zinc-400">{a.time}</span>
               </div>
             </div>
-            <ul className="mt-5 space-y-3">
-              {[
-                'Receipt extraction from NFC-e',
-                'Product catalog per store',
-                'Price history tracking',
-                'Spending analysis by category',
-                'MCP integration for Claude',
-              ].map((f) => (
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EloaBookmarks() {
+  const bookmarks = [
+    { title: 'GTM Server-Side Setup Guide', url: 'simoahava.com/analytics/server-side...', tags: ['GTM', 'Server-side'] },
+    { title: 'BigQuery ML for Marketers', url: 'cloud.google.com/bigquery-ml/docs...', tags: ['BigQuery', 'ML'] },
+    { title: 'Core Web Vitals Optimization', url: 'web.dev/articles/vitals...', tags: ['Performance', 'SEO'] },
+  ];
+
+  const tagColors: Record<string, string> = {
+    GTM: 'bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400',
+    'Server-side': 'bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400',
+    BigQuery: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400',
+    ML: 'bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400',
+    Performance: 'bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400',
+    SEO: 'bg-pink-50 text-pink-600 dark:bg-pink-950 dark:text-pink-400',
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0 text-zinc-400">
+          <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M11 11l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+        <span className="ml-2 text-sm text-zinc-400">Search bookmarks...</span>
+      </div>
+
+      <div className="rounded-lg border border-zinc-200 dark:border-zinc-800">
+        {bookmarks.map((b, i) => (
+          <div
+            key={b.title}
+            className={`px-4 py-3 ${i < bookmarks.length - 1 ? 'border-b border-zinc-100 dark:border-zinc-800' : ''}`}
+          >
+            <div className="text-sm font-medium">{b.title}</div>
+            <div className="mt-1 text-xs text-zinc-400 truncate">{b.url}</div>
+            <div className="mt-2 flex gap-1.5">
+              {b.tags.map((tag) => (
+                <span key={tag} className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${tagColors[tag] ?? 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'}`}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EloaBusca() {
+  const results = [
+    {
+      title: 'GA4 Web Analytics Implementation Guide',
+      snippet: 'A comprehensive guide to implementing web analytics with Google Analytics 4, covering event tracking, custom dimensions...',
+      source: 'Analytics Mania',
+    },
+    {
+      title: 'Web Analytics Maturity Model',
+      snippet: 'Understanding the five stages of web analytics maturity and how to advance your organization from basic to advanced...',
+      source: 'Kaushik.net',
+    },
+    {
+      title: 'Server-side Analytics Architecture',
+      snippet: 'Modern web analytics architectures leveraging server-side tagging for improved data quality and privacy compliance...',
+      source: 'Simo Ahava',
+    },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0 text-zinc-400">
+          <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M11 11l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+        <span className="ml-2 text-sm text-zinc-900 dark:text-white">web analytics</span>
+      </div>
+
+      <div className="space-y-3">
+        {results.map((r) => (
+          <div key={r.title} className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+            <div className="text-sm font-medium text-blue-600 dark:text-blue-400">{r.title}</div>
+            <p className="mt-1 text-xs text-zinc-500 leading-relaxed">{r.snippet}</p>
+            <span className="mt-2 inline-block rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+              {r.source}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EloaShowcase() {
+  const [tab, setTab] = useState(0);
+  const tabs = ['Feed', 'Bookmarks', 'Search'];
+  const content = [<EloaFeed key="f" />, <EloaBookmarks key="b" />, <EloaBusca key="s" />];
+
+  const descriptions = [
+    {
+      title: 'Your curated feed',
+      text: 'All your RSS feeds aggregated in one place. Eloa highlights what\'s new, shows the source, and how long ago it was published. Filter by read and unread.',
+      features: ['Multi-source aggregator', 'Unread indicators', 'Quick filters by status'],
+    },
+    {
+      title: 'Bookmarks with tags',
+      text: 'Save any article with color-coded tags to organize by topic. Search through your bookmarks whenever you need to find that link again.',
+      features: ['Color-coded tags by topic', 'Full-text bookmark search', 'URL and source preserved'],
+    },
+    {
+      title: 'Smart search',
+      text: 'Search across everything Eloa has indexed — feed articles, bookmarks, and notes. Results are ranked with snippets so you find what you need fast.',
+      features: ['Search across all saved content', 'Contextual snippets', 'Results ranked by relevance'],
+    },
+  ];
+
+  return (
+    <section className="border-t border-zinc-100 py-16 dark:border-zinc-800">
+      <div className="mx-auto max-w-6xl px-6">
+        {/* Header */}
+        <div className="mb-10 flex items-center gap-4">
+          <img src="/eloa.png" alt="Eloa" className="h-14 w-14 rounded-full" />
+          <div>
+            <h2 className="text-2xl font-bold">Eloa</h2>
+            <p className="mt-1 text-sm text-zinc-500">AI Content Curator — RSS feeds, bookmarks & full-text search</p>
+          </div>
+        </div>
+
+        {/* Tabs (full width) */}
+        <TabBar tabs={tabs} active={tab} onChange={setTab} />
+
+        {/* Split: mockup + text (reversed from Lucian for visual variety) */}
+        <div className="mt-6 grid items-start gap-8 lg:grid-cols-5">
+          {/* Mockup side */}
+          <div className="order-2 lg:order-1 lg:col-span-3">
+            <BrowserMockup url="thedevhype.com/dashboard/eloa">
+              {content[tab]}
+            </BrowserMockup>
+          </div>
+
+          {/* Text side */}
+          <div className="order-1 lg:order-2 lg:col-span-2 lg:py-4">
+            <h3 className="text-xl font-bold">{descriptions[tab].title}</h3>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-500">{descriptions[tab].text}</p>
+            <ul className="mt-5 space-y-2.5">
+              {descriptions[tab].features.map((f) => (
                 <li key={f} className="flex items-start gap-2.5 text-sm text-zinc-600 dark:text-zinc-400">
                   <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="mt-0.5 shrink-0">
                     <path d="M5 9l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500" />
@@ -274,15 +658,17 @@ function Footer() {
         <p className="text-xs text-zinc-400">&copy; 2026 thedevhype</p>
         <div className="flex gap-6">
           <a
-            href="https://github.com/thedevhype"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/privacy"
             className="text-xs text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
           >
-            GitHub
+            Privacy
           </a>
-          <span className="text-xs text-zinc-400">Privacy</span>
-          <span className="text-xs text-zinc-400">Terms</span>
+          <a
+            href="/terms"
+            className="text-xs text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
+          >
+            Terms
+          </a>
         </div>
       </div>
     </footer>
@@ -294,8 +680,8 @@ export default function Landing() {
     <div className="min-h-screen bg-white dark:bg-zinc-950">
       <Header />
       <Hero />
-      <ProductMockup />
-      <AssistantsSection />
+      <LucianShowcase />
+      <EloaShowcase />
       <HowItWorks />
       <CtaSection />
       <Footer />

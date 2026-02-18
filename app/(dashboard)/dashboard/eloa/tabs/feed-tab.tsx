@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { CheckCheck, RefreshCw, ChevronDown, ExternalLink } from 'lucide-react';
 import { getArticles, refreshFeeds, markArticleRead, markAllRead, getArticleClickCounts } from '../actions';
+import { MiniSelect } from '../../components/ui';
 import type { SourceWithSubscription } from '@/app/lib/mcp/servers/eloa.schema';
 
 interface FeedArticle {
@@ -121,62 +123,70 @@ export function FeedTab({ articles, sources, onArticlesChange, onUnreadCountChan
   }
 
   return (
-    <div>
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-        <select
+    <>
+      <div className="mb-3 shrink-0 flex flex-wrap items-center gap-2">
+        <MiniSelect
           value={selectedSource ?? ''}
-          onChange={(e) => handleFilterChange(e.target.value ? Number(e.target.value) : undefined)}
-          className="w-full rounded-md border border-zinc-200 bg-transparent px-3 py-2 text-sm outline-none sm:w-auto dark:border-zinc-700"
-        >
-          <option value="">Todas as fontes</option>
-          {sources.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.title}
-            </option>
-          ))}
-        </select>
-        <select
+          options={[
+            { value: '' as string | number, label: 'All sources' },
+            ...sources.map((s) => ({ value: s.id as string | number, label: s.title })),
+          ]}
+          onChange={(v) => handleFilterChange(v ? Number(v) : undefined)}
+          maxW="max-w-[10rem]"
+        />
+        <MiniSelect
           value={readFilter}
-          onChange={(e) => handleReadFilterChange(e.target.value as 'all' | 'unread' | 'read')}
-          className="w-full rounded-md border border-zinc-200 bg-transparent px-3 py-2 text-sm outline-none sm:w-auto dark:border-zinc-700"
-        >
-          <option value="all">Todos</option>
-          <option value="unread">Não lidos</option>
-          <option value="read">Lidos</option>
-        </select>
-        <div className="flex gap-2 sm:ml-auto">
+          options={[
+            { value: 'all', label: 'All' },
+            { value: 'unread', label: 'Unread' },
+            { value: 'read', label: 'Read' },
+          ]}
+          onChange={(v) => handleReadFilterChange(v as 'all' | 'unread' | 'read')}
+        />
+        <div className="ml-auto flex gap-1.5">
           {unreadCount > 0 && (
             <button
               onClick={handleMarkAllRead}
               disabled={markingAllRead}
-              className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-600 hover:border-zinc-300 hover:text-zinc-900 disabled:opacity-50 sm:w-auto dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:text-zinc-200"
+              className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-50"
+              title="Mark all read"
             >
-              {markingAllRead ? 'Marcando...' : 'Marcar todos como lidos'}
+              {markingAllRead ? (
+                <span className="text-xs">...</span>
+              ) : (
+                <CheckCheck size={16} />
+              )}
             </button>
           )}
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-600 hover:border-zinc-300 hover:text-zinc-900 disabled:opacity-50 sm:w-auto dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:text-zinc-200"
+            className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-800 text-white hover:bg-slate-700 disabled:opacity-50"
+            title="Refresh feeds"
           >
-            {refreshing ? 'Atualizando...' : 'Atualizar feeds'}
+            {refreshing ? (
+              <RefreshCw size={16} className="animate-spin" />
+            ) : (
+              <RefreshCw size={16} />
+            )}
           </button>
         </div>
       </div>
 
+      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto pt-2">
       {articles.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-zinc-300 py-12 text-center dark:border-zinc-700">
-          <p className="text-sm text-zinc-500">Nenhum artigo no feed.</p>
-          <p className="mt-1 text-xs text-zinc-400">
-            Adicione fontes e clique em &quot;Atualizar feeds&quot;.
+        <div className="rounded-2xl border border-dashed border-slate-200 py-12 text-center">
+          <p className="text-base text-slate-400">No articles in feed.</p>
+          <p className="mt-1 text-sm text-slate-500">
+            Add sources and click &quot;Refresh feeds&quot;.
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {articles.map((article) => (
             <div
               key={article.id}
-              className="rounded-lg border border-zinc-200 transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:hover:border-zinc-700"
+              className="rounded-2xl border border-slate-200 transition-colors hover:border-slate-300"
             >
               <button
                 onClick={() => handleExpand(article)}
@@ -189,48 +199,41 @@ export function FeedTab({ articles, sources, onArticlesChange, onUnreadCountChan
                     )}
                     <div className="min-w-0 flex-1">
                       <h4
-                        className={`text-sm ${
+                        className={`text-base ${
                           article.isRead
-                            ? 'font-normal text-zinc-500 dark:text-zinc-500'
-                            : 'font-semibold text-zinc-900 dark:text-zinc-100'
+                            ? 'font-normal text-slate-400'
+                            : 'font-semibold text-slate-800'
                         }`}
                       >
                         {article.title}
                       </h4>
-                      <div className="mt-1 flex items-center gap-2 text-xs text-zinc-400">
-                        <span className="rounded bg-zinc-100 px-1.5 py-0.5 dark:bg-zinc-800">
-                          {sourceMap.get(article.sourceId) || 'Fonte'}
+                      <div className="mt-1 flex items-center gap-2 text-sm text-slate-500">
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5">
+                          {sourceMap.get(article.sourceId) || 'Source'}
                         </span>
                         {article.author && <span>{article.author}</span>}
                         {article.publishedAt && <span>{timeAgo(article.publishedAt)}</span>}
                       </div>
                     </div>
                   </div>
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    className={`mt-1 shrink-0 text-zinc-400 transition-transform ${
+                  <ChevronDown
+                    size={16}
+                    className={`mt-1 shrink-0 text-slate-500 transition-transform ${
                       expandedId === article.id ? 'rotate-180' : ''
                     }`}
-                  >
-                    <path d="M4 6l4 4 4-4" />
-                  </svg>
+                  />
                 </div>
                 {expandedId !== article.id && article.content && (
-                  <p className="mt-1 truncate text-xs text-zinc-400">
+                  <p className="mt-1 truncate text-sm text-slate-500">
                     {article.content.slice(0, 150)}
                   </p>
                 )}
               </button>
 
               {expandedId === article.id && (
-                <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
+                <div className="border-t border-slate-200 px-4 py-3">
                   {article.content && (
-                    <p className="mb-3 whitespace-pre-line text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="mb-3 whitespace-pre-line text-base text-slate-500">
                       {article.content}
                     </p>
                   )}
@@ -239,16 +242,14 @@ export function FeedTab({ articles, sources, onArticlesChange, onUnreadCountChan
                       href={article.shortCode ? `/r/${article.shortCode}` : article.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
+                      className="inline-flex items-center gap-1 text-sm font-medium text-slate-400 hover:text-slate-700"
                     >
-                      Abrir artigo
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
-                        <path d="M5 2h5v5M10 2L4 8" />
-                      </svg>
+                      Open article
+                      <ExternalLink size={12} />
                     </a>
                     {clickCounts[article.id] > 0 && (
-                      <span className="text-xs text-zinc-400">
-                        {clickCounts[article.id]} {clickCounts[article.id] === 1 ? 'clique' : 'cliques'}
+                      <span className="text-sm text-slate-500">
+                        {clickCounts[article.id]} {clickCounts[article.id] === 1 ? 'click' : 'clicks'}
                       </span>
                     )}
                   </div>
@@ -261,13 +262,14 @@ export function FeedTab({ articles, sources, onArticlesChange, onUnreadCountChan
             <button
               onClick={handleLoadMore}
               disabled={loadingMore}
-              className="w-full rounded-md border border-zinc-200 py-2 text-sm text-zinc-500 hover:border-zinc-300 hover:text-zinc-700 disabled:opacity-50 dark:border-zinc-700 dark:hover:border-zinc-600 dark:hover:text-zinc-300"
+              className="w-full rounded-2xl bg-slate-100 py-2.5 text-base text-slate-500 hover:bg-slate-200 disabled:opacity-50"
             >
-              {loadingMore ? 'Carregando...' : 'Carregar mais'}
+              {loadingMore ? 'Loading...' : 'Load more'}
             </button>
           )}
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

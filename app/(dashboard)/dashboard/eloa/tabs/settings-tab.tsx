@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { TabSelect } from '../../components/ui';
 
 interface McpTool {
   name: string;
@@ -20,6 +21,11 @@ const BRAZILIAN_STATES = [
   { uf: 'RR', name: 'Roraima' }, { uf: 'SC', name: 'Santa Catarina' },
   { uf: 'SP', name: 'Sao Paulo' }, { uf: 'SE', name: 'Sergipe' },
   { uf: 'TO', name: 'Tocantins' },
+];
+
+const STATE_OPTIONS = [
+  { id: '', label: 'All (no filter)' },
+  ...BRAZILIAN_STATES.map((s) => ({ id: s.uf, label: `${s.uf} — ${s.name}` })),
 ];
 
 interface SettingsTabProps {
@@ -62,6 +68,7 @@ export function SettingsTab({
   const [contributePending, setContributePending] = useState(false);
   const [defaultState, setDefaultState] = useState(initialDefaultState ?? '');
   const [statePending, setStatePending] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
 
   async function handleToggle() {
     setIsPending(true);
@@ -179,182 +186,235 @@ export function SettingsTab({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* MCP Server toggle */}
-      <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-              MCP Server
-            </h3>
-            <p className="mt-0.5 text-xs text-zinc-400">
-              Acesso via Claude, Cursor e outros clientes MCP
-            </p>
+      <div className="rounded-2xl border border-slate-200 p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-slate-400">
+              <path d="M12 2v4m0 12v4M2 12h4m12 0h4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" />
+            </svg>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-base font-medium text-slate-800">MCP Server</p>
+            <p className="text-sm text-slate-500">Claude, Cursor, and other clients</p>
           </div>
           <button
             onClick={handleToggle}
             disabled={isPending}
             role="switch"
             aria-checked={enabled}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
-              enabled ? 'bg-zinc-900 dark:bg-zinc-100' : 'bg-zinc-200 dark:bg-zinc-700'
+            className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
+              enabled ? 'bg-slate-800' : 'bg-slate-200'
             }`}
           >
             <span
-              className={`pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform dark:bg-zinc-900 ${
+              className={`pointer-events-none block h-[22px] w-[22px] rounded-full bg-white shadow-lg ring-0 transition-transform ${
                 enabled ? 'translate-x-5' : 'translate-x-0'
               }`}
             />
           </button>
         </div>
+      </div>
 
-        {enabled && (
-          <div className="mt-5 space-y-4 border-t border-zinc-200 pt-5 dark:border-zinc-800">
-            {/* Endpoint */}
-            <div>
-              <span className="text-xs font-medium text-zinc-500">Endpoint</span>
-              <div className="mt-1 flex items-center gap-2">
-                <code className="flex-1 truncate rounded bg-zinc-100 px-3 py-2 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                  {mcpUrl}
-                </code>
+      {enabled && (
+        <>
+          {/* Endpoint */}
+          <div className="rounded-2xl border border-slate-200 p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-slate-400">
+                  <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+                  <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+                </svg>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-slate-500">Endpoint</p>
+                <p className="mt-0.5 truncate text-sm text-slate-600">{mcpUrl}</p>
+              </div>
+              <button
+                onClick={handleCopyUrl}
+                className="shrink-0 rounded-xl bg-slate-100 px-3 py-2 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-200"
+              >
+                {copiedUrl ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+          </div>
+
+          {/* API Key */}
+          <div className="rounded-2xl border border-slate-200 p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-slate-400">
+                  <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+                </svg>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-slate-500">API Key</p>
+                {maskedApiKey && !newApiKey && (
+                  <p className="mt-0.5 font-mono text-sm text-slate-600">{maskedApiKey}</p>
+                )}
+                {!maskedApiKey && !newApiKey && (
+                  <p className="mt-0.5 text-sm text-slate-500">No key generated yet</p>
+                )}
+              </div>
+              {!newApiKey && (
                 <button
-                  onClick={handleCopyUrl}
-                  className="shrink-0 rounded border border-zinc-200 px-3 py-2 text-xs text-zinc-600 hover:border-zinc-300 hover:text-zinc-900 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:text-zinc-200"
+                  onClick={handleGenerateKey}
+                  disabled={isGenerating}
+                  className="shrink-0 rounded-xl bg-slate-100 px-3 py-2 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-200 disabled:opacity-50"
                 >
-                  {copiedUrl ? 'Copiado!' : 'Copiar'}
+                  {isGenerating ? '...' : hasApiKey ? 'Regenerate' : 'Generate'}
+                </button>
+              )}
+            </div>
+
+            {newApiKey && (
+              <div className="mt-3 rounded-xl bg-amber-50 p-3">
+                <div className="flex items-center gap-2">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#d97706" strokeWidth="1.5">
+                    <path d="M8 1l1.5 3 3.5.5-2.5 2.5.5 3.5L8 9l-3 1.5.5-3.5L3 4.5 6.5 4z" />
+                  </svg>
+                  <p className="text-sm font-medium text-amber-700">
+                    Copy now — won't be shown again
+                  </p>
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <code className="min-w-0 flex-1 truncate rounded-lg bg-white px-3 py-2 font-mono text-sm text-slate-700">
+                    {newApiKey}
+                  </code>
+                  <button
+                    onClick={handleCopyKey}
+                    className="shrink-0 rounded-xl bg-slate-800 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700"
+                  >
+                    {copied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <p className="mt-2 text-sm text-slate-500">
+              Use as Bearer token in the Authorization header.
+            </p>
+          </div>
+
+          {/* Tools accordion */}
+          {tools.length > 0 && (
+            <div className="rounded-2xl border border-slate-200">
+              <button
+                onClick={() => setToolsOpen(!toolsOpen)}
+                className="flex w-full items-center gap-3 p-4"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-slate-400">
+                    <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1 text-left">
+                  <p className="text-base font-medium text-slate-800">Available tools</p>
+                  <p className="text-sm text-slate-500">{tools.length} tools</p>
+                </div>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  className={`shrink-0 text-slate-500 transition-transform ${toolsOpen ? 'rotate-180' : ''}`}
+                >
+                  <path d="M4 6l4 4 4-4" />
+                </svg>
+              </button>
+              {toolsOpen && (
+                <div className="border-t border-slate-200 px-4 py-2">
+                  {tools.map((tool) => (
+                    <div
+                      key={tool.name}
+                      className="rounded-xl px-3 py-2.5 transition-colors hover:bg-slate-50"
+                    >
+                      <span className="font-mono text-sm font-medium text-slate-800">
+                        {tool.name}
+                      </span>
+                      <p className="mt-0.5 text-sm text-slate-500">{tool.description}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Contribute public data */}
+          {showContributeToggle && (
+            <div className="rounded-2xl border border-slate-200 p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-slate-400">
+                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-medium text-slate-800">Contribute data</p>
+                  <p className="text-sm text-slate-500">Anonymized prices for the public API</p>
+                </div>
+                <button
+                  onClick={handleContributeToggle}
+                  disabled={contributePending}
+                  role="switch"
+                  aria-checked={contribute}
+                  className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
+                    contribute ? 'bg-slate-800' : 'bg-slate-200'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none block h-[22px] w-[22px] rounded-full bg-white shadow-lg ring-0 transition-transform ${
+                      contribute ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
                 </button>
               </div>
             </div>
+          )}
 
-            {/* API Key */}
-            <div>
-              <span className="text-xs font-medium text-zinc-500">API Key</span>
-              {newApiKey ? (
-                <div className="mt-1 rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950">
-                  <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
-                    Copie agora — ela nao sera exibida novamente.
-                  </p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <code className="flex-1 truncate rounded bg-white px-2 py-1 text-xs text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
-                      {newApiKey}
-                    </code>
-                    <button
-                      onClick={handleCopyKey}
-                      className="shrink-0 rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-                    >
-                      {copied ? 'Copiado!' : 'Copiar'}
-                    </button>
-                  </div>
+          {/* Default state */}
+          {showDefaultState && publicApiKey && (
+            <div className="rounded-2xl border border-slate-200 p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-slate-400">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
                 </div>
-              ) : maskedApiKey ? (
-                <div className="mt-1 flex items-center gap-2">
-                  <code className="flex-1 rounded bg-zinc-100 px-3 py-2 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                    {maskedApiKey}
-                  </code>
-                  <button
-                    onClick={handleGenerateKey}
-                    disabled={isGenerating}
-                    className="shrink-0 rounded border border-zinc-200 px-3 py-2 text-xs text-zinc-600 hover:border-zinc-300 hover:text-zinc-900 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:text-zinc-200"
-                  >
-                    {isGenerating ? 'Gerando...' : 'Regenerar'}
-                  </button>
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-medium text-slate-800">Default state</p>
+                  <p className="text-sm text-slate-500">Auto-filter API results by state</p>
                 </div>
-              ) : (
-                <div className="mt-1">
-                  <button
-                    onClick={handleGenerateKey}
-                    disabled={isGenerating}
-                    className="rounded border border-zinc-200 px-3 py-2 text-xs text-zinc-600 hover:border-zinc-300 hover:text-zinc-900 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:text-zinc-200"
-                  >
-                    {isGenerating ? 'Gerando...' : 'Gerar API Key'}
-                  </button>
-                </div>
-              )}
-              <p className="mt-1 text-xs text-zinc-400">
-                Use como Bearer token no header Authorization.
-              </p>
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* Tools list */}
-      {enabled && tools.length > 0 && (
-        <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
-          <h3 className="mb-3 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-            Tools disponiveis ({tools.length})
-          </h3>
-          <div className="space-y-2">
-            {tools.map((tool) => (
-              <div key={tool.name} className="flex items-start gap-2 text-xs">
-                <code className="shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                  {tool.name}
-                </code>
-                <span className="text-zinc-500">{tool.description}</span>
               </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Contribute public data toggle */}
-      {showContributeToggle && enabled && (
-        <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                Contribuir dados para API publica
-              </h3>
-              <p className="mt-0.5 text-xs text-zinc-400">
-                Seus precos serao anonimizados e disponibilizados na API publica de precos de supermercado.
-              </p>
+              <div className="mt-3">
+                <TabSelect
+                  options={STATE_OPTIONS}
+                  value={defaultState}
+                  onChange={(id) => handleDefaultStateChange(id)}
+                  fullWidth
+                />
+              </div>
             </div>
-            <button
-              onClick={handleContributeToggle}
-              disabled={contributePending}
-              role="switch"
-              aria-checked={contribute}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
-                contribute ? 'bg-zinc-900 dark:bg-zinc-100' : 'bg-zinc-200 dark:bg-zinc-700'
-              }`}
-            >
-              <span
-                className={`pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform dark:bg-zinc-900 ${
-                  contribute ? 'translate-x-5' : 'translate-x-0'
-                }`}
-              />
-            </button>
-          </div>
-        </section>
+          )}
+        </>
       )}
 
-      {/* Default state for API */}
-      {showDefaultState && enabled && publicApiKey && (
-        <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
-          <div>
-            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-              Estado padrao da API
-            </h3>
-            <p className="mt-0.5 text-xs text-zinc-400">
-              Filtra automaticamente resultados por estado quando nenhum &quot;state&quot; for enviado na query.
-            </p>
-          </div>
-          <div className="mt-3">
-            <select
-              value={defaultState}
-              onChange={(e) => handleDefaultStateChange(e.target.value)}
-              disabled={statePending}
-              className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 transition-colors focus:border-zinc-400 focus:outline-none disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-zinc-500"
-            >
-              <option value="">Todos (sem filtro)</option>
-              {BRAZILIAN_STATES.map((s) => (
-                <option key={s.uf} value={s.uf}>
-                  {s.uf} — {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </section>
+      {/* Disabled state */}
+      {!enabled && (
+        <div className="rounded-2xl border border-dashed border-slate-200 py-10 text-center">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-2 text-slate-400">
+            <path d="M12 2v4m0 12v4M2 12h4m12 0h4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" />
+          </svg>
+          <p className="text-base text-slate-400">MCP Server disabled</p>
+          <p className="mt-1 text-sm text-slate-500">Enable above to configure</p>
+        </div>
       )}
     </div>
   );

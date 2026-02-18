@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CommandBar } from './command-bar';
+import { AppShell, TabSelect } from '../components/ui';
 import { SourcesTab } from './tabs/sources-tab';
 import { FeedTab } from './tabs/feed-tab';
 import { BookmarksTab } from './tabs/bookmarks-tab';
@@ -14,11 +15,11 @@ import type { SourceWithSubscription, Bookmark } from '@/app/lib/mcp/servers/elo
 
 const TABS = [
   { id: 'feed', label: 'Feed' },
-  { id: 'fontes', label: 'Fontes' },
+  { id: 'fontes', label: 'Sources' },
   { id: 'bookmarks', label: 'Bookmarks' },
-  { id: 'busca', label: 'Busca' },
+  { id: 'busca', label: 'Search' },
   { id: 'usage', label: 'Usage' },
-  { id: 'config', label: 'Configuracoes' },
+  { id: 'config', label: 'Config' },
 ] as const;
 
 type Tab = (typeof TABS)[number]['id'];
@@ -70,74 +71,60 @@ export function EloaDashboard({
   const [tagsData, setTagsData] = useState(initialTags);
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
 
-  function switchTab(tab: Tab) {
-    setActiveTab(tab);
+  function switchTab(tab: string) {
+    setActiveTab(tab as Tab);
     router.push(`/dashboard/eloa?tab=${tab}`, { scroll: false });
   }
 
   return (
-    <>
-      <CommandBar
-        onNavigate={switchTab}
-        onSourceAdded={(s) => setSourcesData((prev) => [s, ...prev])}
-        onBookmarkAdded={(b) => setBookmarksData((prev) => [b, ...prev])}
-      />
-
-      <div className="mb-6 flex gap-1 overflow-x-auto rounded-lg border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => switchTab(tab.id)}
-            className={`flex-1 whitespace-nowrap rounded-md px-3 py-2 text-xs font-medium transition-colors sm:text-sm ${
-              activeTab === tab.id
-                ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100'
-                : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-            }`}
-          >
-            {tab.label}
-            {tab.id === 'feed' && unreadCount > 0 && (
-              <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-blue-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
-          </button>
-        ))}
+    <AppShell title="Eloa">
+      <div className="mb-4 shrink-0 flex items-center gap-3">
+        <img src="/eloa.png" alt="Eloa" className="h-10 w-10 rounded-full" />
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-bold text-slate-800">Eloa</h2>
+          <p className="text-sm text-slate-500">AI Content Curator</p>
+        </div>
+        <TabSelect
+          options={TABS}
+          value={activeTab}
+          onChange={switchTab}
+          badge={{ id: 'feed', count: unreadCount }}
+        />
       </div>
 
-      {activeTab === 'fontes' && (
-        <SourcesTab
-          sources={sourcesData}
-          onSourcesChange={setSourcesData}
-        />
-      )}
-      {activeTab === 'feed' && (
-        <FeedTab
-          articles={articlesData}
-          sources={sourcesData}
-          onArticlesChange={setArticlesData}
-          onUnreadCountChange={setUnreadCount}
-        />
-      )}
-      {activeTab === 'bookmarks' && (
-        <BookmarksTab
-          bookmarks={bookmarksData}
-          allTags={tagsData}
-          onBookmarksChange={setBookmarksData}
-          onTagsChange={setTagsData}
-        />
-      )}
-      {activeTab === 'busca' && <SearchTab />}
-      {activeTab === 'usage' && <UserUsageTab stats={initialUsageStats} />}
-      {activeTab === 'config' && mcpConfig && (
-        <SettingsTab
-          mcpName="eloa"
-          mcpUrl={mcpConfig.mcpUrl}
-          tools={mcpConfig.tools}
-          initialEnabled={mcpConfig.enabled}
-          initialHasApiKey={mcpConfig.hasApiKey}
-          maskedApiKey={mcpConfig.maskedApiKey}
-        />
-      )}
-    </>
+      <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {activeTab === 'fontes' && (
+          <SourcesTab sources={sourcesData} onSourcesChange={setSourcesData} />
+        )}
+        {activeTab === 'feed' && (
+          <FeedTab
+            articles={articlesData}
+            sources={sourcesData}
+            onArticlesChange={setArticlesData}
+            onUnreadCountChange={setUnreadCount}
+          />
+        )}
+        {activeTab === 'bookmarks' && (
+          <BookmarksTab
+            bookmarks={bookmarksData}
+            allTags={tagsData}
+            onBookmarksChange={setBookmarksData}
+            onTagsChange={setTagsData}
+          />
+        )}
+        {activeTab === 'busca' && <SearchTab />}
+        {activeTab === 'usage' && <UserUsageTab stats={initialUsageStats} />}
+        {activeTab === 'config' && mcpConfig && (
+          <SettingsTab
+            mcpName="eloa"
+            mcpUrl={mcpConfig.mcpUrl}
+            tools={mcpConfig.tools}
+            initialEnabled={mcpConfig.enabled}
+            initialHasApiKey={mcpConfig.hasApiKey}
+            maskedApiKey={mcpConfig.maskedApiKey}
+          />
+        )}
+      </div>
+    </AppShell>
   );
 }

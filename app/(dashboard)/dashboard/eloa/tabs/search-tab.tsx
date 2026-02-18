@@ -32,15 +32,15 @@ function highlightMatch(text: string, query: string) {
   return (
     <>
       {text.slice(0, idx)}
-      <mark className="rounded bg-yellow-200 px-0.5 dark:bg-yellow-800">{text.slice(idx, idx + query.length)}</mark>
+      <mark className="rounded bg-yellow-200 px-0.5">{text.slice(idx, idx + query.length)}</mark>
       {text.slice(idx + query.length)}
     </>
   );
 }
 
 const TIPO_OPTIONS: { value: Tipo; label: string }[] = [
-  { value: 'todos', label: 'Todos' },
-  { value: 'artigos', label: 'Artigos' },
+  { value: 'todos', label: 'All' },
+  { value: 'artigos', label: 'Articles' },
   { value: 'bookmarks', label: 'Bookmarks' },
 ];
 
@@ -78,18 +78,18 @@ export function SearchTab() {
             fill="none"
             stroke="currentColor"
             strokeWidth="1.5"
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
           >
             <circle cx="8" cy="8" r="5.5" />
             <path d="M12 12l4 4" />
           </svg>
           <input
             type="text"
-            placeholder="Buscar em artigos e bookmarks..."
+            placeholder="Search articles and bookmarks..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoFocus
-            className="w-full rounded-lg border border-zinc-200 bg-transparent py-3 pl-10 pr-4 text-sm outline-none focus:border-zinc-400 dark:border-zinc-700 dark:focus:border-zinc-500"
+            className="w-full rounded-xl border-0 bg-slate-100 py-3 pl-10 pr-4 text-base text-slate-800 outline-none placeholder:text-slate-400"
           />
         </div>
       </div>
@@ -99,10 +99,10 @@ export function SearchTab() {
           <button
             key={opt.value}
             onClick={() => setTipo(opt.value)}
-            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
               tipo === opt.value
-                ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
-                : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                ? 'bg-slate-800 text-white'
+                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
             }`}
           >
             {opt.label}
@@ -113,58 +113,58 @@ export function SearchTab() {
       {loading && (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-              <div className="mb-2 h-4 w-3/4 rounded bg-zinc-200 dark:bg-zinc-700" />
-              <div className="h-3 w-1/2 rounded bg-zinc-100 dark:bg-zinc-800" />
+            <div key={i} className="animate-pulse rounded-2xl border border-slate-200 p-4">
+              <div className="mb-2 h-4 w-3/4 rounded bg-slate-100" />
+              <div className="h-3 w-1/2 rounded bg-slate-100" />
             </div>
           ))}
         </div>
       )}
 
       {!loading && !searched && query.length < 2 && (
-        <div className="rounded-lg border border-dashed border-zinc-300 py-12 text-center dark:border-zinc-700">
-          <p className="text-sm text-zinc-500">Digite para buscar.</p>
-          <p className="mt-1 text-xs text-zinc-400">
-            Busca em titulos, conteudo, notas e tags.
+        <div className="rounded-2xl border border-dashed border-slate-200 py-12 text-center">
+          <p className="text-base text-slate-400">Type to search.</p>
+          <p className="mt-1 text-sm text-slate-500">
+            Search titles, content, notes, and tags.
           </p>
         </div>
       )}
 
       {!loading && searched && results.length === 0 && (
-        <div className="rounded-lg border border-dashed border-zinc-300 py-12 text-center dark:border-zinc-700">
-          <p className="text-sm text-zinc-500">Nenhum resultado para &quot;{query}&quot;.</p>
+        <div className="rounded-2xl border border-dashed border-slate-200 py-12 text-center">
+          <p className="text-base text-slate-400">No results for &quot;{query}&quot;.</p>
         </div>
       )}
 
       {!loading && results.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {results.map((r) => (
             <a
               key={`${r.tipo}-${r.id}`}
               href={r.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="block rounded-lg border border-zinc-200 p-4 transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:hover:border-zinc-700"
+              className="block rounded-2xl border border-slate-200 p-4 transition-colors hover:border-slate-300"
             >
               <div className="flex items-start gap-2">
                 <span
-                  className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${
+                  className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-sm font-medium ${
                     r.tipo === 'artigo'
-                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                      : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-green-100 text-green-700'
                   }`}
                 >
                   {r.tipo}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <h4 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                  <h4 className="text-base font-medium text-slate-800">
                     {highlightMatch(r.title, query)}
                   </h4>
-                  <p className="mt-1 text-xs text-zinc-500">
+                  <p className="mt-1 text-sm text-slate-400">
                     {highlightMatch(r.snippet, query)}
                   </p>
                   {r.createdAt && (
-                    <p className="mt-1 text-xs text-zinc-400">{timeAgo(r.createdAt)}</p>
+                    <p className="mt-1 text-sm text-slate-500">{timeAgo(r.createdAt)}</p>
                   )}
                 </div>
               </div>

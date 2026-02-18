@@ -11,10 +11,10 @@ import {
 type Period = 'today' | '7d' | '30d' | 'all';
 
 const PERIOD_LABELS: Record<Period, string> = {
-  today: 'Hoje',
-  '7d': '7 dias',
-  '30d': '30 dias',
-  all: 'Todos',
+  today: 'Today',
+  '7d': '7 days',
+  '30d': '30 days',
+  all: 'All',
 };
 
 export function AnalyticsTab() {
@@ -60,32 +60,32 @@ export function AnalyticsTab() {
     <div>
       {/* Summary cards */}
       <div className="mb-6 grid grid-cols-2 gap-3">
-        <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
-          <p className="text-xs text-zinc-400">Total de cliques</p>
-          <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+        <div className="rounded-lg border border-slate-200 p-4">
+          <p className="text-sm text-slate-500">Total clicks</p>
+          <p className="mt-1 text-2xl font-bold text-slate-800">
             {stats?.totalClicks ?? '—'}
           </p>
         </div>
-        <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
-          <p className="text-xs text-zinc-400">Cliques hoje</p>
-          <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+        <div className="rounded-lg border border-slate-200 p-4">
+          <p className="text-sm text-slate-500">Clicks today</p>
+          <p className="mt-1 text-2xl font-bold text-slate-800">
             {stats?.todayClicks ?? '—'}
           </p>
         </div>
       </div>
 
-      <p className="mb-4 text-xs text-zinc-400">(Dados globais)</p>
+      <p className="mb-4 text-sm text-slate-500">(Global data)</p>
 
       {/* Period filter */}
-      <div className="mb-4 flex gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-700 dark:bg-zinc-800/50">
+      <div className="mb-4 flex gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
         {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
           <button
             key={p}
             onClick={() => setPeriod(p)}
-            className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
               period === p
-                ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100'
-                : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                ? 'bg-slate-50 text-slate-800 shadow-sm'
+                : 'text-slate-400 hover:text-slate-600'
             }`}
           >
             {PERIOD_LABELS[p]}
@@ -94,35 +94,35 @@ export function AnalyticsTab() {
       </div>
 
       {loading ? (
-        <p className="py-8 text-center text-sm text-zinc-400">Carregando...</p>
+        <p className="py-8 text-center text-base text-slate-500">Loading...</p>
       ) : (
         <>
           {/* Top articles */}
           <section className="mb-6">
-            <h3 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-              Artigos mais clicados
+            <h3 className="mb-3 text-base font-semibold text-slate-600">
+              Most clicked articles
             </h3>
             {topArticles.length === 0 ? (
-              <p className="text-sm text-zinc-400">Nenhum clique neste periodo.</p>
+              <p className="text-base text-slate-500">No clicks in this period.</p>
             ) : (
               <div className="space-y-2">
                 {topArticles.map((a) => (
                   <div
                     key={a.articleId}
-                    className="flex items-center justify-between rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-700"
+                    className="flex items-center justify-between rounded-lg border border-slate-200 px-4 py-3"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                      <p className="truncate text-base font-medium text-slate-800">
                         {a.title}
                       </p>
-                      <p className="mt-0.5 text-xs text-zinc-400">{a.sourceTitle}</p>
+                      <p className="mt-0.5 text-sm text-slate-500">{a.sourceTitle}</p>
                     </div>
                     <div className="ml-4 shrink-0 text-right">
-                      <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                      <p className="text-base font-semibold text-slate-800">
                         {a.clickCount}
                       </p>
-                      <p className="text-[10px] text-zinc-400">
-                        {a.clickCount === 1 ? 'clique' : 'cliques'}
+                      <p className="text-[10px] text-slate-500">
+                        {a.clickCount === 1 ? 'click' : 'clicks'}
                       </p>
                     </div>
                   </div>
@@ -134,22 +134,22 @@ export function AnalyticsTab() {
           {/* Clicks by source */}
           {bySource.length > 0 && (
             <section className="mb-6">
-              <h3 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                Cliques por fonte
+              <h3 className="mb-3 text-base font-semibold text-slate-600">
+                Clicks by source
               </h3>
               <div className="space-y-2">
                 {bySource.map((s) => (
                   <div key={s.sourceTitle} className="flex items-center gap-3">
-                    <span className="w-32 shrink-0 truncate text-xs text-zinc-600 dark:text-zinc-400">
+                    <span className="w-32 shrink-0 truncate text-sm text-slate-500">
                       {s.sourceTitle}
                     </span>
-                    <div className="relative h-5 flex-1 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                    <div className="relative h-5 flex-1 rounded-full bg-slate-100">
                       <div
-                        className="h-full rounded-full bg-zinc-400 dark:bg-zinc-600"
+                        className="h-full rounded-full bg-slate-400"
                         style={{ width: `${(s.clickCount / maxSourceClicks) * 100}%` }}
                       />
                     </div>
-                    <span className="w-8 shrink-0 text-right text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                    <span className="w-8 shrink-0 text-right text-sm font-medium text-slate-600">
                       {s.clickCount}
                     </span>
                   </div>
@@ -161,21 +161,21 @@ export function AnalyticsTab() {
           {/* Clicks over time bar chart */}
           {overTime.length > 0 && (
             <section>
-              <h3 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                Cliques ao longo do tempo
+              <h3 className="mb-3 text-base font-semibold text-slate-600">
+                Clicks over time
               </h3>
               <div className="flex items-end gap-1" style={{ height: 120 }}>
                 {overTime.map((d) => (
                   <div key={d.date} className="flex flex-1 flex-col items-center gap-1">
-                    <span className="text-[10px] text-zinc-400">{d.count}</span>
+                    <span className="text-[10px] text-slate-500">{d.count}</span>
                     <div
-                      className="w-full rounded-t bg-zinc-400 dark:bg-zinc-600"
+                      className="w-full rounded-t bg-slate-400"
                       style={{
                         height: `${(d.count / maxClicks) * 80}px`,
                         minHeight: d.count > 0 ? 4 : 0,
                       }}
                     />
-                    <span className="text-[9px] text-zinc-400">
+                    <span className="text-[9px] text-slate-500">
                       {d.date.slice(5)}
                     </span>
                   </div>
