@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { searchEntries } from '../actions';
 
-type Tipo = 'todos' | 'note' | 'link' | 'highlight';
+type Tipo = 'todos' | 'note' | 'link' | 'highlight' | 'person' | 'company';
 
 interface SearchResult {
   id: number;
@@ -45,12 +45,16 @@ const TIPO_OPTIONS: { value: Tipo; label: string }[] = [
   { value: 'note', label: 'Notes' },
   { value: 'link', label: 'Links' },
   { value: 'highlight', label: 'Highlights' },
+  { value: 'person', label: 'People' },
+  { value: 'company', label: 'Companies' },
 ];
 
 const TYPE_STYLES: Record<string, string> = {
   note: 'bg-purple-100 text-purple-700',
   link: 'bg-blue-100 text-blue-700',
   highlight: 'bg-amber-100 text-amber-700',
+  person: 'bg-rose-100 text-rose-700',
+  company: 'bg-emerald-100 text-emerald-700',
 };
 
 export function SearchTab() {

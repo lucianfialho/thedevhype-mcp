@@ -8,7 +8,7 @@ import { EloaDashboard } from './eloa-dashboard';
 
 export const dynamic = 'force-dynamic';
 
-const TABS = ['feed', 'fontes', 'bookmarks', 'busca', 'usage', 'config'] as const;
+const TABS = ['feed', 'fontes', 'bookmarks', 'busca', 'recipes', 'usage', 'config'] as const;
 type Tab = (typeof TABS)[number];
 
 function maskApiKey(key: string): string {

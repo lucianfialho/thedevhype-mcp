@@ -6,9 +6,13 @@ import { AppShell, TabSelect } from '../components/ui';
 import { NotesTab } from './tabs/notes-tab';
 import { LinksTab } from './tabs/links-tab';
 import { HighlightsTab } from './tabs/highlights-tab';
+import { PeopleTab } from './tabs/people-tab';
+import { CompaniesTab } from './tabs/companies-tab';
 import { GraphTab } from './tabs/graph-tab';
 import { SearchTab } from './tabs/search-tab';
 import { SettingsTab } from '../eloa/tabs/settings-tab';
+import { ChefHat } from 'lucide-react';
+import { RecipesTab, OTTO_RECIPES, CROSS_RECIPES } from '../components/recipes-tab';
 import { UserUsageTab } from '../components/user-usage-tab';
 import type { UserMcpUsageStats } from '../components/user-mcp-usage';
 import type { Entry } from '@/app/lib/mcp/servers/otto.schema';
@@ -17,8 +21,11 @@ const TABS = [
   { id: 'notas', label: 'Notes' },
   { id: 'links', label: 'Links' },
   { id: 'destaques', label: 'Highlights' },
+  { id: 'pessoas', label: 'People' },
+  { id: 'empresas', label: 'Companies' },
   { id: 'graph', label: 'Graph' },
   { id: 'busca', label: 'Search' },
+  { id: 'recipes', label: 'Recipes', icon: <ChefHat size={14} /> },
   { id: 'usage', label: 'Usage' },
   { id: 'config', label: 'Config' },
 ] as const;
@@ -30,7 +37,9 @@ interface OttoDashboardProps {
   initialNotes: Entry[];
   initialLinks: Entry[];
   initialHighlights: Entry[];
-  initialCounts: { total: number; notes: number; links: number; highlights: number };
+  initialPeople: Entry[];
+  initialCompanies: Entry[];
+  initialCounts: { total: number; notes: number; links: number; highlights: number; people: number; companies: number };
   initialTags: string[];
   initialGraphData: { nodes: Array<{ id: number; type: string; title: string }>; edges: Array<{ fromId: number; toId: number }> };
   initialUsageStats: UserMcpUsageStats;
@@ -48,6 +57,8 @@ export function OttoDashboard({
   initialNotes,
   initialLinks,
   initialHighlights,
+  initialPeople,
+  initialCompanies,
   initialCounts,
   initialTags,
   initialGraphData,
@@ -59,6 +70,8 @@ export function OttoDashboard({
   const [notes, setNotes] = useState(initialNotes);
   const [links, setLinks] = useState(initialLinks);
   const [highlights, setHighlights] = useState(initialHighlights);
+  const [people, setPeople] = useState(initialPeople);
+  const [companies, setCompanies] = useState(initialCompanies);
   const [counts] = useState(initialCounts);
 
   function switchTab(tab: string) {
@@ -92,10 +105,17 @@ export function OttoDashboard({
         {activeTab === 'destaques' && (
           <HighlightsTab entries={highlights} onEntriesChange={setHighlights} />
         )}
+        {activeTab === 'pessoas' && (
+          <PeopleTab entries={people} onEntriesChange={setPeople} />
+        )}
+        {activeTab === 'empresas' && (
+          <CompaniesTab entries={companies} onEntriesChange={setCompanies} />
+        )}
         {activeTab === 'graph' && (
           <GraphTab nodes={initialGraphData.nodes} edges={initialGraphData.edges} />
         )}
         {activeTab === 'busca' && <SearchTab />}
+        {activeTab === 'recipes' && <RecipesTab recipes={[...OTTO_RECIPES, ...CROSS_RECIPES]} mcpName="Otto" />}
         {activeTab === 'usage' && <UserUsageTab stats={initialUsageStats} />}
         {activeTab === 'config' && mcpConfig && (
           <SettingsTab

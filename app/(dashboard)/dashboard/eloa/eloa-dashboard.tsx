@@ -9,6 +9,8 @@ import { FeedTab } from './tabs/feed-tab';
 import { BookmarksTab } from './tabs/bookmarks-tab';
 import { SearchTab } from './tabs/search-tab';
 import { SettingsTab } from './tabs/settings-tab';
+import { ChefHat } from 'lucide-react';
+import { RecipesTab, ELOA_RECIPES, CROSS_RECIPES } from '../components/recipes-tab';
 import { UserUsageTab } from '../components/user-usage-tab';
 import type { UserMcpUsageStats } from '../components/user-mcp-usage';
 import type { SourceWithSubscription, Bookmark } from '@/app/lib/mcp/servers/eloa.schema';
@@ -18,6 +20,7 @@ const TABS = [
   { id: 'fontes', label: 'Sources' },
   { id: 'bookmarks', label: 'Bookmarks' },
   { id: 'busca', label: 'Search' },
+  { id: 'recipes', label: 'Recipes', icon: <ChefHat size={14} /> },
   { id: 'usage', label: 'Usage' },
   { id: 'config', label: 'Config' },
 ] as const;
@@ -113,6 +116,7 @@ export function EloaDashboard({
           />
         )}
         {activeTab === 'busca' && <SearchTab />}
+        {activeTab === 'recipes' && <RecipesTab recipes={[...ELOA_RECIPES, ...CROSS_RECIPES]} mcpName="Eloa" />}
         {activeTab === 'usage' && <UserUsageTab stats={initialUsageStats} />}
         {activeTab === 'config' && mcpConfig && (
           <SettingsTab

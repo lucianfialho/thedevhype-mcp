@@ -13,41 +13,43 @@ function makeExcerpt(content: string, maxLen = 200): string {
 export const ottoServer: McpServerDefinition = {
   name: 'otto',
   description:
-    'Otto — Second Brain: salva notas, links e destaques em markdown com busca full-text e conexoes entre ideias',
+    'Otto — Second Brain: save notes, links, highlights, people and companies in markdown with full-text search and bidirectional connections',
   category: 'Knowledge Tools',
   icon: '/otto.png',
   badge: 'New',
   tools: [
-    { name: 'criar_nota', description: 'Cria uma nota markdown com titulo e conteudo' },
-    { name: 'editar_nota', description: 'Edita o conteudo de uma entrada existente' },
-    { name: 'ler_nota', description: 'Le o conteudo completo de uma entrada' },
-    { name: 'deletar', description: 'Remove uma entrada' },
-    { name: 'salvar_link', description: 'Salva um link com titulo e notas opcionais' },
-    { name: 'salvar_destaque', description: 'Salva um destaque/clipping com fonte' },
-    { name: 'buscar', description: 'Busca full-text em todas as entradas' },
-    { name: 'listar', description: 'Lista entradas com filtros por tipo e tags' },
-    { name: 'conectar', description: 'Cria conexao bidirecional entre duas entradas' },
-    { name: 'listar_conexoes', description: 'Lista conexoes de uma entrada' },
+    { name: 'create_note', description: 'Create a markdown note with title and content' },
+    { name: 'edit_entry', description: 'Edit the content of an existing entry' },
+    { name: 'read_entry', description: 'Read the full content of an entry' },
+    { name: 'delete_entry', description: 'Delete an entry and its connections' },
+    { name: 'save_link', description: 'Save a link with title and optional notes' },
+    { name: 'save_highlight', description: 'Save a highlight/clipping with its source' },
+    { name: 'save_person', description: 'Save a person with info and context' },
+    { name: 'save_company', description: 'Save a company with info and context' },
+    { name: 'search', description: 'Full-text search across all entries' },
+    { name: 'list_entries', description: 'List entries with optional type and tag filters' },
+    { name: 'connect', description: 'Create a bidirectional connection between two entries' },
+    { name: 'list_connections', description: 'List all connections of an entry' },
   ],
   init: (server) => {
-    // ─── criar_nota ───
+    // ─── create_note ───
     server.tool(
-      'criar_nota',
-      'Cria uma nota markdown com titulo e conteudo.',
+      'create_note',
+      'Create a markdown note with title and content.',
       {
-        titulo: z.string().describe('Titulo da nota'),
-        conteudo: z.string().describe('Conteudo em markdown'),
-        tags: z.array(z.string()).optional().describe('Tags para categorizar'),
+        title: z.string().describe('Note title'),
+        content: z.string().describe('Content in markdown'),
+        tags: z.array(z.string()).optional().describe('Tags for categorization'),
       },
-      async ({ titulo, conteudo, tags }, extra) => {
+      async ({ title, content, tags }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
 
         const [entry] = await db.insert(entries).values({
           userId,
           type: 'note',
-          title: titulo,
-          content: conteudo,
-          excerpt: makeExcerpt(conteudo),
+          title,
+          content,
+          excerpt: makeExcerpt(content),
           tags: tags || null,
         }).returning();
 
@@ -65,17 +67,17 @@ export const ottoServer: McpServerDefinition = {
       },
     );
 
-    // ─── editar_nota ───
+    // ─── edit_entry ───
     server.tool(
-      'editar_nota',
-      'Edita o conteudo de uma entrada existente.',
+      'edit_entry',
+      'Edit the content of an existing entry.',
       {
-        id: z.number().describe('ID da entrada'),
-        conteudo: z.string().describe('Novo conteudo em markdown'),
-        titulo: z.string().optional().describe('Novo titulo (opcional)'),
-        tags: z.array(z.string()).optional().describe('Novas tags (opcional, substitui as atuais)'),
+        id: z.number().describe('Entry ID'),
+        content: z.string().describe('New content in markdown'),
+        title: z.string().optional().describe('New title (optional)'),
+        tags: z.array(z.string()).optional().describe('New tags (optional, replaces current)'),
       },
-      async ({ id, conteudo, titulo, tags }, extra) => {
+      async ({ id, content, title, tags }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
 
         const [entry] = await db
@@ -83,15 +85,15 @@ export const ottoServer: McpServerDefinition = {
           .from(entries)
           .where(and(eq(entries.id, id), eq(entries.userId, userId)));
         if (!entry) {
-          return { content: [{ type: 'text' as const, text: 'Erro: entrada nao encontrada.' }] };
+          return { content: [{ type: 'text' as const, text: 'Error: entry not found.' }] };
         }
 
         const updates: Record<string, unknown> = {
-          content: conteudo,
-          excerpt: makeExcerpt(conteudo),
+          content,
+          excerpt: makeExcerpt(content),
           updatedAt: new Date().toISOString(),
         };
-        if (titulo !== undefined) updates.title = titulo;
+        if (title !== undefined) updates.title = title;
         if (tags !== undefined) updates.tags = tags;
 
         await db.update(entries)
@@ -101,18 +103,18 @@ export const ottoServer: McpServerDefinition = {
         return {
           content: [{
             type: 'text' as const,
-            text: `Entrada "${titulo || entry.title}" atualizada.`,
+            text: `Entry "${title || entry.title}" updated.`,
           }],
         };
       },
     );
 
-    // ─── ler_nota ───
+    // ─── read_entry ───
     server.tool(
-      'ler_nota',
-      'Le o conteudo completo de uma entrada (nota, link ou destaque).',
+      'read_entry',
+      'Read the full content of an entry (note, link, highlight, person or company).',
       {
-        id: z.number().describe('ID da entrada'),
+        id: z.number().describe('Entry ID'),
       },
       async ({ id }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
@@ -122,7 +124,7 @@ export const ottoServer: McpServerDefinition = {
           .from(entries)
           .where(and(eq(entries.id, id), eq(entries.userId, userId)));
         if (!entry) {
-          return { content: [{ type: 'text' as const, text: 'Erro: entrada nao encontrada.' }] };
+          return { content: [{ type: 'text' as const, text: 'Error: entry not found.' }] };
         }
 
         return {
@@ -144,12 +146,12 @@ export const ottoServer: McpServerDefinition = {
       },
     );
 
-    // ─── deletar ───
+    // ─── delete_entry ───
     server.tool(
-      'deletar',
-      'Remove uma entrada e suas conexoes.',
+      'delete_entry',
+      'Delete an entry and all its connections.',
       {
-        id: z.number().describe('ID da entrada a remover'),
+        id: z.number().describe('Entry ID to delete'),
       },
       async ({ id }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
@@ -159,7 +161,7 @@ export const ottoServer: McpServerDefinition = {
           .from(entries)
           .where(and(eq(entries.id, id), eq(entries.userId, userId)));
         if (!entry) {
-          return { content: [{ type: 'text' as const, text: 'Erro: entrada nao encontrada.' }] };
+          return { content: [{ type: 'text' as const, text: 'Error: entry not found.' }] };
         }
 
         // Delete connections involving this entry
@@ -174,35 +176,35 @@ export const ottoServer: McpServerDefinition = {
         await db.delete(entries).where(eq(entries.id, id));
 
         return {
-          content: [{ type: 'text' as const, text: `"${entry.title}" removido.` }],
+          content: [{ type: 'text' as const, text: `"${entry.title}" deleted.` }],
         };
       },
     );
 
-    // ─── salvar_link ───
+    // ─── save_link ───
     server.tool(
-      'salvar_link',
-      'Salva um link com titulo e notas opcionais.',
+      'save_link',
+      'Save a link with title and optional notes.',
       {
-        url: z.string().url().describe('URL do link'),
-        titulo: z.string().describe('Titulo do link'),
-        notas: z.string().optional().describe('Notas/anotacoes em markdown'),
-        tags: z.array(z.string()).optional().describe('Tags para categorizar'),
+        url: z.string().url().describe('Link URL'),
+        title: z.string().describe('Link title'),
+        notes: z.string().optional().describe('Notes/annotations in markdown'),
+        tags: z.array(z.string()).optional().describe('Tags for categorization'),
       },
-      async ({ url, titulo, notas, tags }, extra) => {
+      async ({ url, title, notes, tags }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
 
-        const markdownContent = notas
-          ? `# ${titulo}\n\n**URL:** ${url}\n\n${notas}`
-          : `# ${titulo}\n\n**URL:** ${url}`;
+        const markdownContent = notes
+          ? `# ${title}\n\n**URL:** ${url}\n\n${notes}`
+          : `# ${title}\n\n**URL:** ${url}`;
 
         const [entry] = await db.insert(entries).values({
           userId,
           type: 'link',
-          title: titulo,
+          title,
           content: markdownContent,
           url,
-          excerpt: notas ? makeExcerpt(notas) : url,
+          excerpt: notes ? makeExcerpt(notes) : url,
           tags: tags || null,
         }).returning();
 
@@ -221,30 +223,30 @@ export const ottoServer: McpServerDefinition = {
       },
     );
 
-    // ─── salvar_destaque ───
+    // ─── save_highlight ───
     server.tool(
-      'salvar_destaque',
-      'Salva um destaque/clipping com a fonte de onde foi extraido.',
+      'save_highlight',
+      'Save a highlight/clipping with its source.',
       {
-        trecho: z.string().describe('O trecho/destaque em si'),
-        fonte: z.string().describe('Fonte do destaque (livro, artigo, URL, etc)'),
-        titulo: z.string().optional().describe('Titulo opcional para o destaque'),
-        notas: z.string().optional().describe('Notas adicionais sobre o destaque'),
-        tags: z.array(z.string()).optional().describe('Tags para categorizar'),
+        passage: z.string().describe('The highlighted passage'),
+        source: z.string().describe('Source of the highlight (book, article, URL, etc)'),
+        title: z.string().optional().describe('Optional title for the highlight'),
+        notes: z.string().optional().describe('Additional notes about the highlight'),
+        tags: z.array(z.string()).optional().describe('Tags for categorization'),
       },
-      async ({ trecho, fonte, titulo, notas, tags }, extra) => {
+      async ({ passage, source, title, notes, tags }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
 
-        const highlightTitle = titulo || trecho.slice(0, 80) + (trecho.length > 80 ? '...' : '');
-        const markdownContent = `> ${trecho}\n\n**Fonte:** ${fonte}${notas ? `\n\n${notas}` : ''}`;
+        const highlightTitle = title || passage.slice(0, 80) + (passage.length > 80 ? '...' : '');
+        const markdownContent = `> ${passage}\n\n**Source:** ${source}${notes ? `\n\n${notes}` : ''}`;
 
         const [entry] = await db.insert(entries).values({
           userId,
           type: 'highlight',
           title: highlightTitle,
           content: markdownContent,
-          source: fonte,
-          excerpt: makeExcerpt(trecho),
+          source,
+          excerpt: makeExcerpt(passage),
           tags: tags || null,
         }).returning();
 
@@ -263,16 +265,93 @@ export const ottoServer: McpServerDefinition = {
       },
     );
 
-    // ─── buscar ───
+    // ─── save_person ───
     server.tool(
-      'buscar',
-      'Busca full-text em todas as entradas do usuario (notas, links, destaques).',
+      'save_person',
+      'Save a person with relevant info and context.',
       {
-        query: z.string().describe('Termo de busca'),
-        tipo: z.enum(['note', 'link', 'highlight', 'todos']).optional().default('todos').describe('Filtrar por tipo'),
-        limit: z.number().optional().default(20).describe('Numero maximo de resultados'),
+        name: z.string().describe('Person name'),
+        info: z.string().optional().describe('Info in markdown (role, company, context, etc)'),
+        tags: z.array(z.string()).optional().describe('Tags for categorization'),
       },
-      async ({ query, tipo, limit }, extra) => {
+      async ({ name, info, tags }, extra) => {
+        const userId = getUserId(extra as Record<string, unknown>);
+
+        const content = info || '';
+
+        const [entry] = await db.insert(entries).values({
+          userId,
+          type: 'person',
+          title: name,
+          content,
+          excerpt: content ? makeExcerpt(content) : name,
+          tags: tags || null,
+        }).returning();
+
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              id: entry.id,
+              title: entry.title,
+              tags: entry.tags,
+              createdAt: entry.createdAt,
+            }, null, 2),
+          }],
+        };
+      },
+    );
+
+    // ─── save_company ───
+    server.tool(
+      'save_company',
+      'Save a company with relevant info and context.',
+      {
+        name: z.string().describe('Company name'),
+        info: z.string().optional().describe('Info in markdown (industry, funding, context, etc)'),
+        url: z.string().url().optional().describe('Company website'),
+        tags: z.array(z.string()).optional().describe('Tags for categorization'),
+      },
+      async ({ name, info, url, tags }, extra) => {
+        const userId = getUserId(extra as Record<string, unknown>);
+
+        const content = info || '';
+
+        const [entry] = await db.insert(entries).values({
+          userId,
+          type: 'company',
+          title: name,
+          content,
+          url: url || null,
+          excerpt: content ? makeExcerpt(content) : name,
+          tags: tags || null,
+        }).returning();
+
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              id: entry.id,
+              title: entry.title,
+              url: entry.url,
+              tags: entry.tags,
+              createdAt: entry.createdAt,
+            }, null, 2),
+          }],
+        };
+      },
+    );
+
+    // ─── search ───
+    server.tool(
+      'search',
+      'Full-text search across all entries (notes, links, highlights, people, companies).',
+      {
+        query: z.string().describe('Search term'),
+        type: z.enum(['note', 'link', 'highlight', 'person', 'company', 'all']).optional().default('all').describe('Filter by type'),
+        limit: z.number().optional().default(20).describe('Max number of results'),
+      },
+      async ({ query, type, limit }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
 
         try {
@@ -281,8 +360,8 @@ export const ottoServer: McpServerDefinition = {
             eq(entries.userId, userId),
             sql`search_vector @@ ${tsquery}`,
           ];
-          if (tipo !== 'todos') {
-            conditions.push(eq(entries.type, tipo));
+          if (type !== 'all') {
+            conditions.push(eq(entries.type, type));
           }
 
           const results = await db
@@ -314,20 +393,20 @@ export const ottoServer: McpServerDefinition = {
       },
     );
 
-    // ─── listar ───
+    // ─── list_entries ───
     server.tool(
-      'listar',
-      'Lista entradas com filtros opcionais por tipo e tags.',
+      'list_entries',
+      'List entries with optional type and tag filters.',
       {
-        tipo: z.enum(['note', 'link', 'highlight', 'todos']).optional().default('todos').describe('Filtrar por tipo'),
-        tag: z.string().optional().describe('Filtrar por tag'),
-        limit: z.number().optional().default(20).describe('Numero maximo de resultados'),
+        type: z.enum(['note', 'link', 'highlight', 'person', 'company', 'all']).optional().default('all').describe('Filter by type'),
+        tag: z.string().optional().describe('Filter by tag'),
+        limit: z.number().optional().default(20).describe('Max number of results'),
       },
-      async ({ tipo, tag, limit }, extra) => {
+      async ({ type, tag, limit }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
 
         const conditions = [eq(entries.userId, userId)];
-        if (tipo !== 'todos') conditions.push(eq(entries.type, tipo));
+        if (type !== 'all') conditions.push(eq(entries.type, type));
         if (tag) conditions.push(sql`${tag} = ANY(${entries.tags})`);
 
         const results = await db
@@ -356,54 +435,54 @@ export const ottoServer: McpServerDefinition = {
       },
     );
 
-    // ─── conectar ───
+    // ─── connect ───
     server.tool(
-      'conectar',
-      'Cria uma conexao bidirecional entre duas entradas.',
+      'connect',
+      'Create a bidirectional connection between two entries.',
       {
-        deId: z.number().describe('ID da primeira entrada'),
-        paraId: z.number().describe('ID da segunda entrada'),
-        nota: z.string().optional().describe('Contexto opcional sobre a conexao'),
+        fromId: z.number().describe('First entry ID'),
+        toId: z.number().describe('Second entry ID'),
+        note: z.string().optional().describe('Optional context about the connection'),
       },
-      async ({ deId, paraId, nota }, extra) => {
+      async ({ fromId, toId, note }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
 
         // Verify both entries exist and belong to user
         const userEntries = await db
           .select({ id: entries.id, title: entries.title })
           .from(entries)
-          .where(and(eq(entries.userId, userId), or(eq(entries.id, deId), eq(entries.id, paraId))));
+          .where(and(eq(entries.userId, userId), or(eq(entries.id, fromId), eq(entries.id, toId))));
 
         if (userEntries.length < 2) {
-          return { content: [{ type: 'text' as const, text: 'Erro: uma ou ambas as entradas nao foram encontradas.' }] };
+          return { content: [{ type: 'text' as const, text: 'Error: one or both entries not found.' }] };
         }
 
         // Create connection (ignore if already exists)
         await db.insert(connections).values({
           userId,
-          fromId: deId,
-          toId: paraId,
-          note: nota || null,
+          fromId,
+          toId,
+          note: note || null,
         }).onConflictDoNothing();
 
-        const fromTitle = userEntries.find((e) => e.id === deId)?.title || '';
-        const toTitle = userEntries.find((e) => e.id === paraId)?.title || '';
+        const fromTitle = userEntries.find((e) => e.id === fromId)?.title || '';
+        const toTitle = userEntries.find((e) => e.id === toId)?.title || '';
 
         return {
           content: [{
             type: 'text' as const,
-            text: `Conexao criada: "${fromTitle}" <-> "${toTitle}"${nota ? ` (${nota})` : ''}`,
+            text: `Connection created: "${fromTitle}" <-> "${toTitle}"${note ? ` (${note})` : ''}`,
           }],
         };
       },
     );
 
-    // ─── listar_conexoes ───
+    // ─── list_connections ───
     server.tool(
-      'listar_conexoes',
-      'Lista todas as conexoes de uma entrada.',
+      'list_connections',
+      'List all connections of an entry.',
       {
-        id: z.number().describe('ID da entrada'),
+        id: z.number().describe('Entry ID'),
       },
       async ({ id }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
@@ -414,7 +493,7 @@ export const ottoServer: McpServerDefinition = {
           .from(entries)
           .where(and(eq(entries.id, id), eq(entries.userId, userId)));
         if (!entry) {
-          return { content: [{ type: 'text' as const, text: 'Erro: entrada nao encontrada.' }] };
+          return { content: [{ type: 'text' as const, text: 'Error: entry not found.' }] };
         }
 
         // Get all connections where this entry is either fromId or toId

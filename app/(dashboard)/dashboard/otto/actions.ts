@@ -41,6 +41,8 @@ export async function getEntryCounts() {
       notes: sql<number>`count(*) FILTER (WHERE type = 'note')::int`,
       links: sql<number>`count(*) FILTER (WHERE type = 'link')::int`,
       highlights: sql<number>`count(*) FILTER (WHERE type = 'highlight')::int`,
+      people: sql<number>`count(*) FILTER (WHERE type = 'person')::int`,
+      companies: sql<number>`count(*) FILTER (WHERE type = 'company')::int`,
     })
     .from(entries)
     .where(eq(entries.userId, userId));
@@ -90,6 +92,48 @@ export async function searchEntries(query: string, type?: string) {
   } catch {
     return [];
   }
+}
+
+// ─── Entry Detail ───
+
+export async function getEntryDetail(id: number) {
+  const userId = await requireUserId();
+
+  const [entry] = await db
+    .select()
+    .from(entries)
+    .where(and(eq(entries.id, id), eq(entries.userId, userId)));
+  if (!entry) return null;
+
+  // Get connected entries
+  const outgoing = await db
+    .select({
+      id: entries.id,
+      type: entries.type,
+      title: entries.title,
+    })
+    .from(connections)
+    .innerJoin(entries, eq(connections.toId, entries.id))
+    .where(and(eq(connections.userId, userId), eq(connections.fromId, id)));
+
+  const incoming = await db
+    .select({
+      id: entries.id,
+      type: entries.type,
+      title: entries.title,
+    })
+    .from(connections)
+    .innerJoin(entries, eq(connections.fromId, entries.id))
+    .where(and(eq(connections.userId, userId), eq(connections.toId, id)));
+
+  const seen = new Set<number>();
+  const linked = [...outgoing, ...incoming].filter((c) => {
+    if (seen.has(c.id)) return false;
+    seen.add(c.id);
+    return true;
+  });
+
+  return { entry, linked };
 }
 
 // ─── Connections ───

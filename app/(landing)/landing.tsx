@@ -42,6 +42,7 @@ function Hero() {
     <section className="mx-auto max-w-4xl px-6 pt-16 pb-12 text-center sm:pt-24 sm:pb-16">
       <div className="mb-8 flex justify-center">
         <div className="flex -space-x-4">
+          <img src="/otto.png" alt="Otto" className="h-20 w-20 rounded-full border-3 border-white dark:border-zinc-900" />
           <img src="/eloa.png" alt="Eloa" className="h-20 w-20 rounded-full border-3 border-white dark:border-zinc-900" />
           <img src="/lucian.png" alt="Lucian" className="h-20 w-20 rounded-full border-3 border-white dark:border-zinc-900" />
         </div>
@@ -589,6 +590,236 @@ function EloaShowcase() {
   );
 }
 
+/* ─── Otto Showcase (Notes | Connections | People) ─── */
+
+function OttoNotes() {
+  const notes = [
+    { title: 'Q1 Planning Meeting', tags: ['meetings', 'planning'], time: '2h ago', excerpt: 'Key decisions: Launch new pricing tier by March. Assign design review to Sarah...' },
+    { title: 'AI Agents Research', tags: ['research', 'ai'], time: '1d ago', excerpt: 'Highlights from recent papers on tool-use agents. Key insight: context window management...' },
+    { title: 'Weekly Reflection', tags: ['journal', 'weekly-review'], time: '3d ago', excerpt: 'Recurring theme: need to delegate more. Progress on side project was strong...' },
+  ];
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg border border-zinc-200 dark:border-zinc-800">
+        {notes.map((n, i) => (
+          <div
+            key={n.title}
+            className={`px-4 py-3 ${i < notes.length - 1 ? 'border-b border-zinc-100 dark:border-zinc-800' : ''}`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-medium">{n.title}</div>
+              <span className="text-xs text-zinc-400">{n.time}</span>
+            </div>
+            <p className="mt-1 text-xs text-zinc-500 leading-relaxed">{n.excerpt}</p>
+            <div className="mt-2 flex gap-1.5">
+              {n.tags.map((tag) => (
+                <span key={tag} className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function OttoConnections() {
+  const entries = [
+    { title: 'Q1 Planning Meeting', type: 'note', connections: ['Sarah Chen', 'Acme Corp', 'Pricing Strategy Notes'] },
+    { title: 'AI Agents Research', type: 'highlight', connections: ['Tool-Use Paper Highlights', 'Weekly Reflection'] },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {entries.map((e) => (
+        <div key={e.title} className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+          <div className="flex items-center gap-2">
+            <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">{e.type}</span>
+            <span className="text-sm font-medium">{e.title}</span>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {e.connections.map((c) => (
+              <span key={c} className="inline-flex items-center gap-1 rounded-full border border-zinc-200 px-2.5 py-1 text-xs text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4 6h4M6 4v4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                {c}
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function OttoPeople() {
+  const contacts = [
+    { name: 'Sarah Chen', role: 'Product Lead at Acme Corp', tags: ['client', 'product'], notes: 3 },
+    { name: 'Marcus Rivera', role: 'CTO at BuildFast', tags: ['investor', 'advisor'], notes: 5 },
+    { name: 'Ana Kowalski', role: 'Design Lead', tags: ['collaborator'], notes: 2 },
+  ];
+
+  return (
+    <div className="rounded-lg border border-zinc-200 dark:border-zinc-800">
+      {contacts.map((c, i) => (
+        <div
+          key={c.name}
+          className={`flex items-center gap-3 px-4 py-3 ${i < contacts.length - 1 ? 'border-b border-zinc-100 dark:border-zinc-800' : ''}`}
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-sm font-bold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+            {c.name.charAt(0)}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium">{c.name}</div>
+            <div className="text-xs text-zinc-400">{c.role}</div>
+          </div>
+          <span className="shrink-0 text-xs text-zinc-400">{c.notes} notes</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function OttoShowcase() {
+  const [tab, setTab] = useState(0);
+  const tabs = ['Notes', 'Connections', 'People'];
+  const content = [<OttoNotes key="n" />, <OttoConnections key="c" />, <OttoPeople key="p" />];
+
+  const descriptions = [
+    {
+      title: 'Your second brain',
+      text: 'Save notes, links, highlights, people, and companies — all in markdown. Tag everything and find it instantly with full-text search.',
+      features: ['Notes, links, highlights in markdown', 'Tags and full-text search', 'Automatic excerpts and timestamps'],
+    },
+    {
+      title: 'Everything connected',
+      text: 'Create bidirectional connections between any entries. Meeting notes link to people, research links to highlights, companies connect to contacts.',
+      features: ['Bidirectional connections', 'Cross-type linking (notes ↔ people)', 'Visual knowledge graph'],
+    },
+    {
+      title: 'Personal CRM built-in',
+      text: 'Track people and companies with context. See connected notes, follow-up reminders, and relationship history — all from your second brain.',
+      features: ['People and companies as entries', 'Connected notes per contact', 'Follow-up tracking via automations'],
+    },
+  ];
+
+  return (
+    <section className="border-t border-zinc-100 py-16 dark:border-zinc-800">
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="mb-10 flex items-center gap-4">
+          <img src="/otto.png" alt="Otto" className="h-14 w-14 rounded-full" />
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl font-bold">Otto</h2>
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
+                New
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-zinc-500">Second Brain — notes, connections & personal knowledge graph</p>
+          </div>
+        </div>
+
+        <TabBar tabs={tabs} active={tab} onChange={setTab} />
+
+        <div className="mt-6 grid items-start gap-8 lg:grid-cols-5">
+          <div className="lg:col-span-2 lg:py-4">
+            <h3 className="text-xl font-bold">{descriptions[tab].title}</h3>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-500">{descriptions[tab].text}</p>
+            <ul className="mt-5 space-y-2.5">
+              {descriptions[tab].features.map((f) => (
+                <li key={f} className="flex items-start gap-2.5 text-sm text-zinc-600 dark:text-zinc-400">
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="mt-0.5 shrink-0">
+                    <path d="M5 9l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500" />
+                  </svg>
+                  {f}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="lg:col-span-3">
+            <BrowserMockup url="thedevhype.com/dashboard/otto">
+              {content[tab]}
+            </BrowserMockup>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Recipes Section ─── */
+
+function RecipesSection() {
+  const recipes = [
+    { name: 'otto-meeting-notes', icon: '🥭', mcp: 'Otto', desc: 'Capture meeting notes, extract people, and connect everything.', url: 'https://poke.com/refer/oyL-KlVyM07', automations: 2 },
+    { name: 'otto-research-capture', icon: '🍇', mcp: 'Otto', desc: 'Save highlights and links. Build a connected research archive.', url: 'https://poke.com/refer/TlEWWWPHv-q', automations: 1 },
+    { name: 'otto-crm-lite', icon: '🍑', mcp: 'Otto', desc: 'Lightweight CRM. Track contacts, companies, and follow-ups.', url: 'https://poke.com/refer/l9MX8TqkwCv', automations: 2 },
+    { name: 'otto-daily-journal', icon: '🍊', mcp: 'Otto + Eloa', desc: 'AI journaling with themes, reflections, and reading connections.', url: 'https://poke.com/refer/HGBvJbrL_r9', automations: 2 },
+    { name: 'eloa-morning-briefing', icon: '🍋', mcp: 'Eloa', desc: 'Daily curated briefing from your RSS feeds.', url: 'https://poke.com/refer/wSdvBWVQQs8', automations: 2 },
+    { name: 'eloa-bookmark-organizer', icon: '🫐', mcp: 'Eloa', desc: 'Auto-organize bookmarks with tags and weekly cleanup.', url: 'https://poke.com/refer/h8ml7tkoeG8', automations: 2 },
+    { name: 'eloa-content-radar', icon: '🍓', mcp: 'Eloa', desc: 'Monitor competitors and get keyword alerts.', url: 'https://poke.com/refer/hscQ9_KAHKv', automations: 2 },
+    { name: 'eloa-newsletter-digest', icon: '🥝', mcp: 'Eloa', desc: 'Curate the best articles for your newsletter.', url: 'https://poke.com/refer/WCLlTuKSRA-', automations: 2 },
+    { name: 'second-brain-reader', icon: '🥑', mcp: 'Otto + Eloa', desc: 'Read in Eloa, save highlights to Otto, auto cross-link.', url: 'https://poke.com/refer/gyoLYaC8bf5', automations: 2 },
+  ];
+
+  const mcpColors: Record<string, string> = {
+    Otto: 'bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400',
+    Eloa: 'bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400',
+    'Otto + Eloa': 'bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400',
+  };
+
+  return (
+    <section className="border-t border-zinc-100 py-16 dark:border-zinc-800">
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="mb-12 text-center">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            Ready-made recipes
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-lg text-zinc-500">
+            Pre-configured automation templates powered by{' '}
+            <a href="https://poke.com" target="_blank" rel="noopener noreferrer" className="underline decoration-zinc-300 hover:decoration-zinc-500">Poke</a>.
+            Install with one click and start automating.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {recipes.map((r) => (
+            <div
+              key={r.name}
+              className="flex flex-col justify-between rounded-xl border border-zinc-200 p-5 transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:hover:border-zinc-700"
+            >
+              <div>
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="text-3xl">{r.icon}</span>
+                  <div>
+                    <h3 className="text-sm font-semibold">{r.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${mcpColors[r.mcp]}`}>{r.mcp}</span>
+                      <span className="text-[10px] text-zinc-400">{r.automations} automation{r.automations !== 1 ? 's' : ''}</span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs leading-relaxed text-zinc-500">{r.desc}</p>
+              </div>
+              <a
+                href={r.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+              >
+                Install recipe
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              </a>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function HowItWorks() {
   return (
     <section className="border-t border-zinc-100 py-20 dark:border-zinc-800">
@@ -680,8 +911,10 @@ export default function Landing() {
     <div className="min-h-screen bg-white dark:bg-zinc-950">
       <Header />
       <Hero />
-      <LucianShowcase />
+      <OttoShowcase />
       <EloaShowcase />
+      <LucianShowcase />
+      <RecipesSection />
       <HowItWorks />
       <CtaSection />
       <Footer />

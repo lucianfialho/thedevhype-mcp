@@ -8,7 +8,7 @@ import { OttoDashboard } from './otto-dashboard';
 
 export const dynamic = 'force-dynamic';
 
-const TABS = ['notas', 'links', 'destaques', 'graph', 'busca', 'usage', 'config'] as const;
+const TABS = ['notas', 'links', 'destaques', 'pessoas', 'empresas', 'graph', 'busca', 'recipes', 'usage', 'config'] as const;
 type Tab = (typeof TABS)[number];
 
 function maskApiKey(key: string): string {
@@ -35,10 +35,12 @@ export default async function OttoPage({
         .where(and(eq(userMcpAccess.userId, userId), eq(userMcpAccess.mcpName, 'otto'))))[0]
     : undefined;
 
-  const [notesData, linksData, highlightsData, counts, tagsData, graphData, usageStats] = await Promise.all([
+  const [notesData, linksData, highlightsData, peopleData, companiesData, counts, tagsData, graphData, usageStats] = await Promise.all([
     getEntries('note'),
     getEntries('link'),
     getEntries('highlight'),
+    getEntries('person'),
+    getEntries('company'),
     getEntryCounts(),
     getAllTags(),
     getGraphData(),
@@ -61,6 +63,8 @@ export default async function OttoPage({
       initialNotes={notesData}
       initialLinks={linksData}
       initialHighlights={highlightsData}
+      initialPeople={peopleData}
+      initialCompanies={companiesData}
       initialCounts={counts}
       initialTags={tagsData}
       initialGraphData={graphData}

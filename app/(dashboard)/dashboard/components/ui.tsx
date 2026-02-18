@@ -143,6 +143,7 @@ export function PillTabs({ tabs, activeTab, onTabChange, badge }: PillTabsProps)
 interface TabSelectOption {
   id: string;
   label: string;
+  icon?: React.ReactNode;
 }
 
 interface TabSelectProps {
@@ -157,7 +158,9 @@ export function TabSelect({ options, value, onChange, badge, fullWidth }: TabSel
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const activeLabel = options.find((o) => o.id === value)?.label ?? value;
+  const activeOption = options.find((o) => o.id === value);
+  const activeLabel = activeOption?.label ?? value;
+  const activeIcon = activeOption?.icon;
   const badgeCount = badge && badge.id === value && badge.count > 0 ? badge.count : 0;
 
   useEffect(() => {
@@ -174,7 +177,7 @@ export function TabSelect({ options, value, onChange, badge, fullWidth }: TabSel
         onClick={() => setOpen(!open)}
         className={`flex items-center gap-2 rounded-xl border border-slate-200 bg-white py-2 pl-4 pr-3 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 ${fullWidth ? 'w-full justify-between' : ''}`}
       >
-        {activeLabel}
+        {activeIcon}{activeLabel}
         {badgeCount > 0 && (
           <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-blue-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
             {badgeCount > 99 ? '99+' : badgeCount}
@@ -199,7 +202,7 @@ export function TabSelect({ options, value, onChange, badge, fullWidth }: TabSel
                     : 'text-slate-500 hover:bg-slate-50'
                 }`}
               >
-                {opt.label}
+                {opt.icon}{opt.label}
                 {optBadge > 0 && (
                   <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-blue-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
                     {optBadge > 99 ? '99+' : optBadge}

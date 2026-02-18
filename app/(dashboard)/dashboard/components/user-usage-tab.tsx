@@ -2,6 +2,39 @@
 
 import type { UserMcpUsageStats } from './user-mcp-usage';
 
+// Map legacy Portuguese tool names to English
+const TOOL_NAME_MAP: Record<string, string> = {
+  // Otto
+  criar_nota: 'create_note',
+  editar_nota: 'edit_entry',
+  ler_nota: 'read_entry',
+  deletar: 'delete_entry',
+  salvar_link: 'save_link',
+  salvar_destaque: 'save_highlight',
+  salvar_pessoa: 'save_person',
+  salvar_empresa: 'save_company',
+  buscar: 'search',
+  listar: 'list_entries',
+  conectar: 'connect',
+  listar_conexoes: 'list_connections',
+  // Eloa
+  adicionar_fonte: 'add_source',
+  listar_fontes: 'list_sources',
+  remover_fonte: 'remove_source',
+  buscar_novidades: 'fetch_latest',
+  salvar_bookmark: 'save_bookmark',
+  listar_bookmarks: 'list_bookmarks',
+  remover_bookmark: 'remove_bookmark',
+  marcar_como_lido: 'mark_as_read',
+  buscar_conteudo: 'search_content',
+  extrair_conteudo: 'extract_content',
+  ver_analytics: 'view_analytics',
+};
+
+function displayToolName(name: string): string {
+  return TOOL_NAME_MAP[name] || name;
+}
+
 interface UserUsageTabProps {
   stats: UserMcpUsageStats;
 }
@@ -63,7 +96,7 @@ export function UserUsageTab({ stats }: UserUsageTabProps) {
                 >
                   <div className="flex items-center justify-between">
                     <span className="truncate text-base text-slate-800">
-                      {tool.toolName}
+                      {displayToolName(tool.toolName)}
                     </span>
                     <div className="ml-3 flex shrink-0 items-center gap-2">
                       <span className="text-base font-semibold text-slate-800">

@@ -54,7 +54,7 @@ export function LinksTab({ entries, onEntriesChange }: LinksTabProps) {
       <div className="rounded-2xl border border-dashed border-slate-200 py-12 text-center">
         <p className="text-base text-slate-400">No links saved yet.</p>
         <p className="mt-1 text-sm text-slate-500">
-          Use <code className="rounded bg-slate-100 px-1.5 py-0.5 text-sm">salvar_link</code> via MCP to save your first link.
+          Use <code className="rounded bg-slate-100 px-1.5 py-0.5 text-sm">save_link</code> via MCP to save your first link.
         </p>
       </div>
     );

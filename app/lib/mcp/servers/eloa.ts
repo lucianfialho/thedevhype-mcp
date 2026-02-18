@@ -13,63 +13,63 @@ const rssParser = new RssParser();
 export const eloaServer: McpServerDefinition = {
   name: 'eloa',
   description:
-    'Eloa — AI Content Curator: gerencia fontes RSS, bookmarks e busca em todo seu conteudo salvo',
+    'Eloa — AI Content Curator: manage RSS sources, bookmarks and search across all your saved content',
   category: 'Content Tools',
   icon: '/eloa.png',
   tools: [
     {
-      name: 'adicionar_fonte',
-      description: 'Adiciona uma fonte RSS/Atom validando o feed e extraindo titulo automaticamente',
+      name: 'add_source',
+      description: 'Add an RSS/Atom source by validating the feed and auto-extracting the title',
     },
     {
-      name: 'listar_fontes',
-      description: 'Lista todas as fontes RSS cadastradas',
+      name: 'list_sources',
+      description: 'List all registered RSS sources',
     },
     {
-      name: 'remover_fonte',
-      description: 'Remove uma fonte RSS e seus artigos associados',
+      name: 'remove_source',
+      description: 'Remove an RSS source and its associated articles',
     },
     {
-      name: 'buscar_novidades',
-      description: 'Busca ultimos artigos de todas as fontes ou de uma fonte especifica',
+      name: 'fetch_latest',
+      description: 'Fetch latest articles from all sources or a specific source',
     },
     {
-      name: 'salvar_bookmark',
-      description: 'Salva uma URL como bookmark com tags e anotacoes',
+      name: 'save_bookmark',
+      description: 'Save a URL as a bookmark with tags and notes',
     },
     {
-      name: 'listar_bookmarks',
-      description: 'Lista bookmarks salvos com filtro por tag',
+      name: 'list_bookmarks',
+      description: 'List saved bookmarks with optional tag filter',
     },
     {
-      name: 'remover_bookmark',
-      description: 'Remove um bookmark por ID',
+      name: 'remove_bookmark',
+      description: 'Remove a bookmark by ID',
     },
     {
-      name: 'marcar_como_lido',
-      description: 'Marca um artigo como lido ou nao lido',
+      name: 'mark_as_read',
+      description: 'Mark an article as read or unread',
     },
     {
-      name: 'buscar_conteudo',
-      description: 'Busca em todo conteudo salvo (artigos + bookmarks) por palavra-chave',
+      name: 'search_content',
+      description: 'Search all saved content (articles + bookmarks) by keyword',
     },
     {
-      name: 'extrair_conteudo',
-      description: 'Extrai conteudo completo de uma URL via scrape API ou fetch direto',
+      name: 'extract_content',
+      description: 'Extract full content from a URL via scrape API or direct fetch',
     },
     {
-      name: 'ver_analytics',
-      description: 'Mostra analytics de clicks nos artigos com ranking e clicks por fonte',
+      name: 'view_analytics',
+      description: 'Show article click analytics with ranking and clicks by source',
     },
   ],
   init: (server) => {
-    // ─── adicionar_fonte ───
+    // ─── add_source ───
     server.tool(
-      'adicionar_fonte',
-      'Adiciona uma fonte RSS/Atom. Valida o feed, extrai titulo e salva. Limite de 20 fontes por usuario.',
+      'add_source',
+      'Add an RSS/Atom source. Validates the feed, extracts the title and saves it. Limit of 20 sources per user.',
       {
-        url: z.string().url().describe('URL do feed RSS/Atom'),
-        category: z.string().optional().describe('Categoria da fonte (ex: tech, design, news)'),
+        url: z.string().url().describe('RSS/Atom feed URL'),
+        category: z.string().optional().describe('Source category (e.g. tech, design, news)'),
       },
       async ({ url, category }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
@@ -80,7 +80,7 @@ export const eloaServer: McpServerDefinition = {
           .from(userSources)
           .where(eq(userSources.userId, userId));
         if (existing[0].count >= MAX_SOURCES) {
-          return { content: [{ type: 'text' as const, text: `Erro: limite de ${MAX_SOURCES} fontes atingido. Remova uma fonte antes de adicionar.` }] };
+          return { content: [{ type: 'text' as const, text: `Error: limit of ${MAX_SOURCES} sources reached. Remove a source before adding a new one.` }] };
         }
 
         // Check if source already exists by URL
@@ -95,7 +95,7 @@ export const eloaServer: McpServerDefinition = {
           try {
             feed = await rssParser.parseURL(url);
           } catch {
-            return { content: [{ type: 'text' as const, text: 'Erro: URL nao e um feed RSS/Atom valido.' }] };
+            return { content: [{ type: 'text' as const, text: 'Error: URL is not a valid RSS/Atom feed.' }] };
           }
 
           [source] = await db.insert(sources).values({
@@ -134,10 +134,10 @@ export const eloaServer: McpServerDefinition = {
       },
     );
 
-    // ─── listar_fontes ───
+    // ─── list_sources ───
     server.tool(
-      'listar_fontes',
-      'Lista todas as fontes RSS do usuario.',
+      'list_sources',
+      'List all RSS sources for the user.',
       {},
       async (_params, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
@@ -166,12 +166,12 @@ export const eloaServer: McpServerDefinition = {
       },
     );
 
-    // ─── remover_fonte ───
+    // ─── remove_source ───
     server.tool(
-      'remover_fonte',
-      'Remove uma fonte RSS e todos os artigos associados do usuario.',
+      'remove_source',
+      'Remove an RSS source and all its associated articles for the user.',
       {
-        sourceId: z.number().describe('ID da fonte a remover'),
+        sourceId: z.number().describe('Source ID to remove'),
       },
       async ({ sourceId }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
@@ -182,7 +182,7 @@ export const eloaServer: McpServerDefinition = {
           .from(userSources)
           .where(and(eq(userSources.sourceId, sourceId), eq(userSources.userId, userId)));
         if (!subscription) {
-          return { content: [{ type: 'text' as const, text: 'Erro: fonte nao encontrada.' }] };
+          return { content: [{ type: 'text' as const, text: 'Error: source not found.' }] };
         }
 
         // Get source title
@@ -211,18 +211,18 @@ export const eloaServer: McpServerDefinition = {
         }
 
         return {
-          content: [{ type: 'text' as const, text: `Fonte "${source?.title || 'Fonte'}" removida. Seus artigos foram apagados.` }],
+          content: [{ type: 'text' as const, text: `Source "${source?.title || 'Source'}" removed. Its articles have been deleted.` }],
         };
       },
     );
 
-    // ─── buscar_novidades ───
+    // ─── fetch_latest ───
     server.tool(
-      'buscar_novidades',
-      'Busca ultimos artigos das fontes RSS. Pode filtrar por fonte especifica.',
+      'fetch_latest',
+      'Fetch latest articles from RSS sources. Can filter by a specific source.',
       {
-        sourceId: z.number().optional().describe('ID da fonte (opcional, busca todas se omitido)'),
-        limit: z.number().optional().default(20).describe('Numero maximo de artigos (default 20)'),
+        sourceId: z.number().optional().describe('Source ID (optional, fetches all if omitted)'),
+        limit: z.number().optional().default(20).describe('Max number of articles (default 20)'),
       },
       async ({ sourceId, limit }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
@@ -243,7 +243,7 @@ export const eloaServer: McpServerDefinition = {
           .where(sourceFilter);
 
         if (subscriptions.length === 0) {
-          return { content: [{ type: 'text' as const, text: 'Nenhuma fonte cadastrada.' }] };
+          return { content: [{ type: 'text' as const, text: 'No sources registered.' }] };
         }
 
         const newArticles: Array<{ title: string; url: string; proxyUrl?: string; author?: string; publishedAt?: string; content?: string; source: string; isRead: boolean }> = [];
@@ -260,7 +260,7 @@ export const eloaServer: McpServerDefinition = {
                 .values({
                   userId,
                   sourceId: sub.sourceId,
-                  title: item.title || 'Sem titulo',
+                  title: item.title || 'Untitled',
                   url: item.link,
                   shortCode: generateShortCode(),
                   author: item.creator || item.author || null,
@@ -318,15 +318,15 @@ export const eloaServer: McpServerDefinition = {
       },
     );
 
-    // ─── marcar_como_lido ───
+    // ─── mark_as_read ───
     server.tool(
-      'marcar_como_lido',
-      'Marca um artigo como lido ou nao lido.',
+      'mark_as_read',
+      'Mark an article as read or unread.',
       {
-        articleId: z.number().describe('ID do artigo'),
-        lido: z.boolean().optional().default(true).describe('true para marcar como lido, false para nao lido'),
+        articleId: z.number().describe('Article ID'),
+        read: z.boolean().optional().default(true).describe('true to mark as read, false for unread'),
       },
-      async ({ articleId, lido }, extra) => {
+      async ({ articleId, read }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
 
         const [article] = await db
@@ -334,32 +334,32 @@ export const eloaServer: McpServerDefinition = {
           .from(articles)
           .where(and(eq(articles.id, articleId), eq(articles.userId, userId)));
         if (!article) {
-          return { content: [{ type: 'text' as const, text: 'Erro: artigo nao encontrado.' }] };
+          return { content: [{ type: 'text' as const, text: 'Error: article not found.' }] };
         }
 
         await db
           .update(articles)
           .set({
-            isRead: lido,
-            readAt: lido ? new Date().toISOString() : null,
+            isRead: read,
+            readAt: read ? new Date().toISOString() : null,
           })
           .where(and(eq(articles.id, articleId), eq(articles.userId, userId)));
 
         return {
-          content: [{ type: 'text' as const, text: `Artigo "${article.title}" marcado como ${lido ? 'lido' : 'nao lido'}.` }],
+          content: [{ type: 'text' as const, text: `Article "${article.title}" marked as ${read ? 'read' : 'unread'}.` }],
         };
       },
     );
 
-    // ─── salvar_bookmark ───
+    // ─── save_bookmark ───
     server.tool(
-      'salvar_bookmark',
-      'Salva uma URL como bookmark. Extrai titulo automaticamente se nao informado.',
+      'save_bookmark',
+      'Save a URL as a bookmark. Auto-extracts the title if not provided.',
       {
-        url: z.string().url().describe('URL para salvar'),
-        title: z.string().optional().describe('Titulo (auto-extraido se omitido)'),
-        tags: z.array(z.string()).optional().describe('Tags para categorizar'),
-        notes: z.string().optional().describe('Anotacoes pessoais'),
+        url: z.string().url().describe('URL to save'),
+        title: z.string().optional().describe('Title (auto-extracted if omitted)'),
+        tags: z.array(z.string()).optional().describe('Tags for categorization'),
+        notes: z.string().optional().describe('Personal notes'),
       },
       async ({ url, title, tags, notes }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
@@ -429,13 +429,13 @@ export const eloaServer: McpServerDefinition = {
       },
     );
 
-    // ─── listar_bookmarks ───
+    // ─── list_bookmarks ───
     server.tool(
-      'listar_bookmarks',
-      'Lista bookmarks salvos. Filtra por tag se informada.',
+      'list_bookmarks',
+      'List saved bookmarks. Filter by tag if provided.',
       {
-        tag: z.string().optional().describe('Filtrar por tag'),
-        limit: z.number().optional().default(20).describe('Numero maximo de resultados (default 20)'),
+        tag: z.string().optional().describe('Filter by tag'),
+        limit: z.number().optional().default(20).describe('Max number of results (default 20)'),
       },
       async ({ tag, limit }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
@@ -469,12 +469,12 @@ export const eloaServer: McpServerDefinition = {
       },
     );
 
-    // ─── remover_bookmark ───
+    // ─── remove_bookmark ───
     server.tool(
-      'remover_bookmark',
-      'Remove um bookmark por ID.',
+      'remove_bookmark',
+      'Remove a bookmark by ID.',
       {
-        bookmarkId: z.number().describe('ID do bookmark a remover'),
+        bookmarkId: z.number().describe('Bookmark ID to remove'),
       },
       async ({ bookmarkId }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
@@ -484,33 +484,33 @@ export const eloaServer: McpServerDefinition = {
           .from(bookmarks)
           .where(and(eq(bookmarks.id, bookmarkId), eq(bookmarks.userId, userId)));
         if (!bookmark) {
-          return { content: [{ type: 'text' as const, text: 'Erro: bookmark nao encontrado.' }] };
+          return { content: [{ type: 'text' as const, text: 'Error: bookmark not found.' }] };
         }
 
         await db.delete(bookmarks).where(eq(bookmarks.id, bookmarkId));
 
         return {
-          content: [{ type: 'text' as const, text: `Bookmark "${bookmark.title}" removido.` }],
+          content: [{ type: 'text' as const, text: `Bookmark "${bookmark.title}" removed.` }],
         };
       },
     );
 
-    // ─── buscar_conteudo ───
+    // ─── search_content ───
     server.tool(
-      'buscar_conteudo',
-      'Busca em todo conteudo salvo (artigos + bookmarks) por palavra-chave.',
+      'search_content',
+      'Search all saved content (articles + bookmarks) by keyword.',
       {
-        query: z.string().describe('Termo de busca'),
-        tipo: z.enum(['artigos', 'bookmarks', 'todos']).optional().default('todos').describe('Tipo de conteudo (default: todos)'),
+        query: z.string().describe('Search term'),
+        type: z.enum(['articles', 'bookmarks', 'all']).optional().default('all').describe('Content type (default: all)'),
       },
-      async ({ query, tipo }, extra) => {
+      async ({ query, type }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
-        const results: Array<{ tipo: string; title: string; url: string; snippet: string; createdAt: string | null }> = [];
+        const results: Array<{ type: string; title: string; url: string; snippet: string; createdAt: string | null }> = [];
 
         try {
           const tsquery = sql`websearch_to_tsquery('simple', ${query})`;
 
-          if (tipo === 'todos' || tipo === 'artigos') {
+          if (type === 'all' || type === 'articles') {
             const articleResults = await db
               .select({
                 title: articles.title,
@@ -533,7 +533,7 @@ export const eloaServer: McpServerDefinition = {
               const text = a.content || a.title;
               const snippet = text.slice(0, 150);
               results.push({
-                tipo: 'artigo',
+                type: 'article',
                 title: a.title,
                 url: a.url,
                 snippet: snippet + (snippet.length < text.length ? '...' : ''),
@@ -542,7 +542,7 @@ export const eloaServer: McpServerDefinition = {
             }
           }
 
-          if (tipo === 'todos' || tipo === 'bookmarks') {
+          if (type === 'all' || type === 'bookmarks') {
             const bookmarkResults = await db
               .select({
                 title: bookmarks.title,
@@ -566,7 +566,7 @@ export const eloaServer: McpServerDefinition = {
               const text = b.notes || b.content || b.title;
               const snippet = text.slice(0, 150);
               results.push({
-                tipo: 'bookmark',
+                type: 'bookmark',
                 title: b.title,
                 url: b.url,
                 snippet: snippet + (snippet.length < text.length ? '...' : ''),
@@ -589,13 +589,13 @@ export const eloaServer: McpServerDefinition = {
       },
     );
 
-    // ─── ver_analytics ───
+    // ─── view_analytics ───
     server.tool(
-      'ver_analytics',
-      'Mostra analytics de clicks nos artigos: ranking dos mais clicados e clicks por fonte.',
+      'view_analytics',
+      'Show article click analytics: ranking of most clicked articles and clicks by source.',
       {
-        period: z.enum(['7d', '30d', 'all']).optional().default('7d').describe('Periodo: 7d, 30d ou all'),
-        limit: z.number().optional().default(10).describe('Numero maximo de artigos no ranking'),
+        period: z.enum(['7d', '30d', 'all']).optional().default('7d').describe('Period: 7d, 30d or all'),
+        limit: z.number().optional().default(10).describe('Max number of articles in ranking'),
       },
       async ({ period, limit }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
@@ -656,14 +656,14 @@ export const eloaServer: McpServerDefinition = {
       },
     );
 
-    // ─── extrair_conteudo ───
+    // ─── extract_content ───
     server.tool(
-      'extrair_conteudo',
-      'Extrai conteudo completo de uma URL via scrape API ou fetch direto.',
+      'extract_content',
+      'Extract full content from a URL via scrape API or direct fetch.',
       {
-        url: z.string().url().describe('URL para extrair conteudo'),
-        bookmarkId: z.number().optional().describe('ID do bookmark para atualizar content'),
-        articleId: z.number().optional().describe('ID do artigo para atualizar content'),
+        url: z.string().url().describe('URL to extract content from'),
+        bookmarkId: z.number().optional().describe('Bookmark ID to update content'),
+        articleId: z.number().optional().describe('Article ID to update content'),
       },
       async ({ url, bookmarkId, articleId }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
@@ -713,7 +713,7 @@ export const eloaServer: McpServerDefinition = {
               .trim()
               .slice(0, 10000);
           } catch {
-            return { content: [{ type: 'text' as const, text: 'Erro: nao foi possivel acessar a URL.' }] };
+            return { content: [{ type: 'text' as const, text: 'Error: could not access the URL.' }] };
           }
         }
 
