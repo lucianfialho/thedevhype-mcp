@@ -28,6 +28,60 @@ function createVerifyToken(serverName: string) {
   };
 }
 
+/* ─── GET /api/mcp/{name} → Markdown docs (public, no auth) ─── */
+
+function buildDocs(serverName: string): Response | null {
+  const server = registry.getServer(serverName);
+  if (!server) return null;
+
+  const endpoint = `https://www.thedevhype.com/api/mcp/${server.name}/mcp`;
+
+  const lines: string[] = [
+    `# ${server.name.charAt(0).toUpperCase() + server.name.slice(1)}`,
+    '',
+    `> ${server.description}`,
+    '',
+    `**Category:** ${server.category}`,
+    `**Endpoint:** \`${endpoint}\``,
+    '',
+    '---',
+    '',
+    `## Tools (${server.tools.length})`,
+    '',
+  ];
+
+  for (const tool of server.tools) {
+    lines.push(`### \`${tool.name}\``);
+    lines.push('');
+    lines.push(tool.description);
+    lines.push('');
+  }
+
+  lines.push('---');
+  lines.push('');
+  lines.push('## Quick Start');
+  lines.push('');
+  lines.push('```json');
+  lines.push(JSON.stringify({
+    mcpServers: {
+      [server.name]: {
+        url: endpoint,
+        headers: { Authorization: 'Bearer <your-api-key>' },
+      },
+    },
+  }, null, 2));
+  lines.push('```');
+  lines.push('');
+  lines.push(`Get your API key at [thedevhype.com/onboarding](https://www.thedevhype.com/onboarding)`);
+  lines.push('');
+
+  return new Response(lines.join('\n'), {
+    headers: { 'Content-Type': 'text/markdown; charset=utf-8' },
+  });
+}
+
+/* ─── MCP protocol handler (auth required) ─── */
+
 async function handleRequest(request: Request, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
   const serverName = path[0];
@@ -44,4 +98,18 @@ async function handleRequest(request: Request, { params }: { params: Promise<{ p
   return handler(request);
 }
 
-export { handleRequest as GET, handleRequest as POST, handleRequest as DELETE };
+async function handleGet(request: Request, ctx: { params: Promise<{ path: string[] }> }) {
+  const { path } = await ctx.params;
+
+  // /api/mcp/{name} (no /mcp suffix) → return Markdown docs
+  if (path.length === 1) {
+    const docs = buildDocs(path[0]);
+    if (docs) return docs;
+    return NextResponse.json({ error: `MCP server "${path[0]}" not found` }, { status: 404 });
+  }
+
+  // /api/mcp/{name}/mcp → MCP protocol (SSE transport)
+  return handleRequest(request, ctx);
+}
+
+export { handleGet as GET, handleRequest as POST, handleRequest as DELETE };

@@ -45,10 +45,10 @@ const THEMES: Record<TimeTheme['id'], TimeTheme> = {
   },
   afternoon: {
     id: 'afternoon',
-    // Home — bright blue sky, turquoise water, sandy beach bottom
-    cardBg: '#f5f0e8',
-    heroFade: '#d4c8b0',    // warm sand tone — matches beach/sidewalk at bottom of image
-    skyGradient: 'linear-gradient(180deg, #6ba8c7 0%, #8dbdd5 15%, #a8cce0 30%, #c2dbe8 50%, #d4cfc0 65%, #c8b8a0 80%, #b8a890 100%)',
+    // Home — vivid midday blue sky, bright sun, sandy beach bottom
+    cardBg: '#f0ece4',
+    heroFade: '#c8bda5',    // warm sand tone — matches beach/sidewalk at bottom of image
+    skyGradient: 'linear-gradient(180deg, #3a8ec7 0%, #4da0d8 10%, #65b0e0 25%, #80c0e8 40%, #a5d0e8 55%, #c5d5d0 70%, #c8bda5 85%, #b5a890 100%)',
     heroImage: '/rio-afternoon.png',
     heroVideo: '',
     greeting: 'Good afternoon',
@@ -65,21 +65,21 @@ const THEMES: Record<TimeTheme['id'], TimeTheme> = {
   },
   evening: {
     id: 'evening',
-    // Home — reuse morning image as sunset (same warm tones work)
-    cardBg: '#f8fafc',
-    heroFade: '#f0d4c4',
-    skyGradient: 'linear-gradient(180deg, #d4a8a0 0%, #e0beb5 15%, #eacfc5 30%, #f0d4c4 50%, #e8ccc0 65%, #dfc0b8 80%, #d4b0aa 100%)',
+    // Home — golden hour sunset: deep amber/orange sky fading to warm gold
+    cardBg: '#faf5ed',
+    heroFade: '#d4a060',    // warm amber-gold — matches golden hour light
+    skyGradient: 'linear-gradient(180deg, #c45830 0%, #d06830 10%, #e08040 22%, #e89850 35%, #e8a858 48%, #d4a060 60%, #c89858 72%, #b88850 85%, #a07840 100%)',
     heroImage: '/rio-morning.png',
     heroVideo: '',
     greeting: 'Good evening',
     homeTextPrimary: 'text-slate-700',
-    homeTextSecondary: 'text-slate-400',
+    homeTextSecondary: 'text-slate-500',
     // Inner pages
-    bg: 'rgb(42, 35, 48)',
-    viewportBg: 'rgb(30, 25, 35)',
+    bg: 'rgb(50, 35, 22)',
+    viewportBg: 'rgb(38, 26, 16)',
     textPrimary: 'text-zinc-100',
     textSecondary: 'text-zinc-500',
-    border: 'border-zinc-700/50',
+    border: 'border-amber-800/30',
     cardHover: 'hover:bg-white/5',
     inputBg: 'bg-zinc-800',
   },

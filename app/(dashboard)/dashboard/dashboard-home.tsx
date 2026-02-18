@@ -164,9 +164,7 @@ export function DashboardHome({ userName, isAdmin }: DashboardHomeProps) {
               <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                 <img src="/logo.png" alt="thedevhype" className="h-6 w-6" />
               </Link>
-              <span className="text-sm font-medium text-white/70">
-                {getFormattedDate()}
-              </span>
+              <div />
               <UserButton size="icon" />
             </header>
 
@@ -179,7 +177,7 @@ export function DashboardHome({ userName, isAdmin }: DashboardHomeProps) {
                 {theme.greeting}{firstName ? `, ${firstName}` : ''}
               </h1>
               <p className={`mt-1 text-base font-medium ${theme.homeTextPrimary} opacity-60`}>
-                Rio de Janeiro
+                Rio de Janeiro, {getFormattedDate()}
               </p>
             </div>
 

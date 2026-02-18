@@ -384,7 +384,7 @@ export async function getGastosData(periodDias = 30, agruparPor: 'categoria' | '
 export type Granularidade = 'diario' | 'semanal' | 'mensal';
 
 export async function getGastosTrend(
-  granularidade: Granularidade = 'mensal',
+  granularidade: Granularidade = 'diario',
   dias = granularidade === 'diario' ? 30 : granularidade === 'semanal' ? 84 : 180,
 ) {
   const userId = await requireUserId();

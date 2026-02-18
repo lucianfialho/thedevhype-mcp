@@ -80,6 +80,10 @@ class McpRegistry {
     return handler;
   }
 
+  getServer(name: string): McpServerDefinition | undefined {
+    return this.servers.get(name);
+  }
+
   listServers(): McpServerDefinition[] {
     return Array.from(this.servers.values());
   }

@@ -37,15 +37,13 @@ export default async function OnboardingPage() {
     .where(eq(userMcpAccess.userId, user.id));
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8 sm:py-12">
-      <OnboardingWizard
-        servers={servers}
-        existingAccess={existingAccess.map((a) => ({
-          mcpName: a.mcpName,
-          enabled: a.enabled,
-          hasApiKey: !!a.hasApiKey,
-        }))}
-      />
-    </main>
+    <OnboardingWizard
+      servers={servers}
+      existingAccess={existingAccess.map((a) => ({
+        mcpName: a.mcpName,
+        enabled: a.enabled,
+        hasApiKey: !!a.hasApiKey,
+      }))}
+    />
   );
 }
