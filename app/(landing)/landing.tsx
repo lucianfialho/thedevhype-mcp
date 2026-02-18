@@ -12,7 +12,7 @@ function GitHubIcon({ className }: { className?: string }) {
 }
 
 function signInWithGitHub() {
-  authClient.signIn.social({ provider: 'github', callbackURL: '/dashboard' });
+  authClient.signIn.social({ provider: 'github', callbackURL: '/waitlist' });
 }
 
 const btnClass = "cursor-pointer flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100";
@@ -31,7 +31,7 @@ function Header() {
         className={btnClass}
       >
         <GitHubIcon className="h-4 w-4" />
-        Sign in with GitHub
+        Join the beta
       </button>
     </header>
   );
@@ -65,7 +65,7 @@ function Hero() {
           className={btnClassLg}
         >
           <GitHubIcon className="h-5 w-5" />
-          Continue with GitHub
+          Join the beta
         </button>
       </div>
     </section>
@@ -874,7 +874,7 @@ function CtaSection() {
             className={btnClassCta}
           >
             <GitHubIcon className="h-5 w-5" />
-            Continue with GitHub
+            Join the beta
           </button>
         </div>
       </div>

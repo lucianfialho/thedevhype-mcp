@@ -85,6 +85,13 @@
       "when": 1771370103016,
       "tag": "0011_dusty_magma",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1771450445402,
+      "tag": "0012_heavy_green_goblin",
+      "breakpoints": true
     }
   ]
 }

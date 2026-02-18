@@ -133,3 +133,21 @@ export const userProfiles = pgTable('user_profiles', {
 
 export type UserProfile = InferSelectModel<typeof userProfiles>;
 export type NewUserProfile = InferInsertModel<typeof userProfiles>;
+
+// --- Waitlist ---
+
+export const waitlist = pgTable('waitlist', {
+  id: bigint({ mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  userId: uuid().notNull().references(() => userInNeonAuth.id).unique(),
+  building: text().notNull(),
+  aiTools: text().notNull(),
+  mcpExcitement: text(),
+  status: text().default('pending').notNull(), // pending | approved | rejected
+  approvedAt: timestamp({ withTimezone: true, mode: 'string' }),
+  createdAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
+
+export type Waitlist = InferSelectModel<typeof waitlist>;
+export type NewWaitlist = InferInsertModel<typeof waitlist>;
