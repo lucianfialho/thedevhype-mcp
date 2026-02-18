@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useTheme } from 'next-themes';
 import { getTimeTheme, NOISE_STYLE, FORCE_THEME } from '@/app/(dashboard)/dashboard/components/theme';
 
 const CLOUD_KEYFRAMES = `
@@ -31,6 +33,12 @@ export default function OnboardingLayout({
 }) {
   const theme = getTimeTheme(FORCE_THEME);
   const isNight = theme.id === 'night';
+  const { setTheme } = useTheme();
+
+  // Sync next-themes with our time-based theme so dark: variants match
+  useEffect(() => {
+    setTheme(isNight ? 'dark' : 'light');
+  }, [isNight, setTheme]);
 
   return (
     <div
@@ -69,9 +77,9 @@ export default function OnboardingLayout({
       {/* Centered card */}
       <main
         className={`relative z-10 w-full max-w-xl rounded-3xl p-6 shadow-2xl sm:p-10 ${
-          isNight ? 'dark border border-white/10' : 'border border-slate-200/50'
+          isNight ? 'dark border border-white/10' : 'border border-white/60'
         }`}
-        style={{ backgroundColor: theme.cardBg }}
+        style={{ backgroundColor: isNight ? theme.cardBg : 'rgba(255,255,255,0.92)' }}
       >
         {children}
       </main>

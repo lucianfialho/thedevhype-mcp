@@ -165,7 +165,10 @@ export function DashboardHome({ userName, isAdmin }: DashboardHomeProps) {
                 <img src="/logo.png" alt="thedevhype" className="h-6 w-6" />
               </Link>
               <div />
-              <UserButton size="icon" />
+              <UserButton
+                size="icon"
+                additionalLinks={isAdmin ? [{ href: '/dashboard/admin', label: 'Admin', signedIn: true }] : []}
+              />
             </header>
 
             {/* Spacer — pushes content to bottom half */}
@@ -214,29 +217,24 @@ export function DashboardHome({ userName, isAdmin }: DashboardHomeProps) {
                   </div>
                 </Link>
 
-                {isAdmin && (
-                  <Link
-                    href="/dashboard/admin"
-                    className={`col-span-2 flex items-center gap-3 rounded-2xl border px-5 py-4 backdrop-blur-sm transition-colors ${
-                      isNight
-                        ? 'border-white/15 bg-white/10 hover:bg-white/15'
-                        : 'border-slate-200/80 bg-white/60 hover:bg-white/80'
-                    }`}
-                  >
-                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base font-bold ${
-                      isNight ? 'bg-zinc-700 text-zinc-100' : 'bg-slate-100 text-slate-600'
-                    }`}>
-                      A
-                    </div>
-                    <div className="text-left">
-                      <p className={`text-base font-semibold leading-tight ${theme.homeTextPrimary}`}>Admin</p>
-                      <p className={`mt-0.5 text-sm leading-tight ${theme.homeTextSecondary}`}>Users, API keys & usage</p>
-                    </div>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={`ml-auto ${isNight ? 'text-zinc-500' : 'text-slate-400'}`}>
-                      <path d="M6 4l4 4-4 4" />
-                    </svg>
-                  </Link>
-                )}
+                <Link
+                  href="/dashboard/otto"
+                  className={`col-span-2 flex items-center gap-3 rounded-2xl border px-5 py-4 backdrop-blur-sm transition-colors ${
+                    isNight
+                      ? 'border-white/15 bg-white/10 hover:bg-white/15'
+                      : 'border-slate-200/80 bg-white/60 hover:bg-white/80'
+                  }`}
+                >
+                  <img src="/otto.png" alt="Otto" className="h-10 w-10 rounded-full" />
+                  <div className="text-left">
+                    <p className={`text-base font-semibold leading-tight ${theme.homeTextPrimary}`}>Otto</p>
+                    <p className={`mt-0.5 text-sm leading-tight ${theme.homeTextSecondary}`}>Second Brain</p>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={`ml-auto ${isNight ? 'text-zinc-500' : 'text-slate-400'}`}>
+                    <path d="M6 4l4 4-4 4" />
+                  </svg>
+                </Link>
+
               </div>
             </div>
           </div>

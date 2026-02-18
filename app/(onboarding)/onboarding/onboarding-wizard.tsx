@@ -66,6 +66,7 @@ export function OnboardingWizard({ servers, existingAccess }: OnboardingWizardPr
   // Step 3: config target
   const [configTarget, setConfigTarget] = useState<ConfigTarget>('poke');
   const [copiedConfig, setCopiedConfig] = useState(false);
+  const [keyError, setKeyError] = useState<string | null>(null);
 
   // Step 4: verification
   const [verifyStatus, setVerifyStatus] = useState<{
@@ -115,7 +116,15 @@ export function OnboardingWizard({ servers, existingAccess }: OnboardingWizardPr
   // Step 2: generate key
   async function handleGenerateKey(name: string) {
     setGenerating(name);
+    setKeyError(null);
     try {
+      // Ensure the MCP is enabled first
+      await fetch('/api/mcp-access/enable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mcpName: name }),
+      });
+
       const res = await fetch('/api/mcp-access/generate-key', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -126,7 +135,12 @@ export function OnboardingWizard({ servers, existingAccess }: OnboardingWizardPr
         if (data.apiKey) {
           setApiKeys((prev) => ({ ...prev, [name]: data.apiKey }));
         }
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setKeyError(data.error || `Failed to generate key for ${name}`);
       }
+    } catch {
+      setKeyError(`Network error generating key for ${name}`);
     } finally {
       setGenerating(null);
     }
@@ -404,6 +418,12 @@ export function OnboardingWizard({ servers, existingAccess }: OnboardingWizardPr
           <h2 className="text-xl font-bold text-slate-800 dark:text-zinc-100 sm:text-2xl">Generate API Keys</h2>
           <p className="mt-1.5 text-sm text-slate-500 dark:text-zinc-400">Each server needs its own key. Copy them now — they&apos;re shown once.</p>
 
+          {keyError && (
+            <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-400">
+              {keyError}
+            </div>
+          )}
+
           <div className="mt-6 space-y-3">
             {selectedServers.map((server) => {
               const key = apiKeys[server.name];
@@ -499,6 +519,9 @@ export function OnboardingWizard({ servers, existingAccess }: OnboardingWizardPr
                   </button>
                 ))}
               </div>
+              {keyError && (
+                <p className="mt-2 text-sm text-red-600 dark:text-red-400">{keyError}</p>
+              )}
             </div>
           )}
 
