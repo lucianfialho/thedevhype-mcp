@@ -46,7 +46,7 @@ export default async function EloaPage({
 
   const mcpConfig = server
     ? {
-        mcpUrl: 'https://www.thedevhype.com/api/mcp/eloa/mcp',
+        mcpUrl: 'https://www.thedevhype.com/api/mcp/eloa',
         tools: server.tools.map((t) => ({ name: t.name, description: t.description })),
         enabled: access?.enabled ?? false,
         hasApiKey: !!access?.apiKey,

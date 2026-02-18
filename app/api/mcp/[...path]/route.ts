@@ -34,7 +34,7 @@ function buildDocs(serverName: string): Response | null {
   const server = registry.getServer(serverName);
   if (!server) return null;
 
-  const endpoint = `https://www.thedevhype.com/api/mcp/${server.name}/mcp`;
+  const endpoint = `https://www.thedevhype.com/api/mcp/${server.name}`;
 
   const lines: string[] = [
     `# ${server.name.charAt(0).toUpperCase() + server.name.slice(1)}`,
@@ -101,14 +101,14 @@ async function handleRequest(request: Request, { params }: { params: Promise<{ p
 async function handleGet(request: Request, ctx: { params: Promise<{ path: string[] }> }) {
   const { path } = await ctx.params;
 
-  // /api/mcp/{name} (no /mcp suffix) → return Markdown docs
+  // GET /api/mcp/{name} → return Markdown docs
   if (path.length === 1) {
     const docs = buildDocs(path[0]);
     if (docs) return docs;
     return NextResponse.json({ error: `MCP server "${path[0]}" not found` }, { status: 404 });
   }
 
-  // /api/mcp/{name}/mcp → MCP protocol (SSE transport)
+  // GET /api/mcp/{name}/sse → SSE transport
   return handleRequest(request, ctx);
 }
 

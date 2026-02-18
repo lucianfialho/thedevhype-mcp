@@ -70,7 +70,9 @@ class McpRegistry {
           capabilities: { tools: {} },
         },
         {
-          basePath: `/api/mcp/${name}`,
+          streamableHttpEndpoint: `/api/mcp/${name}`,
+          sseEndpoint: `/api/mcp/${name}/sse`,
+          sseMessageEndpoint: `/api/mcp/${name}/message`,
           verboseLogs: true,
         },
       );

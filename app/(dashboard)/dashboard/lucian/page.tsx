@@ -55,7 +55,7 @@ export default async function LucianPage({
 
   const mcpConfig = server
     ? {
-        mcpUrl: 'https://www.thedevhype.com/api/mcp/lucian/mcp',
+        mcpUrl: 'https://www.thedevhype.com/api/mcp/lucian',
         tools: server.tools.map((t) => ({ name: t.name, description: t.description })),
         enabled: access?.enabled ?? false,
         hasApiKey: !!access?.apiKey,

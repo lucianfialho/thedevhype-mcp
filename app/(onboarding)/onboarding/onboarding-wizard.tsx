@@ -147,7 +147,7 @@ export function OnboardingWizard({ servers, existingAccess }: OnboardingWizardPr
       const key = apiKeys[name];
       entries.push({
         name,
-        url: `https://www.thedevhype.com/api/mcp/${name}/mcp`,
+        url: `https://www.thedevhype.com/api/mcp/${name}`,
         key: key || '<your-api-key>',
         isPlaceholder: !key,
       });
