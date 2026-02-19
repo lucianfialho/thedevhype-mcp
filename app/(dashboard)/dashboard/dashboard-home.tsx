@@ -58,7 +58,7 @@ export function DashboardHome({ userName, isAdmin }: DashboardHomeProps) {
 
   return (
     <div
-      className="relative flex min-h-screen items-center justify-center overflow-hidden"
+      className="relative flex min-h-screen md:items-center md:justify-center overflow-hidden"
       style={{ background: theme.skyGradient }}
     >
       {/* Inject cloud animation keyframes */}
@@ -142,7 +142,7 @@ export function DashboardHome({ userName, isAdmin }: DashboardHomeProps) {
       />
 
       {/* Centered card — poke.com proportions: max-w-md, h-[750px] on desktop */}
-      <main className="relative z-10 h-full w-full max-w-md text-center md:h-[750px]">
+      <main className="relative z-10 min-h-[100dvh] w-full max-w-md text-center md:min-h-0 md:h-[750px]">
         <div className="flex h-full flex-col justify-between">
           <div
             className="relative flex h-full flex-col overflow-hidden py-4 shadow-2xl md:rounded-3xl"
