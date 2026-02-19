@@ -12,39 +12,51 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const { mcpName } = await request.json();
+  let mcpName: string;
+  try {
+    const body = await request.json();
+    mcpName = body.mcpName;
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
+
   if (!mcpName || typeof mcpName !== 'string') {
     return NextResponse.json({ error: 'mcpName is required' }, { status: 400 });
   }
 
-  const existing = await db
-    .select({ enabled: userMcpAccess.enabled })
-    .from(userMcpAccess)
-    .where(
-      and(
-        eq(userMcpAccess.userId, userId),
-        eq(userMcpAccess.mcpName, mcpName),
-      ),
-    )
-    .limit(1);
+  try {
+    const existing = await db
+      .select({ enabled: userMcpAccess.enabled })
+      .from(userMcpAccess)
+      .where(
+        and(
+          eq(userMcpAccess.userId, userId),
+          eq(userMcpAccess.mcpName, mcpName),
+        ),
+      )
+      .limit(1);
 
-  if (existing.length === 0 || !existing[0].enabled) {
-    return NextResponse.json(
-      { error: 'Server must be enabled to generate a key' },
-      { status: 400 },
-    );
+    if (existing.length === 0 || !existing[0].enabled) {
+      return NextResponse.json(
+        { error: 'Server must be enabled to generate a key' },
+        { status: 400 },
+      );
+    }
+
+    const apiKey = `sk-${crypto.randomUUID()}`;
+    await db
+      .update(userMcpAccess)
+      .set({ apiKey })
+      .where(
+        and(
+          eq(userMcpAccess.userId, userId),
+          eq(userMcpAccess.mcpName, mcpName),
+        ),
+      );
+
+    return NextResponse.json({ apiKey });
+  } catch (err) {
+    console.error('[mcp-access/generate-key] DB error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-
-  const apiKey = `sk-${crypto.randomUUID()}`;
-  await db
-    .update(userMcpAccess)
-    .set({ apiKey })
-    .where(
-      and(
-        eq(userMcpAccess.userId, userId),
-        eq(userMcpAccess.mcpName, mcpName),
-      ),
-    );
-
-  return NextResponse.json({ apiKey });
 }

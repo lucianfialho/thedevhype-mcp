@@ -11,39 +11,51 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const { mcpName } = await request.json();
+  let mcpName: string;
+  try {
+    const body = await request.json();
+    mcpName = body.mcpName;
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
+
   if (!mcpName || typeof mcpName !== 'string') {
     return NextResponse.json({ error: 'mcpName is required' }, { status: 400 });
   }
 
-  const existing = await db
-    .select({ enabled: userMcpAccess.enabled })
-    .from(userMcpAccess)
-    .where(
-      and(
-        eq(userMcpAccess.userId, userId),
-        eq(userMcpAccess.mcpName, mcpName),
-      ),
-    )
-    .limit(1);
+  try {
+    const existing = await db
+      .select({ enabled: userMcpAccess.enabled })
+      .from(userMcpAccess)
+      .where(
+        and(
+          eq(userMcpAccess.userId, userId),
+          eq(userMcpAccess.mcpName, mcpName),
+        ),
+      )
+      .limit(1);
 
-  if (existing.length > 0) {
-    if (!existing[0].enabled) {
+    if (existing.length > 0) {
+      if (!existing[0].enabled) {
+        await db
+          .update(userMcpAccess)
+          .set({ enabled: true })
+          .where(
+            and(
+              eq(userMcpAccess.userId, userId),
+              eq(userMcpAccess.mcpName, mcpName),
+            ),
+          );
+      }
+    } else {
       await db
-        .update(userMcpAccess)
-        .set({ enabled: true })
-        .where(
-          and(
-            eq(userMcpAccess.userId, userId),
-            eq(userMcpAccess.mcpName, mcpName),
-          ),
-        );
+        .insert(userMcpAccess)
+        .values({ userId, mcpName, enabled: true });
     }
-  } else {
-    await db
-      .insert(userMcpAccess)
-      .values({ userId, mcpName, enabled: true });
-  }
 
-  return NextResponse.json({ enabled: true });
+    return NextResponse.json({ enabled: true });
+  } catch (err) {
+    console.error('[mcp-access/enable] DB error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }
