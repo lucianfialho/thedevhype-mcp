@@ -42,7 +42,7 @@ export function AppShell({ children, title, nav }: AppShellProps) {
 
   return (
     <div
-      className="relative flex min-h-screen items-center justify-center overflow-hidden"
+      className="relative flex min-h-screen md:items-center md:justify-center overflow-hidden"
       style={{ background: theme.skyGradient }}
     >
       <style dangerouslySetInnerHTML={{ __html: CLOUD_KEYFRAMES }} />
@@ -66,7 +66,7 @@ export function AppShell({ children, title, nav }: AppShellProps) {
       <div className="pointer-events-none absolute inset-0 z-[5] opacity-30" style={NOISE_STYLE} />
 
       {/* Centered white card */}
-      <main className="relative z-10 h-full w-full max-w-md text-center md:h-[750px]">
+      <main className="relative z-10 min-h-[100dvh] w-full max-w-md text-center md:min-h-0 md:h-[750px]">
         <div className="flex h-full flex-col">
           <div className="relative flex h-full flex-col overflow-hidden bg-white py-4 shadow-2xl md:rounded-3xl">
             {/* Header: back button + title */}
