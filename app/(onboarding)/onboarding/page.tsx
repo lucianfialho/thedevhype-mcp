@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@/app/lib/auth/server';
+import { isWaitlistApproved } from '@/app/lib/auth/waitlist';
 import { db } from '@/app/lib/db';
 import { userProfiles, userMcpAccess } from '@/app/lib/db/public.schema';
 import { eq } from 'drizzle-orm';
@@ -12,6 +13,8 @@ export default async function OnboardingPage() {
   const { data: session } = await auth.getSession();
   const user = session?.user;
   if (!user?.id) redirect('/');
+
+  if (!await isWaitlistApproved(user.id)) redirect('/waitlist');
 
   const [profile] = await db
     .select({ onboardingCompletedAt: userProfiles.onboardingCompletedAt })

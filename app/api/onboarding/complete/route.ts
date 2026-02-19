@@ -1,4 +1,5 @@
 import { auth } from '@/app/lib/auth/server';
+import { isWaitlistApproved } from '@/app/lib/auth/waitlist';
 import { db } from '@/app/lib/db';
 import { userProfiles } from '@/app/lib/db/public.schema';
 import { sql } from 'drizzle-orm';
@@ -9,6 +10,10 @@ export async function POST() {
   const userId = session?.user?.id;
   if (!userId) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  }
+
+  if (!await isWaitlistApproved(userId)) {
+    return NextResponse.json({ error: 'Waitlist approval required' }, { status: 403 });
   }
 
   await db

@@ -5,25 +5,25 @@ import { eq, and } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
-  const { data: session } = await auth.getSession();
-  const userId = session?.user?.id;
-  if (!userId) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-  }
-
-  let body: { mcpName?: string; enabled?: boolean };
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
-  }
+    const { data: session } = await auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
 
-  const { mcpName, enabled: desiredEnabled } = body;
-  if (!mcpName || typeof mcpName !== 'string') {
-    return NextResponse.json({ error: 'mcpName is required' }, { status: 400 });
-  }
+    let body: { mcpName?: string; enabled?: boolean };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
 
-  try {
+    const { mcpName, enabled: desiredEnabled } = body;
+    if (!mcpName || typeof mcpName !== 'string') {
+      return NextResponse.json({ error: 'mcpName is required' }, { status: 400 });
+    }
+
     const existing = await db
       .select({ enabled: userMcpAccess.enabled })
       .from(userMcpAccess)
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ enabled });
   } catch (err) {
-    console.error('[mcp-access] DB error:', err);
+    console.error('[mcp-access] error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

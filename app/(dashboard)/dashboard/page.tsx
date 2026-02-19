@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@/app/lib/auth/server';
+import { isWaitlistApproved } from '@/app/lib/auth/waitlist';
 import { db } from '@/app/lib/db';
-import { userInNeonAuth, userMcpAccess, userProfiles, waitlist } from '@/app/lib/db/public.schema';
+import { userInNeonAuth, userMcpAccess, userProfiles } from '@/app/lib/db/public.schema';
 import { eq, sql, and, isNotNull } from 'drizzle-orm';
 import { DashboardHome } from './dashboard-home';
 
@@ -18,14 +19,7 @@ export default async function DashboardPage({
 
   if (!user?.id) redirect('/');
 
-  // Waitlist gate: block only users with a pending/rejected waitlist entry.
-  // No entry = existing user before waitlist, let them through.
-  const [wlEntry] = await db
-    .select({ status: waitlist.status })
-    .from(waitlist)
-    .where(eq(waitlist.userId, user.id));
-
-  if (wlEntry && wlEntry.status !== 'approved') redirect('/waitlist');
+  if (!await isWaitlistApproved(user.id)) redirect('/waitlist');
 
   if (user.id) {
     if (params['reset-onboarding'] === '1') {

@@ -41,7 +41,7 @@ const authProxy = auth.middleware({
   loginUrl: '/auth/sign-in',
 });
 
-const AUTH_PATHS = ['/dashboard', '/waitlist'];
+const AUTH_PATHS = ['/dashboard', '/waitlist', '/onboarding'];
 
 function trackBot(bot: { name: string; category: string }, pathname: string, ua: string) {
   return fetch("https://www.bluemonitor.org/api/v1/bot-visits", {

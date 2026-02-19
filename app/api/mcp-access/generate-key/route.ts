@@ -6,25 +6,29 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 
 export async function POST(request: Request) {
-  const { data: session } = await auth.getSession();
-  const userId = session?.user?.id;
-  if (!userId) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-  }
-
-  let mcpName: string;
   try {
-    const body = await request.json();
-    mcpName = body.mcpName;
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
-  }
+    console.log('[generate-key] handler start');
+    const { data: session } = await auth.getSession();
+    const userId = session?.user?.id;
+    console.log('[generate-key] session resolved, userId:', userId ? 'present' : 'missing');
+    if (!userId) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
 
-  if (!mcpName || typeof mcpName !== 'string') {
-    return NextResponse.json({ error: 'mcpName is required' }, { status: 400 });
-  }
+    let mcpName: string;
+    try {
+      const body = await request.json();
+      mcpName = body.mcpName;
+      console.log('[generate-key] parsed body, mcpName:', mcpName);
+    } catch (parseErr) {
+      console.error('[generate-key] body parse failed:', parseErr);
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
 
-  try {
+    if (!mcpName || typeof mcpName !== 'string') {
+      return NextResponse.json({ error: 'mcpName is required' }, { status: 400 });
+    }
+
     const existing = await db
       .select({ enabled: userMcpAccess.enabled })
       .from(userMcpAccess)
@@ -54,9 +58,10 @@ export async function POST(request: Request) {
         ),
       );
 
+    console.log('[generate-key] success for mcpName:', mcpName);
     return NextResponse.json({ apiKey });
   } catch (err) {
-    console.error('[mcp-access/generate-key] DB error:', err);
+    console.error('[generate-key] unhandled error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
