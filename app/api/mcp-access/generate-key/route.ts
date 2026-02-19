@@ -2,8 +2,6 @@ import { auth } from '@/app/lib/auth/server';
 import { db } from '@/app/lib/db';
 import { userMcpAccess } from '@/app/lib/db/public.schema';
 import { eq, and } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
-import crypto from 'crypto';
 
 export async function POST(request: Request) {
   try {
@@ -12,7 +10,7 @@ export async function POST(request: Request) {
     const userId = session?.user?.id;
     console.log('[generate-key] session resolved, userId:', userId ? 'present' : 'missing');
     if (!userId) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+      return Response.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
     let mcpName: string;
@@ -22,11 +20,11 @@ export async function POST(request: Request) {
       console.log('[generate-key] parsed body, mcpName:', mcpName);
     } catch (parseErr) {
       console.error('[generate-key] body parse failed:', parseErr);
-      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+      return Response.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
     if (!mcpName || typeof mcpName !== 'string') {
-      return NextResponse.json({ error: 'mcpName is required' }, { status: 400 });
+      return Response.json({ error: 'mcpName is required' }, { status: 400 });
     }
 
     const existing = await db
@@ -41,13 +39,13 @@ export async function POST(request: Request) {
       .limit(1);
 
     if (existing.length === 0 || !existing[0].enabled) {
-      return NextResponse.json(
+      return Response.json(
         { error: 'Server must be enabled to generate a key' },
         { status: 400 },
       );
     }
 
-    const apiKey = `sk-${crypto.randomUUID()}`;
+    const apiKey = `sk-${globalThis.crypto.randomUUID()}`;
     await db
       .update(userMcpAccess)
       .set({ apiKey })
@@ -59,9 +57,9 @@ export async function POST(request: Request) {
       );
 
     console.log('[generate-key] success for mcpName:', mcpName);
-    return NextResponse.json({ apiKey });
+    return Response.json({ apiKey });
   } catch (err) {
     console.error('[generate-key] unhandled error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
