@@ -73,19 +73,22 @@ export function SettingsTab({
   const [toolsOpen, setToolsOpen] = useState(false);
 
   async function handleToggle() {
+    if (isPending) return;
     setIsPending(true);
     const prev = enabled;
-    setEnabled(!prev);
+    const desired = !prev;
+    setEnabled(desired);
 
     try {
       const res = await fetch('/api/mcp-access', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mcpName }),
+        body: JSON.stringify({ mcpName, enabled: desired }),
       });
 
       if (!res.ok) {
         setEnabled(prev);
+        setConfirmedEnabled(prev);
         return;
       }
 
@@ -94,6 +97,7 @@ export function SettingsTab({
       setConfirmedEnabled(data.enabled);
     } catch {
       setEnabled(prev);
+      setConfirmedEnabled(prev);
     } finally {
       setIsPending(false);
     }

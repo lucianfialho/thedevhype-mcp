@@ -47,7 +47,12 @@ export default async function FamiliaPage({
         .where(and(eq(userMcpAccess.userId, userId), eq(userMcpAccess.mcpName, 'familia'))))[0]
     : undefined;
 
-  const userFamilies = await getUserFamilies();
+  let userFamilies: Awaited<ReturnType<typeof getUserFamilies>> = [];
+  try {
+    userFamilies = await getUserFamilies();
+  } catch {
+    // Schema may not exist yet — treat as no families
+  }
 
   // No family: show empty state
   if (userFamilies.length === 0) {
@@ -85,19 +90,34 @@ export default async function FamiliaPage({
   const selectedId = params.family ? parseInt(params.family, 10) : userFamilies[0].id;
   const selectedFamily = userFamilies.find((f) => f.id === selectedId) || userFamilies[0];
 
-  const [membersList, invitesList, shoppingData, tasksList, notesList, expensesList, balancesData, feedData, countsData, usageStats] =
-    await Promise.all([
-      getFamilyMembers(selectedFamily.id),
-      getFamilyInvites(selectedFamily.id),
-      getShoppingItems(selectedFamily.id),
-      getFamilyTasks(selectedFamily.id),
-      getFamilyNotes(selectedFamily.id),
-      getFamilyExpenses(selectedFamily.id),
-      getExpenseBalances(selectedFamily.id),
-      getFamilyFeed(selectedFamily.id),
-      getFamilyCounts(selectedFamily.id),
-      getUserFamiliaUsage(),
-    ]);
+  let membersList: Awaited<ReturnType<typeof getFamilyMembers>> = [];
+  let invitesList: Awaited<ReturnType<typeof getFamilyInvites>> = [];
+  let shoppingData: Awaited<ReturnType<typeof getShoppingItems>> = { list: null, items: [] };
+  let tasksList: Awaited<ReturnType<typeof getFamilyTasks>> = [];
+  let notesList: Awaited<ReturnType<typeof getFamilyNotes>> = [];
+  let expensesList: Awaited<ReturnType<typeof getFamilyExpenses>> = [];
+  let balancesData: Awaited<ReturnType<typeof getExpenseBalances>> = { settlements: [], summary: 'All settled!' };
+  let feedData: Awaited<ReturnType<typeof getFamilyFeed>> = [];
+  let countsData: Awaited<ReturnType<typeof getFamilyCounts>> = { members: 0, pendingItems: 0, pendingTasks: 0, notes: 0, totalExpenses: 0 };
+  let usageStats: Awaited<ReturnType<typeof getUserFamiliaUsage>> = { totalCalls: { today: 0, week: 0, month: 0 }, byTool: [], errors: 0 };
+
+  try {
+    [membersList, invitesList, shoppingData, tasksList, notesList, expensesList, balancesData, feedData, countsData, usageStats] =
+      await Promise.all([
+        getFamilyMembers(selectedFamily.id),
+        getFamilyInvites(selectedFamily.id),
+        getShoppingItems(selectedFamily.id),
+        getFamilyTasks(selectedFamily.id),
+        getFamilyNotes(selectedFamily.id),
+        getFamilyExpenses(selectedFamily.id),
+        getExpenseBalances(selectedFamily.id),
+        getFamilyFeed(selectedFamily.id),
+        getFamilyCounts(selectedFamily.id),
+        getUserFamiliaUsage(),
+      ]);
+  } catch {
+    // Schema tables may not exist yet — use defaults
+  }
 
   const mcpConfig = server
     ? {

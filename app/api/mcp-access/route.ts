@@ -3,7 +3,6 @@ import { db } from '@/app/lib/db';
 import { userMcpAccess } from '@/app/lib/db/public.schema';
 import { eq, and } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
-import crypto from 'crypto';
 
 export async function POST(request: Request) {
   const { data: session } = await auth.getSession();
@@ -12,7 +11,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const { mcpName } = await request.json();
+  const body = await request.json();
+  const { mcpName, enabled: desiredEnabled } = body;
   if (!mcpName || typeof mcpName !== 'string') {
     return NextResponse.json({ error: 'mcpName is required' }, { status: 400 });
   }
@@ -28,10 +28,11 @@ export async function POST(request: Request) {
     )
     .limit(1);
 
+  // If client sends explicit enabled value, use it; otherwise toggle
   let enabled: boolean;
 
   if (existing.length > 0) {
-    enabled = !existing[0].enabled;
+    enabled = typeof desiredEnabled === 'boolean' ? desiredEnabled : !existing[0].enabled;
     await db
       .update(userMcpAccess)
       .set({ enabled })
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
         ),
       );
   } else {
-    enabled = true;
+    enabled = typeof desiredEnabled === 'boolean' ? desiredEnabled : true;
     await db
       .insert(userMcpAccess)
       .values({ userId, mcpName, enabled });
