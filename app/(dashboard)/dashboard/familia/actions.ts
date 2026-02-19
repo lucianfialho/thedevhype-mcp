@@ -134,6 +134,43 @@ export async function getFamilyInvites(familyId: number) {
     .orderBy(desc(invites.createdAt));
 }
 
+export async function renameFamily(familyId: number, name: string) {
+  try {
+    const userId = await requireUserId();
+    await requireFamilyMember(userId, familyId, 'admin');
+
+    const trimmed = name.trim();
+    if (!trimmed) return { error: 'Nome não pode ser vazio' };
+
+    const [updated] = await db
+      .update(families)
+      .set({ name: trimmed })
+      .where(eq(families.id, familyId))
+      .returning({ id: families.id, name: families.name });
+
+    await logActivity(familyId, userId, 'renamed', 'family', familyId, { name: trimmed });
+
+    revalidatePath('/dashboard/familia');
+    return { data: updated };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Failed to rename family' };
+  }
+}
+
+export async function deleteFamily(familyId: number) {
+  try {
+    const userId = await requireUserId();
+    await requireFamilyMember(userId, familyId, 'admin');
+
+    await db.delete(families).where(eq(families.id, familyId));
+
+    revalidatePath('/dashboard/familia');
+    return { data: { id: familyId } };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Failed to delete family' };
+  }
+}
+
 // ─── Shopping ───
 
 export async function getShoppingItems(familyId: number) {
