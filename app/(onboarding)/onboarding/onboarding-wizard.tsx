@@ -120,11 +120,17 @@ export function OnboardingWizard({ servers, existingAccess }: OnboardingWizardPr
     setKeyError(null);
     try {
       // Ensure the MCP is enabled first
-      await fetch('/api/mcp-access/enable', {
+      const enableRes = await fetch('/api/mcp-access/enable', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mcpName: name }),
       });
+
+      if (!enableRes.ok) {
+        const data = await enableRes.json().catch(() => ({}));
+        setKeyError(data.error || `Failed to enable ${name}`);
+        return;
+      }
 
       const res = await fetch('/api/mcp-access/generate-key', {
         method: 'POST',
@@ -409,7 +415,7 @@ export function OnboardingWizard({ servers, existingAccess }: OnboardingWizardPr
           </div>
 
           <button
-            onClick={() => setStep(allSelectedHaveExistingKeys ? 2 : 1)}
+            onClick={() => setStep(1)}
             disabled={selected.size === 0}
             className="mt-6 w-full rounded-2xl bg-slate-800 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
@@ -430,25 +436,10 @@ export function OnboardingWizard({ servers, existingAccess }: OnboardingWizardPr
             </div>
           )}
 
-          {/* Servers that already have keys */}
-          {selectedServers.some((s) => existingKeys.has(s.name)) && (
-            <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800/50 dark:bg-emerald-950/50">
-              <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Already configured:</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {selectedServers.filter((s) => existingKeys.has(s.name)).map((s) => (
-                  <span key={s.name} className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-sm font-medium capitalize text-slate-700 dark:bg-zinc-800 dark:text-zinc-200">
-                    {s.icon && <img src={s.icon} alt="" className="h-4 w-4 rounded-full" />}
-                    {s.name}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Servers that need keys */}
-          <div className="mt-4 space-y-3">
-            {selectedServers.filter((s) => !existingKeys.has(s.name)).map((server) => {
+          <div className="mt-6 space-y-3">
+            {selectedServers.map((server) => {
               const key = apiKeys[server.name];
+              const hasExisting = existingKeys.has(server.name);
               const isGenerating = generating === server.name;
               const isCopied = copiedKey === server.name;
 
@@ -462,9 +453,9 @@ export function OnboardingWizard({ servers, existingAccess }: OnboardingWizardPr
                       <img src={server.icon} alt={server.name} className="h-9 w-9 shrink-0 rounded-full" />
                     )}
                     <h3 className="text-base font-semibold capitalize text-slate-800 dark:text-zinc-100">{server.name}</h3>
-                    {key && (
+                    {(key || hasExisting) && (
                       <span className="ml-auto rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
-                        Ready
+                        {key ? 'Ready' : 'Configured'}
                       </span>
                     )}
                   </div>
@@ -485,6 +476,17 @@ export function OnboardingWizard({ servers, existingAccess }: OnboardingWizardPr
                           {isCopied ? 'Copied!' : 'Copy'}
                         </button>
                       </div>
+                    </div>
+                  ) : hasExisting ? (
+                    <div className="mt-3 flex items-center gap-3">
+                      <span className="text-sm text-slate-500 dark:text-zinc-400">Key already configured</span>
+                      <button
+                        onClick={() => handleGenerateKey(server.name)}
+                        disabled={isGenerating}
+                        className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-800 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:text-zinc-200"
+                      >
+                        {isGenerating ? 'Generating...' : 'Regenerate Key'}
+                      </button>
                     </div>
                   ) : (
                     <button
@@ -644,7 +646,7 @@ export function OnboardingWizard({ servers, existingAccess }: OnboardingWizardPr
 
           <div className="mt-6 flex gap-3">
             <button
-              onClick={() => setStep(allSelectedHaveExistingKeys ? 0 : 1)}
+              onClick={() => setStep(1)}
               className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-medium text-slate-600 transition-colors hover:border-slate-300 dark:border-zinc-700 dark:text-zinc-400"
             >
               Back

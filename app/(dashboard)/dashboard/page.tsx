@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@/app/lib/auth/server';
 import { db } from '@/app/lib/db';
-import { userInNeonAuth, userProfiles, waitlist } from '@/app/lib/db/public.schema';
-import { eq } from 'drizzle-orm';
+import { userInNeonAuth, userMcpAccess, userProfiles, waitlist } from '@/app/lib/db/public.schema';
+import { eq, sql, and, isNotNull } from 'drizzle-orm';
 import { DashboardHome } from './dashboard-home';
 
 export const dynamic = 'force-dynamic';
@@ -41,7 +41,26 @@ export default async function DashboardPage({
       .from(userProfiles)
       .where(eq(userProfiles.userId, user.id));
 
-    if (!profile?.onboardingCompletedAt) redirect('/onboarding');
+    if (!profile?.onboardingCompletedAt) {
+      // Check if user already has MCP keys — if so, auto-complete onboarding
+      const [existingKey] = await db
+        .select({ id: userMcpAccess.id })
+        .from(userMcpAccess)
+        .where(and(eq(userMcpAccess.userId, user.id), isNotNull(userMcpAccess.apiKey)))
+        .limit(1);
+
+      if (existingKey) {
+        await db
+          .insert(userProfiles)
+          .values({ userId: user.id, onboardingCompletedAt: new Date().toISOString() })
+          .onConflictDoUpdate({
+            target: userProfiles.userId,
+            set: { onboardingCompletedAt: sql`CURRENT_TIMESTAMP` },
+          });
+      } else {
+        redirect('/onboarding');
+      }
+    }
   }
 
   const isAdmin = user?.id
