@@ -245,6 +245,36 @@ export function FamiliaDashboard({
         </div>
       )}
 
+      {/* Counters bar */}
+      {activeTab === 'feed' && (
+        <div className="mb-4 grid grid-cols-4 gap-2">
+          <CounterCard
+            label="Compras"
+            count={shoppingItems.filter((i) => !i.checked).length}
+            onClick={() => switchTab('compras')}
+            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>}
+          />
+          <CounterCard
+            label="Tarefas"
+            count={tasksState.filter((t) => t.status !== 'done').length}
+            onClick={() => switchTab('tarefas')}
+            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>}
+          />
+          <CounterCard
+            label="Notas"
+            count={notesState.length}
+            onClick={() => switchTab('notas')}
+            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>}
+          />
+          <CounterCard
+            label="Membros"
+            count={membersList.length}
+            onClick={() => switchTab('membros')}
+            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>}
+          />
+        </div>
+      )}
+
       <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto">
         {activeTab === 'feed' && (
           <FeedTab
@@ -313,6 +343,31 @@ export function FamiliaDashboard({
 }
 
 // ─── Empty State Forms ───
+
+function CounterCard({
+  label,
+  count,
+  icon,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  icon: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex flex-col items-center gap-1 rounded-xl border border-slate-200 px-2 py-3 transition-colors hover:border-slate-300 hover:bg-slate-50"
+    >
+      <div className="flex items-center gap-1.5 text-slate-400">
+        {icon}
+      </div>
+      <span className="text-lg font-bold text-slate-800">{count}</span>
+      <span className="text-[11px] text-slate-500">{label}</span>
+    </button>
+  );
+}
 
 function EmptyStateForms({
   mcpConfig,
