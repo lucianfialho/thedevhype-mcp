@@ -42,47 +42,57 @@ Eloa helps you manage RSS/Atom feeds and bookmarks. Subscribe to feeds, fetch an
   tools: [
     {
       name: 'add_source',
-      description: 'Add an RSS/Atom source by validating the feed and auto-extracting the title',
+      description: 'Subscribe to an RSS/Atom feed. Validates the URL is a parseable feed, auto-extracts the title, and saves it. Use when the user shares a blog or news URL they want to follow. Limit: 20 sources per user. Idempotent — adding the same URL twice creates only one subscription.',
+      annotations: { idempotentHint: true },
     },
     {
       name: 'list_sources',
-      description: 'List all registered RSS sources',
+      description: 'List all RSS/Atom sources the user is subscribed to. Returns source ID, title, URL, site URL, last fetch timestamp, category, and subscriber count. Use to show the user their feeds or to get a sourceId for fetch_latest or remove_source. Read-only.',
+      annotations: { readOnlyHint: true },
     },
     {
       name: 'remove_source',
-      description: 'Remove an RSS source and its associated articles',
+      description: 'Unsubscribe from an RSS source and delete all articles fetched from it for this user. Requires sourceId from list_sources. Destructive — articles from this source are permanently deleted. If no other user subscribes, the source record is also removed.',
+      annotations: { destructiveHint: true },
     },
     {
       name: 'fetch_latest',
-      description: 'Fetch latest articles from all sources or a specific source',
+      description: 'Fetch the latest articles from RSS feeds. Parses each feed, upserts articles into the database, and returns them sorted by date. Optionally filter by sourceId. Each article gets a trackable short code URL. Returns array of article objects with title, URL, proxyUrl, author, date, content snippet, source name, and read status.',
+      annotations: { idempotentHint: true },
     },
     {
       name: 'save_bookmark',
-      description: 'Save a URL as a bookmark with tags and notes',
+      description: 'Save a URL as a bookmark with optional tags and notes. Auto-extracts the page title and meta description if not provided. Stores stripped HTML content (up to 10KB) for full-text search. Idempotent — saving the same URL twice updates the existing bookmark.',
+      annotations: { idempotentHint: true },
     },
     {
       name: 'list_bookmarks',
-      description: 'List saved bookmarks with optional tag filter',
+      description: 'List saved bookmarks, optionally filtered by a single tag. Returns bookmark ID, title, URL, tags, notes, and creation date, ordered by newest first. Use to browse bookmarks or get a bookmarkId for remove_bookmark. Read-only.',
+      annotations: { readOnlyHint: true },
     },
     {
       name: 'remove_bookmark',
-      description: 'Remove a bookmark by ID',
+      description: 'Permanently delete a bookmark by its ID. Requires bookmarkId from list_bookmarks. Destructive — the bookmark and its content are permanently removed.',
+      annotations: { destructiveHint: true },
     },
     {
       name: 'mark_as_read',
-      description: 'Mark an article as read or unread',
+      description: 'Toggle the read status of an article. Use after the user has read or wants to un-read an article. Requires articleId from fetch_latest or search_content. Idempotent — setting read=true on an already-read article is a no-op.',
+      annotations: { idempotentHint: true },
     },
     {
       name: 'search_content',
-      description: 'Search all saved content (articles + bookmarks) by keyword',
+      description: 'Full-text search across all saved articles and bookmarks using PostgreSQL websearch_to_tsquery. Supports natural language queries. Filter by type: articles, bookmarks, or all. Returns up to 20 results with title, URL, snippet, and creation date. Read-only.',
+      annotations: { readOnlyHint: true },
     },
     {
       name: 'extract_content',
-      description: 'Extract full content from a URL via scrape API or direct fetch',
+      description: 'Fetch and extract the full text content from a URL. Uses a scrape API if configured, otherwise falls back to direct HTML fetch with tag stripping. Optionally updates the content of an existing bookmark or article by providing bookmarkId or articleId.',
     },
     {
       name: 'view_analytics',
-      description: 'Show article click analytics with ranking and clicks by source',
+      description: 'Show click analytics for articles: top clicked articles ranking and clicks grouped by source. Filter by period: 7d, 30d, or all. Uses the trackable proxy URLs (short codes) to count clicks. Read-only.',
+      annotations: { readOnlyHint: true },
     },
   ],
   init: (server) => {

@@ -53,36 +53,43 @@ Lucian extrai dados de Notas Fiscais eletrônicas (NFC-e) brasileiras, armazena 
       name: 'buscar_nota_fiscal',
       description:
         'Extrai dados completos de uma NFC-e a partir da URL ou chave de acesso de 44 dígitos. Valida a chave, consulta a API de extração, e salva estabelecimento, produtos e preços no banco. Use quando o usuário compartilhar um link de nota fiscal ou colar a chave de acesso. Limite: 10 extrações/mês (plano free). Idempotente — mesma URL não cria duplicata. Retorna markdown formatado com todos os dados da nota.',
+      annotations: { idempotentHint: true },
     },
     {
       name: 'listar_notas_fiscais',
       description:
         'Lista notas fiscais armazenadas com nome da loja, valor total, quantidade de itens e data. Filtro opcional por nome da loja (busca parcial). Use para ver o histórico de compras ou obter IDs de extração. Somente leitura.',
+      annotations: { readOnlyHint: true },
     },
     {
       name: 'listar_produtos',
       description:
         'Lista produtos cadastrados com nome, código, unidade, categoria e loja. Filtro por categoria e/ou busca parcial por nome. Use para explorar produtos registrados ou encontrar IDs para classificação. Somente leitura.',
+      annotations: { readOnlyHint: true },
     },
     {
       name: 'comparar_precos',
       description:
         'Compara o preço de um produto ao longo do tempo e entre diferentes lojas. Busca parcial pelo nome do produto. Retorna mínimo, máximo e média do período, com detalhes por compra. Use para descobrir onde comprar mais barato. Somente leitura.',
+      annotations: { readOnlyHint: true },
     },
     {
       name: 'resumo_gastos',
       description:
         'Gera um resumo de gastos agrupado por categoria, loja ou mês. Retorna tabela com valor total, número de itens e percentual por grupo. Use para análise financeira de supermercado. Somente leitura.',
+      annotations: { readOnlyHint: true },
     },
     {
       name: 'classificar_produto',
       description:
         'Define a categoria de um produto específico. Busca por ID ou nome parcial do produto. Categorias sugeridas: Laticínios, Carnes, Bebidas, Limpeza, Higiene, Hortifruti, Padaria, Mercearia, Frios, Congelados. Idempotente — reclassificar sobrescreve a categoria anterior.',
+      annotations: { idempotentHint: true },
     },
     {
       name: 'classificar_produtos_em_lote',
       description:
         'Define categorias de vários produtos de uma vez. Recebe array de {produto_id, categoria}. Use após buscar_nota_fiscal para classificar todos os produtos novos. Mais eficiente que classificar_produto individual. Retorna status de cada classificação.',
+      annotations: { idempotentHint: true },
     },
     {
       name: 'adicionar_item_lista',
@@ -93,16 +100,19 @@ Lucian extrai dados de Notas Fiscais eletrônicas (NFC-e) brasileiras, armazena 
       name: 'ver_lista_compras',
       description:
         'Mostra todos os itens da lista de compras ativa, separados em pendentes e comprados. Inclui preço estimado e loja sugerida por item. Calcula total estimado dos itens pendentes. Somente leitura.',
+      annotations: { readOnlyHint: true },
     },
     {
       name: 'marcar_comprado',
       description:
         'Marca um item da lista como comprado. Busca por ID numérico ou nome parcial do item. Use conforme o usuário vai comprando itens no supermercado.',
+      annotations: { idempotentHint: true },
     },
     {
       name: 'remover_item_lista',
       description:
         'Remove um item da lista de compras. Busca por ID numérico ou nome parcial. Destrutivo — remove permanentemente.',
+      annotations: { destructiveHint: true },
     },
     {
       name: 'finalizar_lista',
