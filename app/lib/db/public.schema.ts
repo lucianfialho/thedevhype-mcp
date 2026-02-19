@@ -113,6 +113,8 @@ export const mcpToolUsage = pgTable('mcp_tool_usage', {
   toolName: text().notNull(),
   durationMs: integer(),
   error: boolean().default(false).notNull(),
+  errorCode: text(),
+  errorMessage: text(),
   createdAt: timestamp({ withTimezone: true, mode: 'string' })
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),

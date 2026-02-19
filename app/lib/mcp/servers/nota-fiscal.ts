@@ -5,6 +5,7 @@ import { extractAccessKey, fetchNFCeFromInfosimples } from '../../infosimples';
 import { db } from '../../db';
 import { userMcpAccess } from '../../db/public.schema';
 import { getUserId } from '../auth-helpers';
+import { toolError } from '../errors';
 import {
   extractions,
   stores,
@@ -23,67 +24,99 @@ export const notaFiscalServer: McpServerDefinition = {
     'Lucian — Gestor de Supermercado Virtual: extrai NFC-e, rastreia preços e categoriza gastos',
   category: 'Personal Finance',
   icon: '/lucian.png',
+  instructions: `# Lucian — Gestor de Supermercado Virtual
+
+## Propósito
+Lucian extrai dados de Notas Fiscais eletrônicas (NFC-e) brasileiras, armazena produtos e preços, e permite análise de gastos, comparação de preços entre lojas, classificação de produtos por categoria, e gerenciamento de lista de compras inteligente.
+
+## Conceitos-Chave
+- **NFC-e**: Nota Fiscal de Consumidor Eletrônica. Identificada por URL (fazenda.gov.br) ou chave de acesso de 44 dígitos.
+- **Loja (Store)**: Estabelecimento identificado por CNPJ. Upsert automático.
+- **Produto**: Item vinculado a uma loja e código. Pode ser classificado em categorias.
+- **Preço (Price Entry)**: Registro histórico de preço unitário, quantidade e total por compra.
+- **Lista de Compras**: Lista ativa com itens, quantidades estimadas e sugestão de loja mais barata baseada no histórico.
+
+## Workflows Típicos
+1. **Registrar Compra**: buscar_nota_fiscal (URL ou chave) → classificar_produtos_em_lote
+2. **Analisar Gastos**: resumo_gastos (por categoria/loja/mês)
+3. **Comparar Preços**: comparar_precos (histórico por produto)
+4. **Lista de Compras**: adicionar_item_lista → ver_lista_compras → marcar_comprado → finalizar_lista
+
+## Convenções
+- IDs são numéricos. Obtenha de listar_notas_fiscais, listar_produtos, etc.
+- Valores monetários em reais (R$) com 2 casas decimais.
+- Datas no formato YYYY-MM-DD.
+- Categorias sugeridas: Laticínios, Carnes, Bebidas, Limpeza, Higiene, Hortifruti, Padaria, Mercearia, Frios, Congelados.
+- Limite: 10 extrações de NFC-e por mês (plano free).`,
   tools: [
     {
       name: 'buscar_nota_fiscal',
       description:
-        'Extrai dados de uma NFC-e a partir da URL, armazena produtos e preços no banco de dados',
+        'Extrai dados completos de uma NFC-e a partir da URL ou chave de acesso de 44 dígitos. Valida a chave, consulta a API de extração, e salva estabelecimento, produtos e preços no banco. Use quando o usuário compartilhar um link de nota fiscal ou colar a chave de acesso. Limite: 10 extrações/mês (plano free). Idempotente — mesma URL não cria duplicata. Retorna markdown formatado com todos os dados da nota.',
     },
     {
       name: 'listar_notas_fiscais',
-      description: 'Lista notas fiscais armazenadas com filtro opcional por loja',
+      description:
+        'Lista notas fiscais armazenadas com nome da loja, valor total, quantidade de itens e data. Filtro opcional por nome da loja (busca parcial). Use para ver o histórico de compras ou obter IDs de extração. Somente leitura.',
     },
     {
       name: 'listar_produtos',
       description:
-        'Lista produtos cadastrados com filtro por categoria ou busca por nome',
+        'Lista produtos cadastrados com nome, código, unidade, categoria e loja. Filtro por categoria e/ou busca parcial por nome. Use para explorar produtos registrados ou encontrar IDs para classificação. Somente leitura.',
     },
     {
       name: 'comparar_precos',
       description:
-        'Compara preços de um produto ao longo do tempo e entre lojas',
+        'Compara o preço de um produto ao longo do tempo e entre diferentes lojas. Busca parcial pelo nome do produto. Retorna mínimo, máximo e média do período, com detalhes por compra. Use para descobrir onde comprar mais barato. Somente leitura.',
     },
     {
       name: 'resumo_gastos',
       description:
-        'Resumo de gastos agrupado por categoria, loja ou mês',
+        'Gera um resumo de gastos agrupado por categoria, loja ou mês. Retorna tabela com valor total, número de itens e percentual por grupo. Use para análise financeira de supermercado. Somente leitura.',
     },
     {
       name: 'classificar_produto',
-      description: 'Define a categoria de um produto',
+      description:
+        'Define a categoria de um produto específico. Busca por ID ou nome parcial do produto. Categorias sugeridas: Laticínios, Carnes, Bebidas, Limpeza, Higiene, Hortifruti, Padaria, Mercearia, Frios, Congelados. Idempotente — reclassificar sobrescreve a categoria anterior.',
     },
     {
       name: 'classificar_produtos_em_lote',
-      description: 'Define categorias de vários produtos de uma vez',
+      description:
+        'Define categorias de vários produtos de uma vez. Recebe array de {produto_id, categoria}. Use após buscar_nota_fiscal para classificar todos os produtos novos. Mais eficiente que classificar_produto individual. Retorna status de cada classificação.',
     },
     {
       name: 'adicionar_item_lista',
       description:
-        'Adiciona um item à lista de compras ativa. Aceita linguagem natural como "açúcar", "2kg de frango". Sugere preço e loja mais barata baseado no histórico.',
+        'Adiciona um item à lista de compras ativa. Aceita linguagem natural como "açúcar", "2kg de frango", "3 leites". Faz fuzzy match com produtos do histórico para sugerir preço estimado e loja mais barata. Cria lista automaticamente se não existir. Retorna item com preço estimado e sugestão de loja.',
     },
     {
       name: 'ver_lista_compras',
-      description: 'Mostra todos os itens da lista de compras ativa (pendentes e comprados)',
+      description:
+        'Mostra todos os itens da lista de compras ativa, separados em pendentes e comprados. Inclui preço estimado e loja sugerida por item. Calcula total estimado dos itens pendentes. Somente leitura.',
     },
     {
       name: 'marcar_comprado',
-      description: 'Marca um item da lista como comprado (por ID ou nome)',
-    },
-    {
-      name: 'finalizar_lista',
-      description: 'Finaliza a lista de compras ativa e arquiva',
+      description:
+        'Marca um item da lista como comprado. Busca por ID numérico ou nome parcial do item. Use conforme o usuário vai comprando itens no supermercado.',
     },
     {
       name: 'remover_item_lista',
-      description: 'Remove um item da lista de compras (por ID ou nome)',
+      description:
+        'Remove um item da lista de compras. Busca por ID numérico ou nome parcial. Destrutivo — remove permanentemente.',
+    },
+    {
+      name: 'finalizar_lista',
+      description:
+        'Finaliza e arquiva a lista de compras ativa. Mostra resumo com total de itens, comprados e não comprados. Uma nova lista vazia será criada automaticamente na próxima adição de item.',
     },
   ],
   init: (server) => {
     // ─── buscar_nota_fiscal ───
     server.tool(
       'buscar_nota_fiscal',
-      'Busca e extrai dados de uma NFC-e a partir da URL ou chave de acesso, armazenando estabelecimento, produtos e preços no banco.',
-      { input: z.string().describe('URL da NFC-e ou chave de acesso de 44 dígitos') },
+      'Extrai dados completos de uma NFC-e a partir da URL ou chave de acesso de 44 dígitos. Valida a chave, consulta a API de extração, e salva estabelecimento, produtos e preços no banco. Use quando o usuário compartilhar um link de nota fiscal ou colar a chave de acesso. Limite: 10 extrações/mês (plano free). Idempotente — mesma URL não cria duplicata. Retorna markdown formatado com todos os dados da nota.',
+      { input: z.string().describe('URL da NFC-e (ex: nfce.fazenda.gov.br/...) ou chave de acesso numérica de 44 dígitos') },
+      { idempotentHint: true },
       async ({ input }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
 
@@ -104,39 +137,18 @@ export const notaFiscalServer: McpServerDefinition = {
           );
 
         if (total >= MONTHLY_LIMIT) {
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: `Limite mensal atingido: você já usou ${total}/${MONTHLY_LIMIT} consultas este mês. Aguarde o próximo mês ou faça upgrade para o plano Pro.`,
-              },
-            ],
-          };
+          return toolError(`Limite mensal atingido: ${total}/${MONTHLY_LIMIT} extrações usadas este mês.`, 'Aguarde o próximo mês para novas extrações ou faça upgrade para o plano Pro.');
         }
 
         const accessKey = extractAccessKey(input);
         if (!accessKey) {
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: 'Erro: não foi possível extrair a chave de acesso de 44 dígitos do input fornecido.',
-              },
-            ],
-          };
+          return toolError('Não foi possível extrair a chave de acesso de 44 dígitos.', 'Forneça a URL completa da NFC-e (ex: nfce.fazenda.gov.br/...) ou a chave de acesso numérica de 44 dígitos.');
         }
 
         const resultado = await fetchNFCeFromInfosimples(accessKey);
 
         if (!resultado.sucesso || !resultado.notaFiscal) {
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: `Erro ao buscar nota fiscal: ${resultado.erro || 'Erro desconhecido'}`,
-              },
-            ],
-          };
+          return toolError(`Erro ao buscar nota fiscal: ${resultado.erro || 'Erro desconhecido'}`, 'Verifique se a URL/chave está correta. Nota fiscais muito antigas podem não estar disponíveis.');
         }
 
         const nf = resultado.notaFiscal;
@@ -149,14 +161,7 @@ export const notaFiscalServer: McpServerDefinition = {
           .returning({ id: extractions.id });
 
         if (!extraction) {
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: 'Esta nota fiscal já foi registrada anteriormente. Nenhuma duplicata foi criada.',
-              },
-            ],
-          };
+          return toolError('Esta nota fiscal já foi registrada anteriormente.', 'Use listar_notas_fiscais para ver suas notas. Cada URL só pode ser processada uma vez.');
         }
 
         // 2. Upsert store by CNPJ
@@ -267,8 +272,9 @@ export const notaFiscalServer: McpServerDefinition = {
               });
             }
           }
-        } catch {
-          // Non-critical: don't fail the main flow if public contribution fails
+        } catch (err) {
+          console.error('[Lucian] Failed to contribute public data:', err);
+          // Non-critical: don't fail the main flow
         }
 
         // Format output (same as before)
@@ -328,11 +334,12 @@ export const notaFiscalServer: McpServerDefinition = {
     // ─── listar_notas_fiscais ───
     server.tool(
       'listar_notas_fiscais',
-      'Lista notas fiscais armazenadas, com filtro opcional por loja.',
+      'Lista notas fiscais armazenadas com nome da loja, valor total, quantidade de itens e data. Filtro opcional por nome da loja (busca parcial). Use para ver o histórico de compras ou obter IDs de extração. Somente leitura.',
       {
-        limite: z.number().int().min(1).max(50).default(10).describe('Número máximo de resultados'),
-        loja: z.string().optional().describe('Filtrar por nome da loja (busca parcial)'),
+        limite: z.number().int().min(1).max(50).default(10).describe('Número máximo de resultados (padrão: 10, máx: 50)'),
+        loja: z.string().optional().describe('Filtrar por nome da loja (busca parcial, ex: "carrefour")'),
       },
+      { readOnlyHint: true },
       async ({ limite, loja }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
 
@@ -360,9 +367,7 @@ export const notaFiscalServer: McpServerDefinition = {
           .limit(limite);
 
         if (rows.length === 0) {
-          return {
-            content: [{ type: 'text' as const, text: 'Nenhuma nota fiscal encontrada.' }],
-          };
+          return toolError('Nenhuma nota fiscal encontrada.', 'Use buscar_nota_fiscal com a URL de uma NFC-e para registrar sua primeira compra.');
         }
 
         const linhas = rows.map(
@@ -384,12 +389,13 @@ export const notaFiscalServer: McpServerDefinition = {
     // ─── listar_produtos ───
     server.tool(
       'listar_produtos',
-      'Lista produtos cadastrados com filtro por categoria ou busca por nome.',
+      'Lista produtos cadastrados com nome, código, unidade, categoria e loja. Filtro por categoria e/ou busca parcial por nome. Use para explorar produtos registrados ou encontrar IDs para classificação. Somente leitura.',
       {
-        categoria: z.string().optional().describe('Filtrar por categoria'),
+        categoria: z.string().optional().describe('Filtrar por categoria (ex: "Laticínios", "Carnes")'),
         busca: z.string().optional().describe('Busca parcial por nome do produto'),
-        limite: z.number().int().min(1).max(100).default(20).describe('Número máximo de resultados'),
+        limite: z.number().int().min(1).max(100).default(20).describe('Número máximo de resultados (padrão: 10, máx: 50)'),
       },
+      { readOnlyHint: true },
       async ({ categoria, busca, limite }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
 
@@ -413,9 +419,7 @@ export const notaFiscalServer: McpServerDefinition = {
           .limit(limite);
 
         if (rows.length === 0) {
-          return {
-            content: [{ type: 'text' as const, text: 'Nenhum produto encontrado.' }],
-          };
+          return toolError('Nenhum produto encontrado.', 'Registre uma nota fiscal com buscar_nota_fiscal para popular seus produtos.');
         }
 
         const linhas = rows.map(
@@ -437,11 +441,12 @@ export const notaFiscalServer: McpServerDefinition = {
     // ─── comparar_precos ───
     server.tool(
       'comparar_precos',
-      'Compara preços de um produto ao longo do tempo e entre diferentes lojas.',
+      'Compara o preço de um produto ao longo do tempo e entre diferentes lojas. Busca parcial pelo nome do produto. Retorna mínimo, máximo e média do período, com detalhes por compra. Use para descobrir onde comprar mais barato. Somente leitura.',
       {
-        produto: z.string().describe('Nome do produto (busca parcial)'),
-        periodo_dias: z.number().int().min(1).max(365).default(30).describe('Período em dias para análise'),
+        produto: z.string().describe('Nome do produto para comparar (busca parcial, ex: "leite")'),
+        periodo_dias: z.number().int().min(1).max(365).default(30).describe('Período em dias para análise (padrão: 30, máx: 365)'),
       },
+      { readOnlyHint: true },
       async ({ produto, periodo_dias }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
         const desde = new Date();
@@ -469,14 +474,7 @@ export const notaFiscalServer: McpServerDefinition = {
           .orderBy(products.nome, desc(priceEntries.dataCompra));
 
         if (rows.length === 0) {
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: `Nenhum registro de preço encontrado para "${produto}" nos últimos ${periodo_dias} dias.`,
-              },
-            ],
-          };
+          return toolError(`Nenhum registro de preço para "${produto}" nos últimos ${periodo_dias} dias.`, 'Tente um nome de produto diferente (busca parcial) ou aumente o período.');
         }
 
         // Group by product name
@@ -516,14 +514,15 @@ export const notaFiscalServer: McpServerDefinition = {
     // ─── resumo_gastos ───
     server.tool(
       'resumo_gastos',
-      'Gera um resumo de gastos agrupado por categoria, loja ou mês.',
+      'Gera um resumo de gastos agrupado por categoria, loja ou mês. Retorna tabela com valor total, número de itens e percentual por grupo. Use para análise financeira de supermercado. Somente leitura.',
       {
-        periodo_dias: z.number().int().min(1).max(365).default(30).describe('Período em dias'),
+        periodo_dias: z.number().int().min(1).max(365).default(30).describe('Período em dias para análise (padrão: 30, máx: 365)'),
         agrupar_por: z
           .enum(['categoria', 'loja', 'mes'])
           .default('categoria')
-          .describe('Agrupar por: categoria, loja ou mes'),
+          .describe('Agrupamento: "categoria", "loja" ou "mes"'),
       },
+      { readOnlyHint: true },
       async ({ periodo_dias, agrupar_por }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
         const desde = new Date();
@@ -566,14 +565,7 @@ export const notaFiscalServer: McpServerDefinition = {
           .orderBy(sql`total DESC`);
 
         if (rows.length === 0) {
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: `Nenhum gasto encontrado nos últimos ${periodo_dias} dias.`,
-              },
-            ],
-          };
+          return toolError(`Nenhum gasto nos últimos ${periodo_dias} dias.`, 'Registre notas fiscais com buscar_nota_fiscal para gerar resumos de gastos.');
         }
 
         const totalGeral = rows.reduce((sum, r) => sum + Number(r.total), 0);
@@ -602,21 +594,18 @@ export const notaFiscalServer: McpServerDefinition = {
     // ─── classificar_produto ───
     server.tool(
       'classificar_produto',
-      'Define a categoria de um produto. Pode buscar por ID ou nome.',
+      'Define a categoria de um produto específico. Busca por ID ou nome parcial do produto. Categorias sugeridas: Laticínios, Carnes, Bebidas, Limpeza, Higiene, Hortifruti, Padaria, Mercearia, Frios, Congelados. Idempotente — reclassificar sobrescreve a categoria anterior.',
       {
-        produto_id: z.number().int().optional().describe('ID do produto'),
-        nome_produto: z.string().optional().describe('Nome do produto (busca parcial, usado se produto_id não informado)'),
-        categoria: z.string().describe('Categoria a atribuir (ex: Laticínios, Carnes, Bebidas, Limpeza, Higiene, Hortifruti, Padaria, Mercearia)'),
+        produto_id: z.number().int().optional().describe('ID numérico do produto — obtenha de listar_produtos'),
+        nome_produto: z.string().optional().describe('Nome do produto para busca parcial (usado se produto_id não informado)'),
+        categoria: z.string().describe('Categoria a atribuir: Laticínios, Carnes, Bebidas, Limpeza, Higiene, Hortifruti, Padaria, Mercearia, Frios, Congelados'),
       },
+      { idempotentHint: true },
       async ({ produto_id, nome_produto, categoria }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
 
         if (!produto_id && !nome_produto) {
-          return {
-            content: [
-              { type: 'text' as const, text: 'Informe produto_id ou nome_produto.' },
-            ],
-          };
+          return toolError('Informe produto_id ou nome_produto.', 'Use listar_produtos para encontrar o ID ou nome do produto.');
         }
 
         let condition;
@@ -633,9 +622,7 @@ export const notaFiscalServer: McpServerDefinition = {
           .returning({ id: products.id, nome: products.nome });
 
         if (updated.length === 0) {
-          return {
-            content: [{ type: 'text' as const, text: 'Nenhum produto encontrado.' }],
-          };
+          return toolError('Nenhum produto encontrado.', 'Use listar_produtos para ver os produtos disponíveis e seus IDs.');
         }
 
         const nomes = updated.map((u) => `- ${u.nome} (ID: ${u.id})`).join('\n');
@@ -653,18 +640,19 @@ export const notaFiscalServer: McpServerDefinition = {
     // ─── classificar_produtos_em_lote ───
     server.tool(
       'classificar_produtos_em_lote',
-      'Define categorias de vários produtos de uma vez.',
+      'Define categorias de vários produtos de uma vez. Recebe array de {produto_id, categoria}. Use após buscar_nota_fiscal para classificar todos os produtos novos. Mais eficiente que classificar_produto individual. Retorna status de cada classificação.',
       {
         classificacoes: z
           .array(
             z.object({
-              produto_id: z.number().int().describe('ID do produto'),
-              categoria: z.string().describe('Categoria a atribuir'),
+              produto_id: z.number().int().describe('ID numérico do produto — obtenha de listar_produtos'),
+              categoria: z.string().describe('Categoria a atribuir: Laticínios, Carnes, Bebidas, Limpeza, Higiene, Hortifruti, Padaria, Mercearia, Frios, Congelados'),
             }),
           )
           .min(1)
-          .describe('Lista de classificações'),
+          .describe('Array de classificações: [{produto_id: number, categoria: string}]'),
       },
+      { idempotentHint: true },
       async ({ classificacoes }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
         const resultados: string[] = [];
@@ -715,10 +703,11 @@ export const notaFiscalServer: McpServerDefinition = {
     // ─── adicionar_item_lista ───
     server.tool(
       'adicionar_item_lista',
-      'Adiciona um item à lista de compras ativa. Aceita linguagem natural como "açúcar", "2kg de frango". Sugere preço e loja mais barata baseado no histórico.',
+      'Adiciona um item à lista de compras ativa. Aceita linguagem natural como "açúcar", "2kg de frango", "3 leites". Faz fuzzy match com produtos do histórico para sugerir preço estimado e loja mais barata. Cria lista automaticamente se não existir. Retorna item com preço estimado e sugestão de loja.',
       {
-        item: z.string().describe('Descrição do item, ex: "açúcar", "2kg de frango", "3 leites"'),
+        item: z.string().describe('Descrição do item em linguagem natural, ex: "açúcar", "2kg de frango", "3 leites"'),
       },
+      {},
       async ({ item }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
         const list = await getOrCreateActiveList(userId);
@@ -834,8 +823,9 @@ export const notaFiscalServer: McpServerDefinition = {
     // ─── ver_lista_compras ───
     server.tool(
       'ver_lista_compras',
-      'Mostra todos os itens da lista de compras ativa (pendentes e comprados).',
+      'Mostra todos os itens da lista de compras ativa, separados em pendentes e comprados. Inclui preço estimado e loja sugerida por item. Calcula total estimado dos itens pendentes. Somente leitura.',
       {},
+      { readOnlyHint: true },
       async (_params, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
         const list = await getOrCreateActiveList(userId);
@@ -847,9 +837,7 @@ export const notaFiscalServer: McpServerDefinition = {
           .orderBy(shoppingListItems.checked, shoppingListItems.createdAt);
 
         if (items.length === 0) {
-          return {
-            content: [{ type: 'text' as const, text: 'Lista de compras vazia. Use `adicionar_item_lista` para adicionar itens.' }],
-          };
+          return toolError('Lista de compras vazia.', 'Adicione itens com adicionar_item_lista — aceita linguagem natural como "açúcar", "2kg de frango".');
         }
 
         const pending = items.filter((i) => !i.checked);
@@ -891,10 +879,11 @@ export const notaFiscalServer: McpServerDefinition = {
     // ─── marcar_comprado ───
     server.tool(
       'marcar_comprado',
-      'Marca um item da lista como comprado. Busca por ID numérico ou nome parcial.',
+      'Marca um item da lista como comprado. Busca por ID numérico ou nome parcial do item. Use conforme o usuário vai comprando itens no supermercado.',
       {
-        item: z.string().describe('ID numérico ou nome do item'),
+        item: z.string().describe('ID numérico ou nome do item (busca parcial)'),
       },
+      { idempotentHint: true },
       async ({ item }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
         const list = await getOrCreateActiveList(userId);
@@ -929,9 +918,7 @@ export const notaFiscalServer: McpServerDefinition = {
         }
 
         if (updated.length === 0) {
-          return {
-            content: [{ type: 'text' as const, text: `Nenhum item encontrado para "${item}".` }],
-          };
+          return toolError(`Nenhum item encontrado para "${item}".`, 'Use ver_lista_compras para ver os itens e seus IDs.');
         }
 
         const names = updated.map((u) => `- ${u.name} (ID: ${u.id})`).join('\n');
@@ -944,10 +931,11 @@ export const notaFiscalServer: McpServerDefinition = {
     // ─── remover_item_lista ───
     server.tool(
       'remover_item_lista',
-      'Remove um item da lista de compras. Busca por ID numérico ou nome parcial.',
+      'Remove um item da lista de compras. Busca por ID numérico ou nome parcial. Destrutivo — remove permanentemente.',
       {
-        item: z.string().describe('ID numérico ou nome do item'),
+        item: z.string().describe('ID numérico ou nome do item a remover (busca parcial)'),
       },
+      { destructiveHint: true },
       async ({ item }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
         const list = await getOrCreateActiveList(userId);
@@ -980,9 +968,7 @@ export const notaFiscalServer: McpServerDefinition = {
         }
 
         if (deleted.length === 0) {
-          return {
-            content: [{ type: 'text' as const, text: `Nenhum item encontrado para "${item}".` }],
-          };
+          return toolError(`Nenhum item encontrado para "${item}".`, 'Use ver_lista_compras para ver os itens e seus IDs.');
         }
 
         const names = deleted.map((d) => `- ${d.name} (ID: ${d.id})`).join('\n');
@@ -995,7 +981,8 @@ export const notaFiscalServer: McpServerDefinition = {
     // ─── finalizar_lista ───
     server.tool(
       'finalizar_lista',
-      'Finaliza a lista de compras ativa, arquivando-a. Uma nova lista vazia será criada automaticamente na próxima interação.',
+      'Finaliza e arquiva a lista de compras ativa. Mostra resumo com total de itens, comprados e não comprados. Uma nova lista vazia será criada automaticamente na próxima adição de item.',
+      {},
       {},
       async (_params, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
@@ -1007,9 +994,7 @@ export const notaFiscalServer: McpServerDefinition = {
           .limit(1);
 
         if (!activeList) {
-          return {
-            content: [{ type: 'text' as const, text: 'Nenhuma lista ativa para finalizar.' }],
-          };
+          return toolError('Nenhuma lista ativa para finalizar.', 'Crie uma lista adicionando itens com adicionar_item_lista.');
         }
 
         const items = await db

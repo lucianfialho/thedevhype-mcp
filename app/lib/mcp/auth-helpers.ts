@@ -1,3 +1,5 @@
+import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
+
 /**
  * Extract userId from the MCP tool callback `extra` parameter.
  * The userId is injected in app/api/mcp/[...path]/route.ts via request.auth.
@@ -8,7 +10,10 @@ export function getUserId(extra: Record<string, unknown>): string {
     | undefined;
   const userId = authInfo?.extra?.userId;
   if (!userId) {
-    throw new Error('Usuário não autenticado');
+    throw new McpError(
+      ErrorCode.InvalidRequest,
+      'Authentication required. Provide a valid Bearer token in the Authorization header. Get your API key at https://www.thedevhype.com/onboarding',
+    );
   }
   return userId;
 }

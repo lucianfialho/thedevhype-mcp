@@ -5,6 +5,12 @@ export type McpServerInitFn = (server: McpServer) => void;
 export interface McpToolInfo {
   name: string;
   description: string;
+  annotations?: {
+    readOnlyHint?: boolean;
+    idempotentHint?: boolean;
+    destructiveHint?: boolean;
+    openWorldHint?: boolean;
+  };
 }
 
 export interface McpServerDefinition {
@@ -13,6 +19,7 @@ export interface McpServerDefinition {
   category: string;
   icon?: string;
   badge?: string;
+  instructions?: string;
   tools: McpToolInfo[];
   init: McpServerInitFn;
 }

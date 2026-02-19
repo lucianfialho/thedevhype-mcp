@@ -16,6 +16,7 @@ import {
 } from './familia.schema';
 import { userInNeonAuth } from '../../db/public.schema';
 import type { McpServerDefinition } from '../types';
+import { toolError } from '../errors';
 
 const ROLE_HIERARCHY: Record<string, number> = { viewer: 0, member: 1, admin: 2 };
 
@@ -64,7 +65,7 @@ async function requireFamilyMember(
     .where(eq(members.userId, userId));
 
   if (userMemberships.length === 0) {
-    return { ok: false, error: 'You are not a member of any family. Use create_family or join_family first.' };
+    return { ok: false, error: 'You are not a member of any family. Create one with create_family or join one with join_family using an invite code.' };
   }
 
   let membership: (typeof userMemberships)[number] | undefined;
@@ -107,32 +108,117 @@ export const familiaServer: McpServerDefinition = {
   category: 'Family Tools',
   icon: '/familia.png',
   badge: 'New',
+  instructions: `# Familia — Shared Family Workspace
+
+## Purpose
+Familia provides a shared workspace for family members: shopping lists, tasks, notes, expense tracking with balance splitting, and an activity feed. All data is scoped to a family group with role-based access.
+
+## Key Concepts
+- **Family**: A group of users. Created by one person (admin), others join via invite codes.
+- **Roles**: admin (full control + invites), member (read/write), viewer (read-only). Role hierarchy: viewer < member < admin.
+- **Invite Code**: 8-character alphanumeric code. Single use, expires (default 72h).
+- **Family ID**: If a user belongs to one family, familyId is auto-detected. For multi-family users, familyId must be specified in every call.
+
+## Modules
+| Module | Tools | Min Role |
+|--------|-------|----------|
+| Family | create_family, invite_member, join_family, manage_members | varies |
+| Shopping | add_shopping_item, list_shopping, check_shopping_item | member/viewer |
+| Tasks | create_task, list_tasks, update_task | member/viewer |
+| Notes | create_note, list_notes | member/viewer |
+| Expenses | log_expense, expense_balances | member/viewer |
+| Feed | family_feed | viewer |
+
+## Typical Workflows
+1. **Setup**: create_family → invite_member → (other person) join_family
+2. **Shopping**: add_shopping_item → list_shopping → check_shopping_item
+3. **Tasks**: create_task → list_tasks → update_task (status: done)
+4. **Expenses**: log_expense → expense_balances (who owes whom)
+5. **Coordination**: family_feed to see recent activity
+
+## Conventions
+- IDs are numeric. Get them from list/creation responses.
+- Nicknames can be used instead of userIds for task assignment and expense splits.
+- Dates in YYYY-MM-DD format.
+- All write operations are logged in the activity feed automatically.`,
   tools: [
-    { name: 'create_family', description: 'Create a new family, you become admin' },
-    { name: 'invite_member', description: 'Generate an invite code for the family' },
-    { name: 'join_family', description: 'Join a family using an invite code' },
-    { name: 'manage_members', description: 'List, change role, or remove family members' },
-    { name: 'add_shopping_item', description: 'Add item to active shopping list' },
-    { name: 'list_shopping', description: 'List shopping items (pending and checked)' },
-    { name: 'check_shopping_item', description: 'Mark shopping item as bought' },
-    { name: 'create_task', description: 'Create a family task with optional assignee' },
-    { name: 'list_tasks', description: 'List family tasks with filters' },
-    { name: 'update_task', description: 'Update task status, assignment, or priority' },
-    { name: 'create_note', description: 'Create a shared family note in markdown' },
-    { name: 'list_notes', description: 'List family notes, pinned first' },
-    { name: 'log_expense', description: 'Log a family expense with split' },
-    { name: 'expense_balances', description: 'Calculate who owes whom' },
-    { name: 'family_feed', description: 'Recent family activity feed' },
+    {
+      name: 'create_family',
+      description: 'Create a new family group. You become the admin with full control. Provide a name, optional description, and your nickname in this family. After creating, use invite_member to generate codes for family members to join.',
+    },
+    {
+      name: 'invite_member',
+      description: 'Generate a single-use invite code for someone to join the family. Requires admin role. The code is 8 alphanumeric characters, expires after the specified hours (default 72h). Share the code with the person — they use join_family to redeem it.',
+    },
+    {
+      name: 'join_family',
+      description: 'Join a family using an 8-character invite code. Optionally set your nickname. The code is single-use and must not be expired. You get the role specified when the invite was created (usually member).',
+    },
+    {
+      name: 'manage_members',
+      description: 'List, change role, or remove family members. Action "list" requires viewer role, "change_role" and "remove" require admin role. For list: returns all members with userId, role, nickname, name, and join date. For change_role: provide targetUserId and newRole. For remove: provide targetUserId (cannot remove yourself).',
+    },
+    {
+      name: 'add_shopping_item',
+      description: 'Add an item to the active family shopping list. Creates a new list if none exists. Requires member role. Provide the item name, optional quantity, unit, and notes. The list is shared — all family members see it.',
+    },
+    {
+      name: 'list_shopping',
+      description: 'List all items from the active family shopping list, grouped by pending and checked. Shows who added each item. Use showChecked=false to see only pending items. Read-only — requires viewer role.',
+      annotations: { readOnlyHint: true },
+    },
+    {
+      name: 'check_shopping_item',
+      description: 'Mark a shopping list item as bought (or uncheck it). Requires member role and the item ID from list_shopping. Records who checked it. Use uncheck=true to revert. Idempotent.',
+      annotations: { idempotentHint: true },
+    },
+    {
+      name: 'create_task',
+      description: 'Create a family task with optional assignee, due date, and priority. Requires member role. Assignee can be a nickname or userId — must be a family member. Priority: low, medium (default), or high. Returns the created task.',
+    },
+    {
+      name: 'list_tasks',
+      description: 'List family tasks with optional filters by status, assignee, and limit. Shows assignee name/nickname. Ordered by: active before done, high priority first, then newest. Read-only — requires viewer role.',
+      annotations: { readOnlyHint: true },
+    },
+    {
+      name: 'update_task',
+      description: 'Update a task\'s status, assignment, priority, title, or description. Requires member role and the task ID from list_tasks. Status flow: pending → in_progress → done. Assignee can be nickname or userId.',
+      annotations: { idempotentHint: true },
+    },
+    {
+      name: 'create_note',
+      description: 'Create a shared family note in markdown. Requires member role. Optionally pin the note so it appears first in list_notes. All family members can see it. Use for recipes, instructions, shared info.',
+    },
+    {
+      name: 'list_notes',
+      description: 'List family notes, pinned notes first, then by last updated. Shows author name and timestamps. Read-only — requires viewer role.',
+      annotations: { readOnlyHint: true },
+    },
+    {
+      name: 'log_expense',
+      description: 'Log a family expense and split it among members. Requires member role. Split equally (default — divides among all members) or custom (specify amounts per nickname). The payer\'s share is auto-settled. Date defaults to today.',
+    },
+    {
+      name: 'expense_balances',
+      description: 'Calculate who owes whom based on unsettled expenses. Uses a debt simplification algorithm to minimize the number of transfers. Read-only — requires viewer role. Returns a list of settlements: "A → B: R$X.XX".',
+      annotations: { readOnlyHint: true },
+    },
+    {
+      name: 'family_feed',
+      description: 'Recent family activity feed showing who did what. All write operations (adding items, completing tasks, logging expenses, etc.) are automatically logged. Returns entries with action, entity type, actor name/nickname, and timestamp. Read-only — requires viewer role.',
+      annotations: { readOnlyHint: true },
+    },
   ],
   init: (server) => {
     // ─── create_family ───
     server.tool(
       'create_family',
-      'Create a new family. You become the admin.',
+      'Create a new family group. You become the admin with full control. Provide a name, optional description, and your nickname in this family. After creating, use invite_member to generate codes for family members to join.',
       {
-        name: z.string().describe('Family name'),
+        name: z.string().describe('Family name, e.g. "Silva Family" or "Roommates"'),
         description: z.string().optional().describe('Family description'),
-        nickname: z.string().optional().describe('Your nickname in this family'),
+        nickname: z.string().optional().describe('Your display name within this family'),
       },
       async ({ name, description, nickname }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
@@ -169,16 +255,16 @@ export const familiaServer: McpServerDefinition = {
     // ─── invite_member ───
     server.tool(
       'invite_member',
-      'Generate an invite code for someone to join the family.',
+      'Generate a single-use invite code for someone to join the family. Requires admin role. The code is 8 alphanumeric characters, expires after the specified hours (default 72h). Share the code with the person — they use join_family to redeem it.',
       {
-        familyId: z.number().optional().describe('Family ID (optional if you belong to only one)'),
-        role: z.enum(['member', 'viewer']).optional().default('member').describe('Role for the invitee'),
-        expiresInHours: z.number().optional().default(72).describe('Expiry time in hours'),
+        familyId: z.number().optional().describe('Family ID — omit if you belong to only one family, required if multiple'),
+        role: z.enum(['member', 'viewer']).optional().default('member').describe('Role for the invitee: "member" (read/write) or "viewer" (read-only)'),
+        expiresInHours: z.number().optional().default(72).describe('Hours until the invite expires (default: 72, i.e. 3 days)'),
       },
       async ({ familyId, role, expiresInHours }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
         const check = await requireFamilyMember(userId, familyId, 'admin');
-        if (!check.ok) return { content: [{ type: 'text' as const, text: check.error }] };
+        if (!check.ok) return toolError(check.error);
 
         const code = generateInviteCode();
         const expiresAt = new Date(Date.now() + expiresInHours * 3600000).toISOString();
@@ -210,10 +296,10 @@ export const familiaServer: McpServerDefinition = {
     // ─── join_family ───
     server.tool(
       'join_family',
-      'Join a family using an invite code.',
+      'Join a family using an 8-character invite code. Optionally set your nickname. The code is single-use and must not be expired. You get the role specified when the invite was created (usually member).',
       {
-        code: z.string().describe('8-character invite code'),
-        nickname: z.string().optional().describe('Your nickname in this family'),
+        code: z.string().describe('8-character alphanumeric invite code (case-insensitive)'),
+        nickname: z.string().optional().describe('Your display name within this family'),
       },
       async ({ code, nickname }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
@@ -224,11 +310,11 @@ export const familiaServer: McpServerDefinition = {
           .where(and(eq(invites.code, code.toUpperCase()), isNull(invites.usedBy)));
 
         if (!invite) {
-          return { content: [{ type: 'text' as const, text: 'Error: Invalid or already-used invite code.' }] };
+          return toolError('Invalid or already-used invite code.', 'Ask the family admin to generate a new invite code with invite_member.');
         }
 
         if (new Date(invite.expiresAt) < new Date()) {
-          return { content: [{ type: 'text' as const, text: 'Error: Invite code has expired.' }] };
+          return toolError('Invite code has expired.', 'Ask the family admin to generate a new invite code with invite_member.');
         }
 
         // Check if already a member
@@ -238,7 +324,7 @@ export const familiaServer: McpServerDefinition = {
           .where(and(eq(members.familyId, invite.familyId), eq(members.userId, userId)));
 
         if (existing) {
-          return { content: [{ type: 'text' as const, text: 'You are already a member of this family.' }] };
+          return toolError('You are already a member of this family.');
         }
 
         await db.insert(members).values({
@@ -271,18 +357,18 @@ export const familiaServer: McpServerDefinition = {
     // ─── manage_members ───
     server.tool(
       'manage_members',
-      'List, change role, or remove family members.',
+      'List, change role, or remove family members. Action "list" requires viewer role, "change_role" and "remove" require admin role. For list: returns all members with userId, role, nickname, name, and join date. For change_role: provide targetUserId and newRole. For remove: provide targetUserId (cannot remove yourself).',
       {
-        familyId: z.number().optional().describe('Family ID (optional if only one)'),
-        action: z.enum(['list', 'change_role', 'remove']).describe('Action to perform'),
-        targetUserId: z.string().optional().describe('Target user ID (for change_role/remove)'),
-        newRole: z.enum(['admin', 'member', 'viewer']).optional().describe('New role (for change_role)'),
+        familyId: z.number().optional().describe('Family ID — omit if you belong to only one family, required if multiple'),
+        action: z.enum(['list', 'change_role', 'remove']).describe('Action: "list" (see members), "change_role" (change a member role), "remove" (remove a member)'),
+        targetUserId: z.string().optional().describe('UUID of the target user — get from manage_members action="list"'),
+        newRole: z.enum(['admin', 'member', 'viewer']).optional().describe('New role: "admin", "member", or "viewer"'),
       },
       async ({ familyId, action, targetUserId, newRole }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
         const minRole = action === 'list' ? 'viewer' : 'admin';
         const check = await requireFamilyMember(userId, familyId, minRole as 'viewer' | 'admin');
-        if (!check.ok) return { content: [{ type: 'text' as const, text: check.error }] };
+        if (!check.ok) return toolError(check.error);
 
         if (action === 'list') {
           const memberList = await db
@@ -306,12 +392,12 @@ export const familiaServer: McpServerDefinition = {
         }
 
         if (!targetUserId) {
-          return { content: [{ type: 'text' as const, text: 'Error: targetUserId is required for this action.' }] };
+          return toolError('targetUserId is required for this action.', 'Use manage_members with action="list" to see member userIds.');
         }
 
         if (action === 'change_role') {
           if (!newRole) {
-            return { content: [{ type: 'text' as const, text: 'Error: newRole is required.' }] };
+            return toolError('newRole is required for change_role action.', 'Valid roles: "admin", "member", "viewer".');
           }
           await db
             .update(members)
@@ -325,7 +411,7 @@ export const familiaServer: McpServerDefinition = {
 
         if (action === 'remove') {
           if (targetUserId === userId) {
-            return { content: [{ type: 'text' as const, text: 'Error: Cannot remove yourself.' }] };
+            return toolError('Cannot remove yourself from the family.', 'Ask another admin to remove you, or leave the family.');
           }
           await db
             .delete(members)
@@ -336,26 +422,26 @@ export const familiaServer: McpServerDefinition = {
           return { content: [{ type: 'text' as const, text: 'Member removed.' }] };
         }
 
-        return { content: [{ type: 'text' as const, text: 'Unknown action.' }] };
+        return toolError('Unknown action.', 'Valid actions: "list", "change_role", "remove".');
       },
     );
 
     // ─── add_shopping_item ───
     server.tool(
       'add_shopping_item',
-      'Add an item to the active shopping list (creates one if none exists).',
+      'Add an item to the active family shopping list. Creates a new list if none exists. Requires member role. Provide the item name, optional quantity, unit, and notes. The list is shared — all family members see it.',
       {
-        familyId: z.number().optional().describe('Family ID (optional if only one)'),
-        item: z.string().describe('Item name'),
-        quantity: z.number().optional().default(1).describe('Quantity'),
-        unit: z.string().optional().describe('Unit (kg, un, L, etc)'),
+        familyId: z.number().optional().describe('Family ID — omit if you belong to only one family, required if multiple'),
+        item: z.string().describe('Item name, e.g. "milk", "bread", "2kg rice"'),
+        quantity: z.number().optional().default(1).describe('Quantity (default: 1)'),
+        unit: z.string().optional().describe('Unit: "kg", "un", "L", "g", "ml", etc.'),
         listName: z.string().optional().default('Shopping List').describe('List name if creating new'),
         notes: z.string().optional().describe('Notes about the item'),
       },
       async ({ familyId, item, quantity, unit, listName, notes: itemNotes }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
         const check = await requireFamilyMember(userId, familyId, 'member');
-        if (!check.ok) return { content: [{ type: 'text' as const, text: check.error }] };
+        if (!check.ok) return toolError(check.error);
 
         // Find or create active list
         let [list] = await db
@@ -402,15 +488,16 @@ export const familiaServer: McpServerDefinition = {
     // ─── list_shopping ───
     server.tool(
       'list_shopping',
-      'List shopping items from the active list.',
+      'List all items from the active family shopping list, grouped by pending and checked. Shows who added each item. Use showChecked=false to see only pending items. Read-only — requires viewer role.',
       {
-        familyId: z.number().optional().describe('Family ID (optional if only one)'),
-        showChecked: z.boolean().optional().default(true).describe('Include checked items'),
+        familyId: z.number().optional().describe('Family ID — omit if you belong to only one family, required if multiple'),
+        showChecked: z.boolean().optional().default(true).describe('Include checked/bought items in the list (default: true)'),
       },
+      { readOnlyHint: true },
       async ({ familyId, showChecked }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
         const check = await requireFamilyMember(userId, familyId, 'viewer');
-        if (!check.ok) return { content: [{ type: 'text' as const, text: check.error }] };
+        if (!check.ok) return toolError(check.error);
 
         const [list] = await db
           .select()
@@ -420,7 +507,7 @@ export const familiaServer: McpServerDefinition = {
           .limit(1);
 
         if (!list) {
-          return { content: [{ type: 'text' as const, text: 'No active shopping list.' }] };
+          return toolError('No active shopping list.', 'Create one by adding an item with add_shopping_item.');
         }
 
         const conditions = [eq(shoppingListItems.listId, list.id)];
@@ -463,16 +550,17 @@ export const familiaServer: McpServerDefinition = {
     // ─── check_shopping_item ───
     server.tool(
       'check_shopping_item',
-      'Mark a shopping item as bought.',
+      'Mark a shopping list item as bought (or uncheck it). Requires member role and the item ID from list_shopping. Records who checked it. Use uncheck=true to revert. Idempotent.',
       {
-        familyId: z.number().optional().describe('Family ID (optional if only one)'),
-        itemId: z.number().describe('Item ID to check'),
+        familyId: z.number().optional().describe('Family ID — omit if you belong to only one family, required if multiple'),
+        itemId: z.number().describe('Numeric item ID — get from list_shopping'),
         uncheck: z.boolean().optional().default(false).describe('Set to true to uncheck'),
       },
+      { idempotentHint: true },
       async ({ familyId, itemId, uncheck }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
         const check = await requireFamilyMember(userId, familyId, 'member');
-        if (!check.ok) return { content: [{ type: 'text' as const, text: check.error }] };
+        if (!check.ok) return toolError(check.error);
 
         // Verify item belongs to family's list
         const [item] = await db
@@ -486,7 +574,7 @@ export const familiaServer: McpServerDefinition = {
           .where(and(eq(shoppingListItems.id, itemId), eq(shoppingLists.familyId, check.familyId)));
 
         if (!item) {
-          return { content: [{ type: 'text' as const, text: 'Error: Item not found in your family list.' }] };
+          return toolError('Item not found in your family shopping list.', 'Use list_shopping to see current items and their IDs.');
         }
 
         await db
@@ -511,19 +599,19 @@ export const familiaServer: McpServerDefinition = {
     // ─── create_task ───
     server.tool(
       'create_task',
-      'Create a family task with optional assignment.',
+      'Create a family task with optional assignee, due date, and priority. Requires member role. Assignee can be a nickname or userId — must be a family member. Priority: low, medium (default), or high. Returns the created task.',
       {
-        familyId: z.number().optional().describe('Family ID (optional if only one)'),
-        title: z.string().describe('Task title'),
+        familyId: z.number().optional().describe('Family ID — omit if you belong to only one family, required if multiple'),
+        title: z.string().describe('Task title — clear and actionable, e.g. "Buy groceries", "Fix kitchen light"'),
         description: z.string().optional().describe('Task description'),
-        assignedTo: z.string().optional().describe('Nickname or userId to assign'),
-        dueDate: z.string().optional().describe('Due date (YYYY-MM-DD)'),
-        priority: z.enum(['low', 'medium', 'high']).optional().default('medium').describe('Priority'),
+        assignedTo: z.string().optional().describe('Nickname or userId of the assignee — must be a family member'),
+        dueDate: z.string().optional().describe('Due date in YYYY-MM-DD format'),
+        priority: z.enum(['low', 'medium', 'high']).optional().default('medium').describe('Priority: "low", "medium" (default), or "high"'),
       },
       async ({ familyId, title, description, assignedTo, dueDate, priority }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
         const check = await requireFamilyMember(userId, familyId, 'member');
-        if (!check.ok) return { content: [{ type: 'text' as const, text: check.error }] };
+        if (!check.ok) return toolError(check.error);
 
         let assigneeId: string | null = null;
         if (assignedTo) {
@@ -535,7 +623,7 @@ export const familiaServer: McpServerDefinition = {
             .from(members)
             .where(and(eq(members.familyId, check.familyId), eq(members.userId, assigneeId)));
           if (!isMember) {
-            return { content: [{ type: 'text' as const, text: `Error: "${assignedTo}" is not a family member.` }] };
+            return toolError(`"${assignedTo}" is not a family member.`, 'Use manage_members with action="list" to see family members and their nicknames.');
           }
         }
 
@@ -570,17 +658,18 @@ export const familiaServer: McpServerDefinition = {
     // ─── list_tasks ───
     server.tool(
       'list_tasks',
-      'List family tasks with optional filters.',
+      'List family tasks with optional filters by status, assignee, and limit. Shows assignee name/nickname. Ordered by: active before done, high priority first, then newest. Read-only — requires viewer role.',
       {
-        familyId: z.number().optional().describe('Family ID (optional if only one)'),
-        status: z.enum(['pending', 'in_progress', 'done', 'all']).optional().default('all').describe('Filter by status'),
-        assignedTo: z.string().optional().describe('Filter by nickname or userId'),
-        limit: z.number().optional().default(20).describe('Max results'),
+        familyId: z.number().optional().describe('Family ID — omit if you belong to only one family, required if multiple'),
+        status: z.enum(['pending', 'in_progress', 'done', 'all']).optional().default('all').describe('Filter: "pending", "in_progress", "done", or "all" (default)'),
+        assignedTo: z.string().optional().describe('Nickname or userId of the assignee — must be a family member'),
+        limit: z.number().optional().default(20).describe('Max results to return (default: 20)'),
       },
+      { readOnlyHint: true },
       async ({ familyId, status, assignedTo, limit }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
         const check = await requireFamilyMember(userId, familyId, 'viewer');
-        if (!check.ok) return { content: [{ type: 'text' as const, text: check.error }] };
+        if (!check.ok) return toolError(check.error);
 
         const conditions = [eq(tasks.familyId, check.familyId)];
         if (status !== 'all') conditions.push(eq(tasks.status, status));
@@ -624,20 +713,21 @@ export const familiaServer: McpServerDefinition = {
     // ─── update_task ───
     server.tool(
       'update_task',
-      'Update a task status, assignment, or priority.',
+      'Update a task\'s status, assignment, priority, title, or description. Requires member role and the task ID from list_tasks. Status flow: pending → in_progress → done. Assignee can be nickname or userId.',
       {
-        familyId: z.number().optional().describe('Family ID (optional if only one)'),
-        taskId: z.number().describe('Task ID'),
-        status: z.enum(['pending', 'in_progress', 'done']).optional().describe('New status'),
-        assignedTo: z.string().optional().describe('New assignee (nickname or userId)'),
-        priority: z.enum(['low', 'medium', 'high']).optional().describe('New priority'),
-        title: z.string().optional().describe('New title'),
-        description: z.string().optional().describe('New description'),
+        familyId: z.number().optional().describe('Family ID — omit if you belong to only one family, required if multiple'),
+        taskId: z.number().describe('Numeric task ID — get from list_tasks'),
+        status: z.enum(['pending', 'in_progress', 'done']).optional().describe('New status: "pending", "in_progress", or "done"'),
+        assignedTo: z.string().optional().describe('Nickname or userId of the assignee — must be a family member'),
+        priority: z.enum(['low', 'medium', 'high']).optional().describe('Priority: "low", "medium" (default), or "high"'),
+        title: z.string().optional().describe('Task title — clear and actionable, e.g. "Buy groceries", "Fix kitchen light"'),
+        description: z.string().optional().describe('Task description'),
       },
+      { idempotentHint: true },
       async ({ familyId, taskId, status: newStatus, assignedTo, priority, title, description }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
         const check = await requireFamilyMember(userId, familyId, 'member');
-        if (!check.ok) return { content: [{ type: 'text' as const, text: check.error }] };
+        if (!check.ok) return toolError(check.error);
 
         const [task] = await db
           .select()
@@ -645,7 +735,7 @@ export const familiaServer: McpServerDefinition = {
           .where(and(eq(tasks.id, taskId), eq(tasks.familyId, check.familyId)));
 
         if (!task) {
-          return { content: [{ type: 'text' as const, text: 'Error: Task not found.' }] };
+          return toolError('Task not found.', 'Use list_tasks to see tasks and their IDs.');
         }
 
         const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
@@ -674,17 +764,17 @@ export const familiaServer: McpServerDefinition = {
     // ─── create_note ───
     server.tool(
       'create_note',
-      'Create a shared family note in markdown.',
+      'Create a shared family note in markdown. Requires member role. Optionally pin the note so it appears first in list_notes. All family members can see it. Use for recipes, instructions, shared info.',
       {
-        familyId: z.number().optional().describe('Family ID (optional if only one)'),
+        familyId: z.number().optional().describe('Family ID — omit if you belong to only one family, required if multiple'),
         title: z.string().describe('Note title'),
-        content: z.string().describe('Note content in markdown'),
-        pinned: z.boolean().optional().default(false).describe('Pin this note'),
+        content: z.string().describe('Note content in markdown format'),
+        pinned: z.boolean().optional().default(false).describe('Pin this note to appear first in list_notes (default: false)'),
       },
       async ({ familyId, title, content, pinned }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
         const check = await requireFamilyMember(userId, familyId, 'member');
-        if (!check.ok) return { content: [{ type: 'text' as const, text: check.error }] };
+        if (!check.ok) return toolError(check.error);
 
         const [note] = await db.insert(notes).values({
           familyId: check.familyId,
@@ -713,15 +803,16 @@ export const familiaServer: McpServerDefinition = {
     // ─── list_notes ───
     server.tool(
       'list_notes',
-      'List family notes, pinned first.',
+      'List family notes, pinned notes first, then by last updated. Shows author name and timestamps. Read-only — requires viewer role.',
       {
-        familyId: z.number().optional().describe('Family ID (optional if only one)'),
-        limit: z.number().optional().default(20).describe('Max results'),
+        familyId: z.number().optional().describe('Family ID — omit if you belong to only one family, required if multiple'),
+        limit: z.number().optional().default(20).describe('Max results to return (default: 20)'),
       },
+      { readOnlyHint: true },
       async ({ familyId, limit }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
         const check = await requireFamilyMember(userId, familyId, 'viewer');
-        if (!check.ok) return { content: [{ type: 'text' as const, text: check.error }] };
+        if (!check.ok) return toolError(check.error);
 
         const result = await db
           .select({
@@ -751,23 +842,23 @@ export const familiaServer: McpServerDefinition = {
     // ─── log_expense ───
     server.tool(
       'log_expense',
-      'Log a family expense with equal or custom split.',
+      'Log a family expense and split it among members. Requires member role. Split equally (default — divides among all members) or custom (specify amounts per nickname). The payer\'s share is auto-settled. Date defaults to today.',
       {
-        familyId: z.number().optional().describe('Family ID (optional if only one)'),
-        description: z.string().describe('What the expense was for'),
-        amount: z.number().describe('Total amount'),
-        category: z.string().optional().describe('Category (food, transport, etc)'),
-        date: z.string().optional().describe('Date (YYYY-MM-DD), defaults to today'),
-        splitType: z.enum(['equal', 'custom']).optional().default('equal').describe('How to split'),
+        familyId: z.number().optional().describe('Family ID — omit if you belong to only one family, required if multiple'),
+        description: z.string().describe('What the expense was for, e.g. "Groceries at Carrefour"'),
+        amount: z.number().describe('Total amount in R$ (e.g. 150.50)'),
+        category: z.string().optional().describe('Expense category: "food", "transport", "utilities", "health", "entertainment", etc.'),
+        date: z.string().optional().describe('Expense date in YYYY-MM-DD format (defaults to today)'),
+        splitType: z.enum(['equal', 'custom']).optional().default('equal').describe('How to split: "equal" (divide among all members) or "custom" (specify per person)'),
         customSplits: z
           .array(z.object({ nickname: z.string(), amount: z.number() }))
           .optional()
-          .describe('Custom splits (only for splitType=custom)'),
+          .describe('Custom split amounts per person: [{nickname: "Mom", amount: 50}, {nickname: "Dad", amount: 100}]'),
       },
       async ({ familyId, description, amount, category, date: expDate, splitType, customSplits }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
         const check = await requireFamilyMember(userId, familyId, 'member');
-        if (!check.ok) return { content: [{ type: 'text' as const, text: check.error }] };
+        if (!check.ok) return toolError(check.error);
 
         const dateStr = expDate || new Date().toISOString().slice(0, 10);
 
@@ -830,14 +921,15 @@ export const familiaServer: McpServerDefinition = {
     // ─── expense_balances ───
     server.tool(
       'expense_balances',
-      'Calculate who owes whom in the family.',
+      'Calculate who owes whom based on unsettled expenses. Uses a debt simplification algorithm to minimize the number of transfers. Read-only — requires viewer role. Returns a list of settlements: "A → B: R$X.XX".',
       {
-        familyId: z.number().optional().describe('Family ID (optional if only one)'),
+        familyId: z.number().optional().describe('Family ID — omit if you belong to only one family, required if multiple'),
       },
+      { readOnlyHint: true },
       async ({ familyId }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
         const check = await requireFamilyMember(userId, familyId, 'viewer');
-        if (!check.ok) return { content: [{ type: 'text' as const, text: check.error }] };
+        if (!check.ok) return toolError(check.error);
 
         // Get all unsettled splits with expense info
         const unsettled = await db
@@ -921,15 +1013,16 @@ export const familiaServer: McpServerDefinition = {
     // ─── family_feed ───
     server.tool(
       'family_feed',
-      'Recent family activity feed.',
+      'Recent family activity feed showing who did what. All write operations (adding items, completing tasks, logging expenses, etc.) are automatically logged. Returns entries with action, entity type, actor name/nickname, and timestamp. Read-only — requires viewer role.',
       {
-        familyId: z.number().optional().describe('Family ID (optional if only one)'),
-        limit: z.number().optional().default(20).describe('Max entries'),
+        familyId: z.number().optional().describe('Family ID — omit if you belong to only one family, required if multiple'),
+        limit: z.number().optional().default(20).describe('Max results to return (default: 20)'),
       },
+      { readOnlyHint: true },
       async ({ familyId, limit }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
         const check = await requireFamilyMember(userId, familyId, 'viewer');
-        if (!check.ok) return { content: [{ type: 'text' as const, text: check.error }] };
+        if (!check.ok) return toolError(check.error);
 
         const feed = await db
           .select({
