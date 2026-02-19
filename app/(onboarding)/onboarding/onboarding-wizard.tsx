@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { generateApiKey } from '@/app/lib/actions/generate-key';
 
 interface McpTool {
   name: string;
@@ -132,19 +133,11 @@ export function OnboardingWizard({ servers, existingAccess }: OnboardingWizardPr
         return;
       }
 
-      const res = await fetch('/api/mcp-access/generate-key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mcpName: name }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.apiKey) {
-          setApiKeys((prev) => ({ ...prev, [name]: data.apiKey }));
-        }
+      const result = await generateApiKey(name);
+      if (result.apiKey) {
+        setApiKeys((prev) => ({ ...prev, [name]: result.apiKey! }));
       } else {
-        const data = await res.json().catch(() => ({}));
-        setKeyError(data.error || `Failed to generate key for ${name}`);
+        setKeyError(result.error || `Failed to generate key for ${name}`);
       }
     } catch {
       setKeyError(`Network error generating key for ${name}`);

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { generateApiKey } from '@/app/lib/actions/generate-key';
 
 export function ToggleServer({
   mcpName,
@@ -53,20 +54,11 @@ export function ToggleServer({
     setNewApiKey(null);
 
     try {
-      const res = await fetch('/api/mcp-access/generate-key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mcpName }),
-      });
-
-      if (!res.ok) return;
-
-      const data = await res.json();
-      if (data.apiKey) {
-        setNewApiKey(data.apiKey);
+      const result = await generateApiKey(mcpName);
+      if (result.apiKey) {
+        setNewApiKey(result.apiKey);
         setHasApiKey(true);
       }
-
       router.refresh();
     } finally {
       setIsGenerating(false);

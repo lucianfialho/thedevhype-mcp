@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { TabSelect } from '../../components/ui';
+import { generateApiKey } from '@/app/lib/actions/generate-key';
 
 interface McpTool {
   name: string;
@@ -124,21 +125,13 @@ export function SettingsTab({
         setConfirmedEnabled(true);
       }
 
-      const res = await fetch('/api/mcp-access/generate-key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mcpName }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setGenerateError(data.error || 'Failed to generate key. Try again.');
+      const result = await generateApiKey(mcpName);
+      if (result.error) {
+        setGenerateError(result.error);
         return;
       }
-
-      const data = await res.json();
-      if (data.apiKey) {
-        setNewApiKey(data.apiKey);
+      if (result.apiKey) {
+        setNewApiKey(result.apiKey);
         setHasApiKey(true);
       }
     } catch {
