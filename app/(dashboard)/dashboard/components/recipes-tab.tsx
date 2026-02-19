@@ -115,6 +115,37 @@ export const ELOA_RECIPES: Recipe[] = [
   },
 ];
 
+export const FAMILIA_RECIPES: Recipe[] = [
+  {
+    name: 'familia-weekly-planner',
+    icon: '🏡',
+    description: 'Plan the week ahead: review pending tasks, check the shopping list, and summarize what each family member owes.',
+    installUrl: 'https://poke.com/refer/nwv87pDEnHt',
+    automations: 2,
+  },
+  {
+    name: 'familia-shopping-assistant',
+    icon: '🛒',
+    description: 'Smart shopping helper. Remind the family about pending items before grocery runs and auto-organize the list by category.',
+    installUrl: 'https://poke.com/refer/iAcZaOWbYTe',
+    automations: 2,
+  },
+  {
+    name: 'familia-expense-tracker',
+    icon: '💰',
+    description: 'Track family expenses and settle debts. Monthly breakdown by category with balance calculations and payment reminders.',
+    installUrl: 'https://poke.com/r/2tuiANk1p-R',
+    automations: 2,
+  },
+  {
+    name: 'familia-chore-manager',
+    icon: '✅',
+    description: 'Assign and rotate household chores. Weekly status updates and nudges for overdue tasks.',
+    installUrl: 'https://poke.com/r/XY-32zFzUrC',
+    automations: 2,
+  },
+];
+
 export const CROSS_RECIPES: Recipe[] = [
   {
     name: 'second-brain-reader',

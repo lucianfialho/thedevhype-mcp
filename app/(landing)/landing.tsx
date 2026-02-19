@@ -48,6 +48,12 @@ function Hero() {
           <img src="/otto.png" alt="Otto" className="h-20 w-20 rounded-full border-3 border-white dark:border-zinc-900" />
           <img src="/eloa.png" alt="Eloa" className="h-20 w-20 rounded-full border-3 border-white dark:border-zinc-900" />
           <img src="/lucian.png" alt="Lucian" className="h-20 w-20 rounded-full border-3 border-white dark:border-zinc-900" />
+          <div className="flex h-20 w-20 items-center justify-center rounded-full border-3 border-white bg-violet-100 dark:border-zinc-900 dark:bg-violet-950">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-violet-600 dark:text-violet-400">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          </div>
         </div>
       </div>
 
@@ -752,6 +758,210 @@ function OttoShowcase() {
   );
 }
 
+/* ─── Familia Showcase (Shopping | Tasks | Expenses | Members) ─── */
+
+function FamiliaShopping() {
+  const items = [
+    { name: 'Arroz 5kg', qty: '1 un', checked: false },
+    { name: 'Leite integral', qty: '6 un', checked: false },
+    { name: 'Banana prata', qty: '1 kg', checked: false },
+    { name: 'Sabão em pó', qty: '1 un', checked: true },
+    { name: 'Papel higiênico', qty: '2 un', checked: true },
+  ];
+  const pending = items.filter((i) => !i.checked);
+  const done = items.filter((i) => i.checked);
+
+  return (
+    <div className="space-y-3 p-4 text-sm">
+      <div className="flex items-center justify-between">
+        <span className="font-semibold text-zinc-800 dark:text-zinc-200">Lista de Compras</span>
+        <span className="text-xs text-zinc-400">{pending.length} pendentes</span>
+      </div>
+      {pending.map((i) => (
+        <div key={i.name} className="flex items-center gap-3 rounded-xl border border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
+          <div className="h-4 w-4 rounded border-2 border-zinc-300 dark:border-zinc-600" />
+          <span className="flex-1 text-zinc-700 dark:text-zinc-300">{i.name}</span>
+          <span className="text-xs text-zinc-400">{i.qty}</span>
+        </div>
+      ))}
+      {done.map((i) => (
+        <div key={i.name} className="flex items-center gap-3 rounded-xl border border-zinc-100 px-3 py-2.5 opacity-50 dark:border-zinc-800">
+          <div className="flex h-4 w-4 items-center justify-center rounded border-2 border-zinc-300 bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-700">
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 8l4 4 6-6" /></svg>
+          </div>
+          <span className="flex-1 text-zinc-400 line-through">{i.name}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FamiliaTasks() {
+  const tasks = [
+    { title: 'Limpar a cozinha', assignee: 'Ana', priority: 'high', status: 'pending' },
+    { title: 'Pagar conta de luz', assignee: 'Carlos', priority: 'medium', status: 'in_progress' },
+    { title: 'Levar cachorro ao vet', assignee: 'Ana', priority: 'high', status: 'pending' },
+    { title: 'Comprar presente Vó', assignee: 'Carlos', priority: 'low', status: 'done' },
+  ];
+  const prColors: Record<string, string> = { high: 'bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400', medium: 'bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-400', low: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400' };
+  const stColors: Record<string, string> = { pending: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400', in_progress: 'bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400', done: 'bg-green-100 text-green-600 dark:bg-green-950 dark:text-green-400' };
+
+  return (
+    <div className="space-y-3 p-4 text-sm">
+      <span className="font-semibold text-zinc-800 dark:text-zinc-200">Tarefas</span>
+      {tasks.map((t) => (
+        <div key={t.title} className={`rounded-xl border border-zinc-200 p-3 dark:border-zinc-800 ${t.status === 'done' ? 'opacity-50' : ''}`}>
+          <div className="flex items-center gap-2">
+            <span className={`flex-1 text-zinc-700 dark:text-zinc-300 ${t.status === 'done' ? 'line-through' : ''}`}>{t.title}</span>
+            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${prColors[t.priority]}`}>{t.priority}</span>
+            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${stColors[t.status]}`}>{t.status.replace('_', ' ')}</span>
+          </div>
+          <span className="mt-1 block text-xs text-zinc-400">{t.assignee}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FamiliaExpenses() {
+  const expenses = [
+    { desc: 'Supermercado', amount: 'R$ 342,50', who: 'Ana', cat: 'Mercado' },
+    { desc: 'Conta de luz', amount: 'R$ 189,00', who: 'Carlos', cat: 'Casa' },
+    { desc: 'Farmácia', amount: 'R$ 67,80', who: 'Ana', cat: 'Saúde' },
+  ];
+
+  return (
+    <div className="space-y-3 p-4 text-sm">
+      <div className="flex items-center justify-between">
+        <span className="font-semibold text-zinc-800 dark:text-zinc-200">Despesas</span>
+      </div>
+      <div className="rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-center text-xs font-medium text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-400">
+        Carlos deve R$ 87,15 para Ana
+      </div>
+      {expenses.map((e) => (
+        <div key={e.desc} className="flex items-center gap-3 rounded-xl border border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-500"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+          </div>
+          <div className="flex-1">
+            <span className="text-zinc-700 dark:text-zinc-300">{e.desc}</span>
+            <div className="text-xs text-zinc-400">Pago por {e.who} · {e.cat}</div>
+          </div>
+          <span className="font-semibold text-zinc-800 dark:text-zinc-200">{e.amount}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FamiliaMembers() {
+  const members = [
+    { name: 'Ana', role: 'admin', initial: 'A' },
+    { name: 'Carlos', role: 'member', initial: 'C' },
+    { name: 'Vó Maria', role: 'viewer', initial: 'M' },
+  ];
+  const roleColors: Record<string, string> = { admin: 'bg-violet-100 text-violet-600 dark:bg-violet-950 dark:text-violet-400', member: 'bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400', viewer: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400' };
+
+  return (
+    <div className="space-y-3 p-4 text-sm">
+      <div className="flex items-center justify-between">
+        <span className="font-semibold text-zinc-800 dark:text-zinc-200">Membros (3)</span>
+      </div>
+      {members.map((m) => (
+        <div key={m.name} className="flex items-center gap-3 rounded-xl border border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-xs font-medium text-zinc-500 dark:bg-zinc-800">{m.initial}</div>
+          <span className="flex-1 text-zinc-700 dark:text-zinc-300">{m.name}</span>
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${roleColors[m.role]}`}>{m.role}</span>
+        </div>
+      ))}
+      <div className="rounded-xl border border-dashed border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
+        <div className="flex items-center gap-2">
+          <code className="text-xs font-mono text-zinc-600 dark:text-zinc-400">Ab3kX9mP</code>
+          <span className="text-xs text-zinc-400">como member · expira 22/02</span>
+          <span className="ml-auto text-xs font-medium text-zinc-500">Copiar</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FamiliaShowcase() {
+  const [tab, setTab] = useState(0);
+  const tabs = ['Shopping', 'Tasks', 'Expenses', 'Members'];
+  const content = [<FamiliaShopping key="s" />, <FamiliaTasks key="t" />, <FamiliaExpenses key="e" />, <FamiliaMembers key="m" />];
+
+  const descriptions = [
+    {
+      title: 'Shared shopping list',
+      text: 'Add items, check them off as you shop, and everyone in the family sees the list in real time. No more duplicate trips or forgotten items.',
+      features: ['Add items with quantity and unit', 'Tap to check off instantly', 'Everyone sees the same list'],
+    },
+    {
+      title: 'Family task board',
+      text: 'Create tasks, assign to family members, set priorities and deadlines. Cycle through statuses with a single tap — pending, in progress, done.',
+      features: ['Assign tasks to members', 'Priority levels and due dates', 'One-tap status cycling'],
+    },
+    {
+      title: 'Split expenses fairly',
+      text: 'Log expenses and Familia calculates who owes whom automatically. Monthly breakdowns by category so you always know where the money goes.',
+      features: ['Auto-split among members', 'Balance calculations', 'Category breakdowns'],
+    },
+    {
+      title: 'Invite your family',
+      text: 'Generate invite codes and share with family members. Admins manage roles — members can edit, viewers can only see. Everyone stays connected.',
+      features: ['Role-based access (admin, member, viewer)', 'Invite codes with expiration', 'Activity feed for transparency'],
+    },
+  ];
+
+  return (
+    <section className="border-t border-zinc-100 py-16 dark:border-zinc-800">
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="mb-10 flex items-center gap-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-950">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-violet-600 dark:text-violet-400">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl font-bold">Familia</h2>
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
+                New
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-zinc-500">Shared Family Workspace — shopping lists, tasks, expenses & activity feed</p>
+          </div>
+        </div>
+
+        <TabBar tabs={tabs} active={tab} onChange={setTab} />
+
+        <div className="mt-6 grid items-start gap-8 lg:grid-cols-5">
+          <div className="order-2 lg:order-1 lg:col-span-3">
+            <BrowserMockup url="thedevhype.com/dashboard/familia">
+              {content[tab]}
+            </BrowserMockup>
+          </div>
+          <div className="order-1 lg:order-2 lg:col-span-2 lg:py-4">
+            <h3 className="text-xl font-bold">{descriptions[tab].title}</h3>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-500">{descriptions[tab].text}</p>
+            <ul className="mt-5 space-y-2.5">
+              {descriptions[tab].features.map((f) => (
+                <li key={f} className="flex items-start gap-2.5 text-sm text-zinc-600 dark:text-zinc-400">
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="mt-0.5 shrink-0">
+                    <path d="M5 9l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500" />
+                  </svg>
+                  {f}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ─── Recipes Section ─── */
 
 function RecipesSection() {
@@ -765,12 +975,17 @@ function RecipesSection() {
     { name: 'eloa-content-radar', icon: '🍓', mcp: 'Eloa', desc: 'Monitor competitors and get keyword alerts.', url: 'https://poke.com/refer/hscQ9_KAHKv', automations: 2 },
     { name: 'eloa-newsletter-digest', icon: '🥝', mcp: 'Eloa', desc: 'Curate the best articles for your newsletter.', url: 'https://poke.com/refer/WCLlTuKSRA-', automations: 2 },
     { name: 'second-brain-reader', icon: '🥑', mcp: 'Otto + Eloa', desc: 'Read in Eloa, save highlights to Otto, auto cross-link.', url: 'https://poke.com/refer/gyoLYaC8bf5', automations: 2 },
+    { name: 'familia-weekly-planner', icon: '🏡', mcp: 'Familia', desc: 'Plan the week: review tasks, shopping list, and expense balances.', url: 'https://poke.com/refer/nwv87pDEnHt', automations: 2 },
+    { name: 'familia-shopping-assistant', icon: '🛒', mcp: 'Familia', desc: 'Reminders before grocery runs and auto-organized lists.', url: 'https://poke.com/refer/iAcZaOWbYTe', automations: 2 },
+    { name: 'familia-expense-tracker', icon: '💰', mcp: 'Familia', desc: 'Monthly breakdown by category and who owes whom.', url: 'https://poke.com/r/2tuiANk1p-R', automations: 2 },
+    { name: 'familia-chore-manager', icon: '✅', mcp: 'Familia', desc: 'Weekly chore updates and nudges for overdue tasks.', url: 'https://poke.com/r/XY-32zFzUrC', automations: 2 },
   ];
 
   const mcpColors: Record<string, string> = {
     Otto: 'bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400',
     Eloa: 'bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400',
     'Otto + Eloa': 'bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400',
+    Familia: 'bg-violet-50 text-violet-600 dark:bg-violet-950 dark:text-violet-400',
   };
 
   return (
@@ -917,6 +1132,7 @@ export default function Landing() {
       <OttoShowcase />
       <EloaShowcase />
       <LucianShowcase />
+      <FamiliaShowcase />
       <RecipesSection />
       <HowItWorks />
       <CtaSection />

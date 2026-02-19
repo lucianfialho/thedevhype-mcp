@@ -11,20 +11,32 @@ import { ExpensesTab } from './tabs/expenses-tab';
 import { MembersTab } from './tabs/members-tab';
 import { SettingsTab } from '../eloa/tabs/settings-tab';
 import { UserUsageTab } from '../components/user-usage-tab';
+import { RecipesTab, FAMILIA_RECIPES } from '../components/recipes-tab';
+import { createFamily, joinFamily } from './actions';
 import type { UserMcpUsageStats } from '../components/user-mcp-usage';
 
 const TABS = [
   { id: 'feed', label: 'Feed' },
-  { id: 'compras', label: 'Shopping' },
-  { id: 'tarefas', label: 'Tasks' },
-  { id: 'notas', label: 'Notes' },
-  { id: 'despesas', label: 'Expenses' },
-  { id: 'membros', label: 'Members' },
+  { id: 'compras', label: 'Compras' },
+  { id: 'tarefas', label: 'Tarefas' },
+  { id: 'notas', label: 'Notas' },
+  { id: 'despesas', label: 'Despesas' },
+  { id: 'membros', label: 'Membros' },
+  { id: 'recipes', label: 'Recipes' },
   { id: 'usage', label: 'Usage' },
   { id: 'config', label: 'Config' },
 ] as const;
 
 type Tab = (typeof TABS)[number]['id'];
+
+function HomeSvg({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  );
+}
 
 interface FamilyInfo {
   id: number;
@@ -151,7 +163,17 @@ export function FamiliaDashboard({
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
 
+  // Promote to state for optimistic updates
+  const [shoppingItems, setShoppingItems] = useState(shopping.items);
+  const [shoppingList, setShoppingList] = useState(shopping.list);
+  const [tasksState, setTasksState] = useState(tasksList);
+  const [notesState, setNotesState] = useState(notesList);
+  const [expensesState, setExpensesState] = useState(expensesList);
+  const [feedState, setFeedState] = useState(feed);
+  const [invitesState, setInvitesState] = useState(invitesList);
+
   const selectedFamily = families.find((f) => f.id === selectedFamilyId);
+  const currentUserRole = selectedFamily?.role || 'member';
 
   function switchTab(tab: string) {
     setActiveTab(tab as Tab);
@@ -169,40 +191,16 @@ export function FamiliaDashboard({
     return (
       <AppShell title="Familia">
         <div className="mb-4 shrink-0 flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-100 text-xl">
-            F
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-100">
+            <HomeSvg className="h-5 w-5 text-violet-600" />
           </div>
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-bold text-slate-800">Familia</h2>
-            <p className="text-sm text-slate-500">Shared Family Workspace</p>
+            <p className="text-sm text-slate-500">Espaço compartilhado da família</p>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-dashed border-slate-200 py-12 text-center">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-violet-100 text-2xl">
-            F
-          </div>
-          <p className="text-base font-medium text-slate-600">No family yet</p>
-          <p className="mt-1 text-sm text-slate-500">
-            Use <code className="rounded bg-slate-100 px-1.5 py-0.5 text-sm">create_family</code> via MCP to create one,
-          </p>
-          <p className="text-sm text-slate-500">
-            or <code className="rounded bg-slate-100 px-1.5 py-0.5 text-sm">join_family</code> with an invite code.
-          </p>
-        </div>
-
-        {mcpConfig && (
-          <div className="mt-4">
-            <SettingsTab
-              mcpName="familia"
-              mcpUrl={mcpConfig.mcpUrl}
-              tools={mcpConfig.tools}
-              initialEnabled={mcpConfig.enabled}
-              initialHasApiKey={mcpConfig.hasApiKey}
-              maskedApiKey={mcpConfig.maskedApiKey}
-            />
-          </div>
-        )}
+        <EmptyStateForms mcpConfig={mcpConfig} />
       </AppShell>
     );
   }
@@ -210,15 +208,15 @@ export function FamiliaDashboard({
   return (
     <AppShell title="Familia">
       <div className="mb-4 shrink-0 flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-100 text-xl">
-          F
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-100">
+          <HomeSvg className="h-5 w-5 text-violet-600" />
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="text-lg font-bold text-slate-800">
             {selectedFamily?.name || 'Familia'}
           </h2>
           <p className="text-sm text-slate-500">
-            {counts.members} members
+            {counts.members} membros
           </p>
         </div>
         <TabSelect
@@ -248,12 +246,56 @@ export function FamiliaDashboard({
       )}
 
       <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto">
-        {activeTab === 'feed' && <FeedTab feed={feed} />}
-        {activeTab === 'compras' && <ShoppingTab shopping={shopping} />}
-        {activeTab === 'tarefas' && <TasksTab tasks={tasksList} />}
-        {activeTab === 'notas' && <NotesTab notes={notesList} />}
-        {activeTab === 'despesas' && <ExpensesTab expenses={expensesList} balances={balances} />}
-        {activeTab === 'membros' && <MembersTab members={membersList} invites={invitesList} />}
+        {activeTab === 'feed' && (
+          <FeedTab
+            feed={feedState}
+            familyId={selectedFamilyId!}
+            onFeedChange={setFeedState}
+          />
+        )}
+        {activeTab === 'compras' && (
+          <ShoppingTab
+            shopping={{ list: shoppingList, items: shoppingItems }}
+            familyId={selectedFamilyId!}
+            onShoppingChange={(items, list) => {
+              setShoppingItems(items);
+              if (list !== undefined) setShoppingList(list);
+            }}
+          />
+        )}
+        {activeTab === 'tarefas' && (
+          <TasksTab
+            tasks={tasksState}
+            familyId={selectedFamilyId!}
+            members={membersList}
+            onTasksChange={setTasksState}
+          />
+        )}
+        {activeTab === 'notas' && (
+          <NotesTab
+            notes={notesState}
+            familyId={selectedFamilyId!}
+            onNotesChange={setNotesState}
+          />
+        )}
+        {activeTab === 'despesas' && (
+          <ExpensesTab
+            expenses={expensesState}
+            balances={balances}
+            familyId={selectedFamilyId!}
+            onExpensesChange={setExpensesState}
+          />
+        )}
+        {activeTab === 'membros' && (
+          <MembersTab
+            members={membersList}
+            invites={invitesState}
+            familyId={selectedFamilyId!}
+            currentUserRole={currentUserRole}
+            onInvitesChange={setInvitesState}
+          />
+        )}
+        {activeTab === 'recipes' && <RecipesTab recipes={FAMILIA_RECIPES} mcpName="Familia" />}
         {activeTab === 'usage' && <UserUsageTab stats={usageStats} />}
         {activeTab === 'config' && mcpConfig && (
           <SettingsTab
@@ -267,5 +309,121 @@ export function FamiliaDashboard({
         )}
       </div>
     </AppShell>
+  );
+}
+
+// ─── Empty State Forms ───
+
+function EmptyStateForms({
+  mcpConfig,
+}: {
+  mcpConfig: FamiliaDashboardProps['mcpConfig'];
+}) {
+  const router = useRouter();
+  const [familyName, setFamilyName] = useState('');
+  const [familyDesc, setFamilyDesc] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!familyName.trim()) return;
+    setCreating(true);
+    setError('');
+    const res = await createFamily(familyName.trim(), familyDesc.trim() || undefined);
+    if (res.error) {
+      setError(res.error);
+      setCreating(false);
+    } else {
+      router.refresh();
+    }
+  }
+
+  async function handleJoin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!inviteCode.trim()) return;
+    setJoining(true);
+    setError('');
+    const res = await joinFamily(inviteCode.trim());
+    if (res.error) {
+      setError(res.error);
+      setJoining(false);
+    } else {
+      router.refresh();
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {error && (
+        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
+      )}
+
+      {/* Create family */}
+      <div className="rounded-2xl border border-slate-200 p-5">
+        <h3 className="mb-3 text-base font-semibold text-slate-800">Criar família</h3>
+        <form onSubmit={handleCreate} className="space-y-3">
+          <input
+            type="text"
+            placeholder="Nome da família"
+            value={familyName}
+            onChange={(e) => setFamilyName(e.target.value)}
+            className="w-full rounded-xl border-0 bg-slate-100 px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
+            required
+          />
+          <input
+            type="text"
+            placeholder="Descrição (opcional)"
+            value={familyDesc}
+            onChange={(e) => setFamilyDesc(e.target.value)}
+            className="w-full rounded-xl border-0 bg-slate-100 px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
+          />
+          <button
+            type="submit"
+            disabled={creating || !familyName.trim()}
+            className="w-full rounded-xl bg-slate-800 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:opacity-50"
+          >
+            {creating ? 'Criando...' : 'Criar família'}
+          </button>
+        </form>
+      </div>
+
+      {/* Join family */}
+      <div className="rounded-2xl border border-dashed border-slate-200 p-5">
+        <h3 className="mb-3 text-base font-semibold text-slate-800">Entrar com código</h3>
+        <form onSubmit={handleJoin} className="space-y-3">
+          <input
+            type="text"
+            placeholder="Código de convite"
+            value={inviteCode}
+            onChange={(e) => setInviteCode(e.target.value)}
+            className="w-full rounded-xl border-0 bg-slate-100 px-4 py-3 text-sm font-mono text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
+            required
+          />
+          <button
+            type="submit"
+            disabled={joining || !inviteCode.trim()}
+            className="w-full rounded-xl bg-slate-800 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:opacity-50"
+          >
+            {joining ? 'Entrando...' : 'Entrar na família'}
+          </button>
+        </form>
+      </div>
+
+      {mcpConfig && (
+        <div className="mt-4">
+          <SettingsTab
+            mcpName="familia"
+            mcpUrl={mcpConfig.mcpUrl}
+            tools={mcpConfig.tools}
+            initialEnabled={mcpConfig.enabled}
+            initialHasApiKey={mcpConfig.hasApiKey}
+            maskedApiKey={mcpConfig.maskedApiKey}
+          />
+        </div>
+      )}
+    </div>
   );
 }

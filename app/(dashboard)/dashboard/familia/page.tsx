@@ -20,7 +20,7 @@ import { FamiliaDashboard } from './familia-dashboard';
 
 export const dynamic = 'force-dynamic';
 
-const TABS = ['feed', 'compras', 'tarefas', 'notas', 'despesas', 'membros', 'usage', 'config'] as const;
+const TABS = ['feed', 'compras', 'tarefas', 'notas', 'despesas', 'membros', 'recipes', 'usage', 'config'] as const;
 type Tab = (typeof TABS)[number];
 
 function maskApiKey(key: string): string {
