@@ -29,7 +29,7 @@ const THEMES: Record<TimeTheme['id'], TimeTheme> = {
     cardBg: '#f8fafc',
     heroFade: '#f0d4c4',    // warm peach — matches sunrise sky in image
     skyGradient: 'linear-gradient(180deg, #d4a8a0 0%, #e0beb5 15%, #eacfc5 30%, #f0d4c4 50%, #e8ccc0 65%, #dfc0b8 80%, #d4b0aa 100%)',
-    heroImage: '/rio-morning.png',
+    heroImage: '/rio-morning.webp',
     heroVideo: '/rio-hero-morning.mp4',
     greeting: 'Good morning',
     homeTextPrimary: 'text-slate-700',
@@ -49,7 +49,7 @@ const THEMES: Record<TimeTheme['id'], TimeTheme> = {
     cardBg: '#f0ece4',
     heroFade: '#c8bda5',    // warm sand tone — matches beach/sidewalk at bottom of image
     skyGradient: 'linear-gradient(180deg, #3a8ec7 0%, #4da0d8 10%, #65b0e0 25%, #80c0e8 40%, #a5d0e8 55%, #c5d5d0 70%, #c8bda5 85%, #b5a890 100%)',
-    heroImage: '/rio-afternoon.png',
+    heroImage: '/rio-afternoon.webp',
     heroVideo: '',
     greeting: 'Good afternoon',
     homeTextPrimary: 'text-slate-700',
@@ -69,7 +69,7 @@ const THEMES: Record<TimeTheme['id'], TimeTheme> = {
     cardBg: '#faf5ed',
     heroFade: '#d4a060',    // warm amber-gold — matches golden hour light
     skyGradient: 'linear-gradient(180deg, #c45830 0%, #d06830 10%, #e08040 22%, #e89850 35%, #e8a858 48%, #d4a060 60%, #c89858 72%, #b88850 85%, #a07840 100%)',
-    heroImage: '/rio-morning.png',
+    heroImage: '/rio-morning.webp',
     heroVideo: '',
     greeting: 'Good evening',
     homeTextPrimary: 'text-slate-700',
@@ -89,7 +89,7 @@ const THEMES: Record<TimeTheme['id'], TimeTheme> = {
     cardBg: '#141c2b',
     heroFade: '#151e30',    // dark navy-blue — matches the sky/water tones
     skyGradient: 'linear-gradient(180deg, #0a1020 0%, #0f1828 15%, #142030 30%, #182840 50%, #152238 65%, #101a2a 80%, #0a1018 100%)',
-    heroImage: '/rio-night.png',
+    heroImage: '/rio-night.webp',
     heroVideo: '',
     greeting: 'Good night',
     homeTextPrimary: 'text-zinc-100',

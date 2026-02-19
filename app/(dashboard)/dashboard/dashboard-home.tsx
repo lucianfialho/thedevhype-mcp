@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { UserButton } from '@neondatabase/neon-js/auth/react/ui';
 import { getTimeTheme, NOISE_STYLE, FORCE_THEME } from './components/theme';
 
@@ -149,7 +150,7 @@ export function DashboardHome({ userName, isAdmin }: DashboardHomeProps) {
           >
             {/* Full-card background image */}
             <div className="absolute inset-0 z-0">
-              <img src={theme.heroImage} alt="" className="h-full w-full object-cover" />
+              <Image src={theme.heroImage} alt="" fill className="object-cover" priority />
               {/* Gradient overlay: transparent top → heroFade mid → cardBg bottom */}
               <div
                 className="absolute inset-0"
