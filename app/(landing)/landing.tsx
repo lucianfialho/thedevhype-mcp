@@ -841,60 +841,10 @@ function RayssaSchedule() {
   );
 }
 
-function RayssaAccounts() {
-  return (
-    <div className="space-y-3">
-      <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-900 text-sm font-bold text-white dark:bg-white dark:text-zinc-900">
-            𝕏
-          </div>
-          <div className="flex-1">
-            <div className="text-sm font-medium">X (Twitter)</div>
-            <div className="text-xs text-zinc-400">@lucian_fialho</div>
-          </div>
-          <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
-            Connected
-          </span>
-        </div>
-      </div>
-
-      <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold text-white">
-            in
-          </div>
-          <div className="flex-1">
-            <div className="text-sm font-medium">LinkedIn</div>
-            <div className="text-xs text-zinc-400">Lucian Fialho</div>
-          </div>
-          <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
-            Connected
-          </span>
-        </div>
-      </div>
-
-      <div className="rounded-lg border-2 border-dashed border-zinc-200 p-4 dark:border-zinc-700">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          </div>
-          <div className="flex-1">
-            <div className="text-sm font-medium text-zinc-400">Bluesky</div>
-            <div className="text-xs text-zinc-300 dark:text-zinc-600">Coming soon</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function RayssaShowcase() {
   const [tab, setTab] = useState(0);
-  const tabs = ['Compose', 'Schedule', 'Accounts'];
-  const content = [<RayssaCompose key="c" />, <RayssaSchedule key="s" />, <RayssaAccounts key="a" />];
+  const tabs = ['Compose', 'Schedule'];
+  const content = [<RayssaCompose key="c" />, <RayssaSchedule key="s" />];
 
   const descriptions = [
     {
@@ -906,11 +856,6 @@ function RayssaShowcase() {
       title: 'Schedule for the perfect time',
       text: 'Queue posts for automatic publishing via cron. See your full schedule with status badges — from draft to scheduled to published.',
       features: ['Automatic publishing via cron', 'Visual schedule with status', 'Full draft → published tracking'],
-    },
-    {
-      title: 'All your accounts in one place',
-      text: 'Connect your social accounts with one-click OAuth. Manage X and LinkedIn from a single dashboard with secure token management.',
-      features: ['One-click OAuth connect', 'X and LinkedIn support', 'Secure token management'],
     },
   ];
 
