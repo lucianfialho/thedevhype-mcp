@@ -6,6 +6,7 @@ import { eloaServer } from '../servers/eloa';
 import { ottoServer } from '../servers/otto';
 import { notaFiscalServer } from '../servers/nota-fiscal';
 import { familiaServer } from '../servers/familia';
+import { rayssaServer } from '../servers/rayssa';
 import type { McpServerDefinition } from '../types';
 
 const servers: McpServerDefinition[] = [
@@ -13,6 +14,7 @@ const servers: McpServerDefinition[] = [
   ottoServer,
   notaFiscalServer,
   familiaServer,
+  rayssaServer,
 ];
 
 describe('MCP Server Structure', () => {
@@ -30,9 +32,9 @@ describe('MCP Server Structure', () => {
       });
     }
 
-    it('total tool count is 50', () => {
+    it('total tool count is 60', () => {
       const total = servers.reduce((sum, s) => sum + s.tools.length, 0);
-      expect(total).toBe(50);
+      expect(total).toBe(60);
     });
   });
 
@@ -61,6 +63,7 @@ describe('MCP Server Structure', () => {
         otto: 12,
         lucian: 12,
         familia: 15,
+        rayssa: 10,
       });
     });
   });

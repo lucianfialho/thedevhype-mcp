@@ -146,6 +146,37 @@ export const FAMILIA_RECIPES: Recipe[] = [
   },
 ];
 
+export const RAYSSA_RECIPES: Recipe[] = [
+  {
+    name: 'rayssa-quick-post',
+    icon: '🐦',
+    description: 'Draft tweets on the fly, preview them, and publish or schedule — all from your MCP client.',
+    installUrl: 'https://poke.com/refer/rayssa-quick-post',
+    automations: 1,
+  },
+  {
+    name: 'rayssa-thread-builder',
+    icon: '🧵',
+    description: 'Build Twitter threads from long-form content. Splits text into tweets, previews the thread, and publishes in sequence.',
+    installUrl: 'https://poke.com/refer/rayssa-thread-builder',
+    automations: 2,
+  },
+  {
+    name: 'rayssa-content-calendar',
+    icon: '📅',
+    description: 'Plan your weekly content calendar. Schedule posts across the week with optimal timing suggestions.',
+    installUrl: 'https://poke.com/refer/rayssa-content-calendar',
+    automations: 2,
+  },
+  {
+    name: 'rayssa-eloa-share',
+    icon: '🔗',
+    description: 'Read articles in Eloa and share the best ones on X with a curated comment. Cross-MCP automation.',
+    installUrl: 'https://poke.com/refer/rayssa-eloa-share',
+    automations: 2,
+  },
+];
+
 export const CROSS_RECIPES: Recipe[] = [
   {
     name: 'second-brain-reader',

@@ -190,37 +190,37 @@ export function DashboardHome({ userName, isAdmin }: DashboardHomeProps) {
               <div className="grid grid-cols-2 gap-3">
                 <Link
                   href="/dashboard/eloa"
-                  className={`flex flex-col items-center gap-2.5 rounded-2xl border p-5 backdrop-blur-sm transition-colors ${
+                  className={`flex items-center gap-3 rounded-2xl border px-4 py-3 backdrop-blur-sm transition-colors ${
                     isNight
                       ? 'border-white/15 bg-white/10 hover:bg-white/15'
                       : 'border-slate-200/80 bg-white/60 hover:bg-white/80'
                   }`}
                 >
-                  <img src="/eloa.png" alt="Eloa" className="h-14 w-14 rounded-full" />
-                  <div className="text-center">
-                    <p className={`text-base font-semibold ${theme.homeTextPrimary}`}>Eloa</p>
-                    <p className={`mt-0.5 text-sm ${theme.homeTextSecondary}`}>Content Curator</p>
+                  <img src="/eloa.png" alt="Eloa" className="h-10 w-10 rounded-full" />
+                  <div className="text-left">
+                    <p className={`text-sm font-semibold leading-tight ${theme.homeTextPrimary}`}>Eloa</p>
+                    <p className={`mt-0.5 text-xs leading-tight ${theme.homeTextSecondary}`}>Content Curator</p>
                   </div>
                 </Link>
 
                 <Link
                   href="/dashboard/lucian"
-                  className={`flex flex-col items-center gap-2.5 rounded-2xl border p-5 backdrop-blur-sm transition-colors ${
+                  className={`flex items-center gap-3 rounded-2xl border px-4 py-3 backdrop-blur-sm transition-colors ${
                     isNight
                       ? 'border-white/15 bg-white/10 hover:bg-white/15'
                       : 'border-slate-200/80 bg-white/60 hover:bg-white/80'
                   }`}
                 >
-                  <img src="/lucian.png" alt="Lucian" className="h-14 w-14 rounded-full" />
-                  <div className="text-center">
-                    <p className={`text-base font-semibold ${theme.homeTextPrimary}`}>Lucian</p>
-                    <p className={`mt-0.5 text-sm ${theme.homeTextSecondary}`}>Grocery Manager</p>
+                  <img src="/lucian.png" alt="Lucian" className="h-10 w-10 rounded-full" />
+                  <div className="text-left">
+                    <p className={`text-sm font-semibold leading-tight ${theme.homeTextPrimary}`}>Lucian</p>
+                    <p className={`mt-0.5 text-xs leading-tight ${theme.homeTextSecondary}`}>Grocery Manager</p>
                   </div>
                 </Link>
 
                 <Link
                   href="/dashboard/otto"
-                  className={`col-span-2 flex items-center gap-3 rounded-2xl border px-5 py-4 backdrop-blur-sm transition-colors ${
+                  className={`flex items-center gap-3 rounded-2xl border px-4 py-3 backdrop-blur-sm transition-colors ${
                     isNight
                       ? 'border-white/15 bg-white/10 hover:bg-white/15'
                       : 'border-slate-200/80 bg-white/60 hover:bg-white/80'
@@ -228,17 +228,29 @@ export function DashboardHome({ userName, isAdmin }: DashboardHomeProps) {
                 >
                   <img src="/otto.png" alt="Otto" className="h-10 w-10 rounded-full" />
                   <div className="text-left">
-                    <p className={`text-base font-semibold leading-tight ${theme.homeTextPrimary}`}>Otto</p>
-                    <p className={`mt-0.5 text-sm leading-tight ${theme.homeTextSecondary}`}>Second Brain</p>
+                    <p className={`text-sm font-semibold leading-tight ${theme.homeTextPrimary}`}>Otto</p>
+                    <p className={`mt-0.5 text-xs leading-tight ${theme.homeTextSecondary}`}>Second Brain</p>
                   </div>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={`ml-auto ${isNight ? 'text-zinc-500' : 'text-slate-400'}`}>
-                    <path d="M6 4l4 4-4 4" />
-                  </svg>
+                </Link>
+
+                <Link
+                  href="/dashboard/rayssa"
+                  className={`flex items-center gap-3 rounded-2xl border px-4 py-3 backdrop-blur-sm transition-colors ${
+                    isNight
+                      ? 'border-white/15 bg-white/10 hover:bg-white/15'
+                      : 'border-slate-200/80 bg-white/60 hover:bg-white/80'
+                  }`}
+                >
+                  <img src="/rayssa.png" alt="Rayssa" className="h-10 w-10 rounded-full" />
+                  <div className="text-left">
+                    <p className={`text-sm font-semibold leading-tight ${theme.homeTextPrimary}`}>Rayssa</p>
+                    <p className={`mt-0.5 text-xs leading-tight ${theme.homeTextSecondary}`}>Social Publisher</p>
+                  </div>
                 </Link>
 
                 <Link
                   href="/dashboard/familia"
-                  className={`col-span-2 flex items-center gap-3 rounded-2xl border px-5 py-4 backdrop-blur-sm transition-colors ${
+                  className={`col-span-2 flex items-center gap-3 rounded-2xl border px-4 py-3 backdrop-blur-sm transition-colors ${
                     isNight
                       ? 'border-white/15 bg-white/10 hover:bg-white/15'
                       : 'border-slate-200/80 bg-white/60 hover:bg-white/80'
@@ -248,8 +260,8 @@ export function DashboardHome({ userName, isAdmin }: DashboardHomeProps) {
                     F
                   </div>
                   <div className="text-left">
-                    <p className={`text-base font-semibold leading-tight ${theme.homeTextPrimary}`}>Familia</p>
-                    <p className={`mt-0.5 text-sm leading-tight ${theme.homeTextSecondary}`}>Shared Workspace</p>
+                    <p className={`text-sm font-semibold leading-tight ${theme.homeTextPrimary}`}>Familia</p>
+                    <p className={`mt-0.5 text-xs leading-tight ${theme.homeTextSecondary}`}>Shared Workspace</p>
                   </div>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={`ml-auto ${isNight ? 'text-zinc-500' : 'text-slate-400'}`}>
                     <path d="M6 4l4 4-4 4" />
