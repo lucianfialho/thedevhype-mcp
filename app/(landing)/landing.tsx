@@ -48,12 +48,7 @@ function Hero() {
           <img src="/otto.png" alt="Otto" className="h-20 w-20 rounded-full border-3 border-white dark:border-zinc-900" />
           <img src="/eloa.png" alt="Eloa" className="h-20 w-20 rounded-full border-3 border-white dark:border-zinc-900" />
           <img src="/lucian.png" alt="Lucian" className="h-20 w-20 rounded-full border-3 border-white dark:border-zinc-900" />
-          <div className="flex h-20 w-20 items-center justify-center rounded-full border-3 border-white bg-violet-100 dark:border-zinc-900 dark:bg-violet-950">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-violet-600 dark:text-violet-400">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-              <polyline points="9 22 9 12 15 12 15 22" />
-            </svg>
-          </div>
+          <img src="/rayssa.png" alt="Rayssa" className="h-20 w-20 rounded-full border-3 border-white dark:border-zinc-900" />
         </div>
       </div>
 
@@ -758,6 +753,211 @@ function OttoShowcase() {
   );
 }
 
+/* ─── Rayssa Showcase (Compose | Schedule | Accounts) ─── */
+
+function RayssaCompose() {
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <span className="rounded-full bg-zinc-900 px-3 py-1 text-xs font-medium text-white dark:bg-white dark:text-zinc-900">𝕏 Post</span>
+        <span className="rounded-full border border-zinc-200 px-3 py-1 text-xs text-zinc-500 dark:border-zinc-700">LinkedIn</span>
+      </div>
+
+      <div className="rounded-lg border border-zinc-200 dark:border-zinc-800">
+        <div className="p-4">
+          <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
+            Just shipped our new MCP dashboard — connect, manage and monitor all your AI tools in one place. 🚀
+            {'\n\n'}
+            Built with @nextjs and running on @vercel. Check it out 👇
+          </p>
+        </div>
+        <div className="flex items-center justify-between border-t border-zinc-100 px-4 py-2.5 dark:border-zinc-800">
+          <span className="text-xs text-zinc-400">42/280</span>
+          <div className="flex gap-2">
+            <button className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
+              Save draft
+            </button>
+            <button className="rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white dark:bg-white dark:text-zinc-900">
+              Publish now
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="mb-2 text-xs font-medium text-zinc-400">Preview</div>
+        <div className="flex items-start gap-3">
+          <div className="h-10 w-10 shrink-0 rounded-full bg-zinc-100 dark:bg-zinc-800" />
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-bold">Lucian Fialho</span>
+              <span className="text-xs text-zinc-400">@lucian_fialho · now</span>
+            </div>
+            <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+              Just shipped our new MCP dashboard — connect, manage and monitor all your AI tools in one place. 🚀
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RayssaSchedule() {
+  const posts = [
+    { content: 'Just shipped our new MCP dashboard — connect, manage and monitor...', platform: '𝕏', date: 'Feb 21, 2026 · 9:00 AM', status: 'scheduled' },
+    { content: 'Excited to announce our Series A! Thanks to everyone who believed...', platform: 'in', date: 'Feb 20, 2026 · 2:00 PM', status: 'published' },
+    { content: 'Thread: 5 lessons learned building AI agents for the last 6 months', platform: '𝕏', date: 'Draft', status: 'draft' },
+  ];
+
+  const statusColors: Record<string, string> = {
+    scheduled: 'bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400',
+    published: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400',
+    draft: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400',
+  };
+
+  const platformColors: Record<string, string> = {
+    '𝕏': 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900',
+    in: 'bg-blue-600 text-white',
+  };
+
+  return (
+    <div className="space-y-3">
+      {posts.map((p) => (
+        <div key={p.content} className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+          <div className="flex items-center gap-2">
+            <span className={`flex h-6 w-6 items-center justify-center rounded text-[10px] font-bold ${platformColors[p.platform]}`}>
+              {p.platform}
+            </span>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${statusColors[p.status]}`}>
+              {p.status}
+            </span>
+            <span className="ml-auto text-xs text-zinc-400">{p.date}</span>
+          </div>
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400 truncate">{p.content}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RayssaAccounts() {
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-900 text-sm font-bold text-white dark:bg-white dark:text-zinc-900">
+            𝕏
+          </div>
+          <div className="flex-1">
+            <div className="text-sm font-medium">X (Twitter)</div>
+            <div className="text-xs text-zinc-400">@lucian_fialho</div>
+          </div>
+          <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
+            Connected
+          </span>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold text-white">
+            in
+          </div>
+          <div className="flex-1">
+            <div className="text-sm font-medium">LinkedIn</div>
+            <div className="text-xs text-zinc-400">Lucian Fialho</div>
+          </div>
+          <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
+            Connected
+          </span>
+        </div>
+      </div>
+
+      <div className="rounded-lg border-2 border-dashed border-zinc-200 p-4 dark:border-zinc-700">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <div className="text-sm font-medium text-zinc-400">Bluesky</div>
+            <div className="text-xs text-zinc-300 dark:text-zinc-600">Coming soon</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RayssaShowcase() {
+  const [tab, setTab] = useState(0);
+  const tabs = ['Compose', 'Schedule', 'Accounts'];
+  const content = [<RayssaCompose key="c" />, <RayssaSchedule key="s" />, <RayssaAccounts key="a" />];
+
+  const descriptions = [
+    {
+      title: 'Write once, publish anywhere',
+      text: 'Compose posts for X and LinkedIn in a single editor. Rayssa adapts character limits per platform and shows a live preview of your post before publishing.',
+      features: ['Multi-platform composer', 'Adaptive character limits (280/3000)', 'Live post preview'],
+    },
+    {
+      title: 'Schedule for the perfect time',
+      text: 'Queue posts for automatic publishing via cron. See your full schedule with status badges — from draft to scheduled to published.',
+      features: ['Automatic publishing via cron', 'Visual schedule with status', 'Full draft → published tracking'],
+    },
+    {
+      title: 'All your accounts in one place',
+      text: 'Connect your social accounts with one-click OAuth. Manage X and LinkedIn from a single dashboard with secure token management.',
+      features: ['One-click OAuth connect', 'X and LinkedIn support', 'Secure token management'],
+    },
+  ];
+
+  return (
+    <section className="border-t border-zinc-100 py-16 dark:border-zinc-800">
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="mb-10 flex items-center gap-4">
+          <img src="/rayssa.png" alt="Rayssa" className="h-14 w-14 rounded-full" />
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl font-bold">Rayssa</h2>
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
+                New
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-zinc-500">Social Publisher — draft, schedule & publish to X and LinkedIn</p>
+          </div>
+        </div>
+
+        <TabBar tabs={tabs} active={tab} onChange={setTab} />
+
+        <div className="mt-6 grid items-start gap-8 lg:grid-cols-5">
+          <div className="lg:col-span-2 lg:py-4">
+            <h3 className="text-xl font-bold">{descriptions[tab].title}</h3>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-500">{descriptions[tab].text}</p>
+            <ul className="mt-5 space-y-2.5">
+              {descriptions[tab].features.map((f) => (
+                <li key={f} className="flex items-start gap-2.5 text-sm text-zinc-600 dark:text-zinc-400">
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="mt-0.5 shrink-0">
+                    <path d="M5 9l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500" />
+                  </svg>
+                  {f}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="lg:col-span-3">
+            <BrowserMockup url="thedevhype.com/dashboard/rayssa">
+              {content[tab]}
+            </BrowserMockup>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ─── Familia Showcase (Shopping | Tasks | Expenses | Members) ─── */
 
 function FamiliaShopping() {
@@ -975,6 +1175,10 @@ function RecipesSection() {
     { name: 'eloa-content-radar', icon: '🍓', mcp: 'Eloa', desc: 'Monitor competitors and get keyword alerts.', url: 'https://poke.com/refer/hscQ9_KAHKv', automations: 2 },
     { name: 'eloa-newsletter-digest', icon: '🥝', mcp: 'Eloa', desc: 'Curate the best articles for your newsletter.', url: 'https://poke.com/refer/WCLlTuKSRA-', automations: 2 },
     { name: 'second-brain-reader', icon: '🥑', mcp: 'Otto + Eloa', desc: 'Read in Eloa, save highlights to Otto, auto cross-link.', url: 'https://poke.com/refer/gyoLYaC8bf5', automations: 2 },
+    { name: 'rayssa-quick-post', icon: '📣', mcp: 'Rayssa', desc: 'Compose and publish to X or LinkedIn in one step.', url: '#', automations: 1 },
+    { name: 'rayssa-thread-builder', icon: '🧵', mcp: 'Rayssa', desc: 'Build Twitter threads from bullet points.', url: '#', automations: 1 },
+    { name: 'rayssa-content-calendar', icon: '📅', mcp: 'Rayssa', desc: 'Plan and schedule a week of posts.', url: '#', automations: 2 },
+    { name: 'rayssa-eloa-share', icon: '🔗', mcp: 'Rayssa + Eloa', desc: 'Share Eloa articles to social media.', url: '#', automations: 2 },
     { name: 'familia-weekly-planner', icon: '🏡', mcp: 'Familia', desc: 'Plan the week: review tasks, shopping list, and expense balances.', url: 'https://poke.com/refer/nwv87pDEnHt', automations: 2 },
     { name: 'familia-shopping-assistant', icon: '🛒', mcp: 'Familia', desc: 'Reminders before grocery runs and auto-organized lists.', url: 'https://poke.com/refer/iAcZaOWbYTe', automations: 2 },
     { name: 'familia-expense-tracker', icon: '💰', mcp: 'Familia', desc: 'Monthly breakdown by category and who owes whom.', url: 'https://poke.com/r/2tuiANk1p-R', automations: 2 },
@@ -986,6 +1190,8 @@ function RecipesSection() {
     Eloa: 'bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400',
     'Otto + Eloa': 'bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400',
     Familia: 'bg-violet-50 text-violet-600 dark:bg-violet-950 dark:text-violet-400',
+    Rayssa: 'bg-pink-50 text-pink-600 dark:bg-pink-950 dark:text-pink-400',
+    'Rayssa + Eloa': 'bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400',
   };
 
   return (
@@ -1132,6 +1338,7 @@ export default function Landing() {
       <OttoShowcase />
       <EloaShowcase />
       <LucianShowcase />
+      <RayssaShowcase />
       <FamiliaShowcase />
       <RecipesSection />
       <HowItWorks />
