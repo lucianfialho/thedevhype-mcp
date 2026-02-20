@@ -21,25 +21,39 @@ async function refreshTokenIfNeeded(account: SocialAccount): Promise<SocialAccou
     throw new Error('Token expired and no refresh token available. Reconnect the account.');
   }
 
-  const clientId = process.env.TWITTER_CLIENT_ID!;
-  const clientSecret = process.env.TWITTER_CLIENT_SECRET!;
+  let tokenUrl: string;
+  let headers: Record<string, string>;
+  let body: URLSearchParams;
 
-  const res = await fetch('https://api.twitter.com/2/oauth2/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
-    },
-    body: new URLSearchParams({
+  if (account.platform === 'linkedin') {
+    tokenUrl = 'https://www.linkedin.com/oauth/v2/accessToken';
+    headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    body = new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: account.refreshToken,
-    }),
-  });
+      client_id: process.env.LINKEDIN_CLIENT_ID!,
+      client_secret: process.env.LINKEDIN_CLIENT_SECRET!,
+    });
+  } else {
+    const clientId = process.env.TWITTER_CLIENT_ID!;
+    const clientSecret = process.env.TWITTER_CLIENT_SECRET!;
+    tokenUrl = 'https://api.twitter.com/2/oauth2/token';
+    headers = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
+    };
+    body = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: account.refreshToken,
+    });
+  }
+
+  const res = await fetch(tokenUrl, { method: 'POST', headers, body });
 
   if (!res.ok) {
     const error = await res.text();
-    console.error('[Rayssa] Token refresh failed:', error);
-    throw new Error('Failed to refresh Twitter token. Reconnect the account.');
+    console.error(`[Rayssa] ${account.platform} token refresh failed:`, error);
+    throw new Error(`Failed to refresh ${account.platform} token. Reconnect the account.`);
   }
 
   const data = await res.json();
@@ -57,24 +71,22 @@ async function refreshTokenIfNeeded(account: SocialAccount): Promise<SocialAccou
   return updated;
 }
 
-// ─── Publish Helper ───
+// ─── Publish Helpers ───
 
-export async function publishPost(
+async function publishToTwitter(
   post: Post,
   account: SocialAccount,
-  inReplyToTweetId?: string,
+  inReplyToId?: string,
 ): Promise<{ platformPostId: string; platformPostUrl: string }> {
-  const freshAccount = await refreshTokenIfNeeded(account);
-
   const body: Record<string, unknown> = { text: post.content };
-  if (inReplyToTweetId) {
-    body.reply = { in_reply_to_tweet_id: inReplyToTweetId };
+  if (inReplyToId) {
+    body.reply = { in_reply_to_tweet_id: inReplyToId };
   }
 
   const res = await fetch('https://api.twitter.com/2/tweets', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${freshAccount.accessToken}`,
+      Authorization: `Bearer ${account.accessToken}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
@@ -82,36 +94,98 @@ export async function publishPost(
 
   if (!res.ok) {
     const error = await res.text();
-    console.error('[Rayssa] Tweet failed:', error);
-
-    await db
-      .update(posts)
-      .set({
-        status: 'failed',
-        errorMessage: error.slice(0, 500),
-        updatedAt: new Date().toISOString(),
-      })
-      .where(eq(posts.id, post.id));
-
     throw new Error(`Twitter API error: ${error.slice(0, 200)}`);
   }
 
   const data = await res.json();
   const tweetId = data.data.id;
-  const tweetUrl = `https://x.com/${freshAccount.username}/status/${tweetId}`;
-
-  await db
-    .update(posts)
-    .set({
-      status: 'published',
-      publishedAt: new Date().toISOString(),
-      platformPostId: tweetId,
-      platformPostUrl: tweetUrl,
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(posts.id, post.id));
-
+  const tweetUrl = `https://x.com/${account.username}/status/${tweetId}`;
   return { platformPostId: tweetId, platformPostUrl: tweetUrl };
+}
+
+async function publishToLinkedIn(
+  post: Post,
+  account: SocialAccount,
+): Promise<{ platformPostId: string; platformPostUrl: string }> {
+  const res = await fetch('https://api.linkedin.com/rest/posts', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${account.accessToken}`,
+      'Content-Type': 'application/json',
+      'LinkedIn-Version': '202401',
+      'X-Restli-Protocol-Version': '2.0.0',
+    },
+    body: JSON.stringify({
+      author: `urn:li:person:${account.platformUserId}`,
+      commentary: post.content,
+      visibility: 'PUBLIC',
+      distribution: {
+        feedDistribution: 'MAIN_FEED',
+        targetEntities: [],
+        thirdPartyDistributionChannels: [],
+      },
+      lifecycleState: 'PUBLISHED',
+      isReshareDisabledByAuthor: false,
+    }),
+  });
+
+  if (!res.ok) {
+    const error = await res.text();
+    throw new Error(`LinkedIn API error: ${error.slice(0, 200)}`);
+  }
+
+  // LinkedIn returns the post URN in the x-restli-id header
+  const postUrn = res.headers.get('x-restli-id') || '';
+  // Extract activity ID for URL: urn:li:share:123 → 123
+  const activityId = postUrn.split(':').pop() || postUrn;
+  const postUrl = `https://www.linkedin.com/feed/update/${postUrn}`;
+
+  return { platformPostId: activityId, platformPostUrl: postUrl };
+}
+
+export async function publishPost(
+  post: Post,
+  account: SocialAccount,
+  inReplyToId?: string,
+): Promise<{ platformPostId: string; platformPostUrl: string }> {
+  const freshAccount = await refreshTokenIfNeeded(account);
+
+  try {
+    let result: { platformPostId: string; platformPostUrl: string };
+
+    if (freshAccount.platform === 'linkedin') {
+      result = await publishToLinkedIn(post, freshAccount);
+    } else {
+      result = await publishToTwitter(post, freshAccount, inReplyToId);
+    }
+
+    await db
+      .update(posts)
+      .set({
+        status: 'published',
+        publishedAt: new Date().toISOString(),
+        platformPostId: result.platformPostId,
+        platformPostUrl: result.platformPostUrl,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(posts.id, post.id));
+
+    return result;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error(`[Rayssa] ${freshAccount.platform} publish failed:`, message);
+
+    await db
+      .update(posts)
+      .set({
+        status: 'failed',
+        errorMessage: message.slice(0, 500),
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(posts.id, post.id));
+
+    throw err;
+  }
 }
 
 // ─── Server Definition ───
@@ -119,31 +193,35 @@ export async function publishPost(
 export const rayssaServer: McpServerDefinition = {
   name: 'rayssa',
   description:
-    'Rayssa — Social Media Publisher: create drafts, schedule, and publish posts to X/Twitter',
+    'Rayssa — Social Media Publisher: create drafts, schedule, and publish posts to X/Twitter and LinkedIn',
   category: 'Social Media Tools',
   icon: '/rayssa.png',
   badge: 'New',
   instructions: `# Rayssa — Social Media Publisher
 
 ## Purpose
-Rayssa helps you create, schedule, and publish posts to X/Twitter. Think of it as your MCP-powered Buffer/Later.
+Rayssa helps you create, schedule, and publish posts to X/Twitter and LinkedIn. Think of it as your MCP-powered Buffer/Later.
 
 ## Key Concepts
-- **Social Account**: A connected X/Twitter account authenticated via OAuth 2.0.
+- **Social Account**: A connected X/Twitter or LinkedIn account authenticated via OAuth 2.0.
 - **Post**: Content to publish. Starts as a draft, can be scheduled for later, or published immediately.
-- **Thread**: A sequence of posts published as replies to each other. Created atomically.
+- **Thread**: A sequence of posts published as replies to each other (X/Twitter only). Created atomically.
 - **Status Flow**: draft → scheduled → publishing → published (or failed at any point).
+
+## Platform Limits
+- **X/Twitter**: 280 characters per tweet. Supports threads.
+- **LinkedIn**: 3000 characters per post. No thread support.
 
 ## Typical Workflows
 1. **Quick Post**: \`create_post\` → \`publish_now\`
 2. **Scheduled Post**: \`create_post\` → \`schedule_post\` (publishes automatically at scheduled time)
-3. **Thread**: \`create_thread\` → \`publish_now\` (publishes first post, which chains the rest)
+3. **Thread (X only)**: \`create_thread\` → \`publish_now\` (publishes first post, which chains the rest)
 4. **Draft & Refine**: \`create_post\` → \`edit_post\` → \`publish_now\`
 
 ## Conventions
 - IDs are numeric integers.
 - Dates must be ISO 8601 format (e.g. "2025-01-15T14:30:00Z").
-- Post content follows X/Twitter limits (280 characters per tweet).
+- Post content limit depends on platform: 280 chars (X) or 3000 chars (LinkedIn).
 - Connect an account first via the dashboard before using post tools.`,
   tools: [
     {
@@ -188,7 +266,7 @@ Rayssa helps you create, schedule, and publish posts to X/Twitter. Think of it a
     {
       name: 'publish_now',
       description:
-        'Publish a draft or scheduled post immediately to X/Twitter. For threads, publishes all posts in sequence. Returns the tweet URL on success.',
+        'Publish a draft or scheduled post immediately to X/Twitter or LinkedIn. For threads (X only), publishes all posts in sequence. Returns the post URL on success.',
     },
     {
       name: 'delete_post',
@@ -234,7 +312,7 @@ Rayssa helps you create, schedule, and publish posts to X/Twitter. Think of it a
       'create_post',
       'Create a new draft post. Requires content text and accountId. Returns the created post object.',
       {
-        content: z.string().min(1).max(280).describe('Post content (max 280 characters for X)'),
+        content: z.string().min(1).max(3000).describe('Post content (max 280 chars for X, 3000 for LinkedIn)'),
         accountId: z.number().describe('Social account ID — get from list_accounts'),
       },
       async ({ content, accountId }, extra) => {
@@ -268,7 +346,7 @@ Rayssa helps you create, schedule, and publish posts to X/Twitter. Think of it a
       'Edit the content of a draft or scheduled post. Only works for unpublished posts.',
       {
         postId: z.number().describe('Post ID — get from list_posts'),
-        content: z.string().min(1).max(280).describe('New content (max 280 characters for X)'),
+        content: z.string().min(1).max(3000).describe('New content (max 280 chars for X, 3000 for LinkedIn)'),
       },
       { idempotentHint: true },
       async ({ postId, content }, extra) => {
@@ -601,10 +679,10 @@ Rayssa helps you create, schedule, and publish posts to X/Twitter. Think of it a
       'Create a thread (multiple linked posts). Provide an array of content strings and an accountId. All posts start as drafts. Use publish_now on the first post ID to publish the entire thread.',
       {
         contents: z
-          .array(z.string().min(1).max(280))
+          .array(z.string().min(1).max(3000))
           .min(2)
           .max(25)
-          .describe('Array of tweet contents (2-25 items, max 280 chars each)'),
+          .describe('Array of post contents (2-25 items, max 280 chars each for X)'),
         accountId: z.number().describe('Social account ID — get from list_accounts'),
       },
       async ({ contents, accountId }, extra) => {

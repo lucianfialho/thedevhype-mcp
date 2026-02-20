@@ -16,8 +16,11 @@ export function ComposeTab({ accounts, onPostCreated }: ComposeTabProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  const selectedPlatform = accounts.find((a) => a.id === selectedAccount)?.platform || 'twitter';
+  const charLimit = selectedPlatform === 'linkedin' ? 3000 : 280;
   const charCount = content.length;
-  const isOverLimit = charCount > 280;
+  const isOverLimit = charCount > charLimit;
+  const warnThreshold = selectedPlatform === 'linkedin' ? charLimit - 200 : charLimit - 20;
   const canSubmit = content.trim().length > 0 && !isOverLimit && selectedAccount > 0 && !isPending;
 
   function handleSaveDraft() {
@@ -50,7 +53,7 @@ export function ComposeTab({ accounts, onPostCreated }: ComposeTabProps) {
           <line x1="23" y1="11" x2="17" y2="11" />
         </svg>
         <p className="text-base text-slate-500">No accounts connected</p>
-        <p className="mt-1 text-sm text-slate-400">Go to Accounts tab to connect X.</p>
+        <p className="mt-1 text-sm text-slate-400">Go to Accounts tab to connect X or LinkedIn.</p>
       </div>
     );
   }
@@ -68,7 +71,7 @@ export function ComposeTab({ accounts, onPostCreated }: ComposeTabProps) {
           >
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>
-                @{a.username || a.platform}
+                {a.platform === 'linkedin' ? '🔷' : '𝕏'} {a.displayName || a.username || a.platform}
               </option>
             ))}
           </select>
@@ -80,17 +83,17 @@ export function ComposeTab({ accounts, onPostCreated }: ComposeTabProps) {
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="What's happening?"
+          placeholder={selectedPlatform === 'linkedin' ? "What do you want to talk about?" : "What's happening?"}
           rows={5}
           className="w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-800 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
         />
         <div className="absolute bottom-3 right-3 flex items-center gap-2">
           <span
             className={`text-sm font-medium ${
-              isOverLimit ? 'text-red-500' : charCount > 260 ? 'text-amber-500' : 'text-slate-400'
+              isOverLimit ? 'text-red-500' : charCount > warnThreshold ? 'text-amber-500' : 'text-slate-400'
             }`}
           >
-            {charCount}/280
+            {charCount}/{charLimit}
           </span>
         </div>
       </div>

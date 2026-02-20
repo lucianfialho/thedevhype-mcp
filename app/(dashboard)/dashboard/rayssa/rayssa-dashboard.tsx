@@ -80,7 +80,7 @@ export function RayssaDashboard({
         <img src="/rayssa.png" alt="Rayssa" className="h-10 w-10 rounded-full" />
         <div className="min-w-0 flex-1">
           <h2 className="text-lg font-bold text-slate-800">Rayssa</h2>
-          <p className="text-sm text-slate-500">Social Media Publisher</p>
+          <p className="text-sm text-slate-500">Social Publisher</p>
         </div>
         <TabSelect
           options={TABS}
@@ -97,8 +97,8 @@ export function RayssaDashboard({
         >
           <span className="text-lg">🔗</span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-sky-800">Connect your X account first</p>
-            <p className="text-xs text-sky-600">Link your Twitter/X account to start publishing.</p>
+            <p className="text-sm font-medium text-sky-800">Connect a social account first</p>
+            <p className="text-xs text-sky-600">Link your X or LinkedIn account to start publishing.</p>
           </div>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-sky-400">
             <path d="M6 4l4 4-4 4" />
