@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { auth } from '@/app/lib/auth/server';
 
 /**
@@ -23,18 +22,6 @@ export async function GET() {
   const codeChallenge = await generateCodeChallenge(codeVerifier);
   const state = crypto.randomUUID();
 
-  // Save state + code verifier in httpOnly cookies (expire in 10 min)
-  const cookieStore = await cookies();
-  const cookieOpts = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
-    maxAge: 600, // 10 minutes
-    path: '/',
-  };
-  cookieStore.set('twitter_oauth_state', state, cookieOpts);
-  cookieStore.set('twitter_code_verifier', codeVerifier, cookieOpts);
-
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.thedevhype.com';
   const redirectUri = `${baseUrl}/api/auth/twitter/callback`;
 
@@ -48,7 +35,21 @@ export async function GET() {
     code_challenge_method: 'S256',
   });
 
-  return NextResponse.redirect(`https://twitter.com/i/oauth2/authorize?${params.toString()}`);
+  const twitterUrl = `https://twitter.com/i/oauth2/authorize?${params.toString()}`;
+  const response = NextResponse.redirect(twitterUrl);
+
+  // Set cookies on the response directly (cookies() API doesn't work with redirects)
+  const cookieOpts = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    maxAge: 600,
+    path: '/',
+  };
+  response.cookies.set('twitter_oauth_state', state, cookieOpts);
+  response.cookies.set('twitter_code_verifier', codeVerifier, cookieOpts);
+
+  return response;
 }
 
 // ─── PKCE helpers ───
