@@ -15,12 +15,17 @@ export function OPTIONS() {
  * Returns 200 regardless of whether the token was found (per spec).
  */
 export async function POST(request: Request) {
-  const body = await request.formData().catch(() => null);
-  const token = body?.get('token') as string | null;
+  try {
+    const body = await request.formData().catch(() => null);
+    const token = body?.get('token') as string | null;
 
-  if (token) {
-    await revokeToken(token);
+    if (token) {
+      await revokeToken(token);
+    }
+
+    return new Response(null, { status: 200, headers: corsHeaders });
+  } catch (err) {
+    console.error('[oauth/revoke] error:', err);
+    return new Response(null, { status: 200, headers: corsHeaders });
   }
-
-  return new Response(null, { status: 200, headers: corsHeaders });
 }

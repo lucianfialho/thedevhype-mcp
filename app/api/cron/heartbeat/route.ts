@@ -33,34 +33,38 @@ async function checkEndpoint(url: string) {
 }
 
 export async function GET() {
-  const sql = neon(process.env.DATABASE_URL!);
-  const baseUrl = "https://thedevhype.com";
+  try {
+    const sql = neon(process.env.DATABASE_URL!);
 
-  const checks: Record<string, { status: string; latency: number; message?: string }> = {};
+    const checks: Record<string, { status: string; latency: number; message?: string }> = {};
 
-  // Infrastructure checks
-  checks.database = await checkDependency("database", async () => {
-    await sql`SELECT 1`;
-  });
+    // Infrastructure checks
+    checks.database = await checkDependency("database", async () => {
+      await sql`SELECT 1`;
+    });
 
-  // /api/health excluded — BlueMonitor already monitors it via pull check
+    // /api/health excluded — BlueMonitor already monitors it via pull check
 
-  const hasError = Object.values(checks).some((c) => c.status === "error");
-  const status = hasError ? "error" : "ok";
+    const hasError = Object.values(checks).some((c) => c.status === "error");
+    const status = hasError ? "error" : "ok";
 
-  await fetch("https://www.bluemonitor.org/api/v1/heartbeat", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.BLUEMONITOR_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      domain: "thedevhype.com",
-      status,
-      timestamp: new Date().toISOString(),
-      checks,
-    }),
-  });
+    await fetch("https://www.bluemonitor.org/api/v1/heartbeat", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.BLUEMONITOR_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        domain: "thedevhype.com",
+        status,
+        timestamp: new Date().toISOString(),
+        checks,
+      }),
+    }).catch(() => {});
 
-  return Response.json({ ok: true });
+    return Response.json({ ok: true });
+  } catch (err) {
+    console.error('[cron/heartbeat] error:', err);
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }
