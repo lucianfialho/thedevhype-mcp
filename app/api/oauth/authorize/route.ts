@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const { data: session } = await auth.getSession();
+  const { data: session } = await auth.getSession().catch(() => ({ data: null }));
   const userId = session?.user?.id;
 
   if (!userId) {
