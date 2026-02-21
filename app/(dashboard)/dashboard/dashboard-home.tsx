@@ -165,7 +165,16 @@ export function DashboardHome({ userName, isAdmin }: DashboardHomeProps) {
               <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                 <img src="/logo.png" alt="thedevhype" className="h-6 w-6" />
               </Link>
-              <div />
+              <Link
+                href="/dashboard/billing"
+                className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
+                  isNight
+                    ? 'bg-white/10 text-white/70 hover:bg-white/15 hover:text-white'
+                    : 'bg-black/5 text-slate-600 hover:bg-black/10 hover:text-slate-800'
+                }`}
+              >
+                Billing
+              </Link>
               <UserButton
                 size="icon"
                 additionalLinks={isAdmin ? [{ href: '/dashboard/admin', label: 'Admin', signedIn: true }] : []}

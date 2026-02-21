@@ -216,3 +216,26 @@ export const mcpOAuthTokens = pgTable('mcp_oauth_tokens', {
 
 export type McpOAuthToken = InferSelectModel<typeof mcpOAuthTokens>;
 export type NewMcpOAuthToken = InferInsertModel<typeof mcpOAuthTokens>;
+
+// --- Subscriptions (Stripe billing) ---
+
+export const subscriptions = pgTable('subscriptions', {
+  id: bigint({ mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  userId: uuid().notNull().references(() => userInNeonAuth.id),
+  stripeCustomerId: text().notNull(),
+  stripeSubscriptionId: text().notNull().unique(),
+  stripePriceId: text().notNull(),
+  plan: text().notNull(), // 'eloa' | 'otto' | 'familia' | 'rayssa' | 'lucian' | 'bundle'
+  status: text().notNull(), // 'active' | 'canceled' | 'past_due' | 'incomplete'
+  currentPeriodEnd: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
+  cancelAtPeriodEnd: boolean().default(false).notNull(),
+  createdAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updatedAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
+
+export type Subscription = InferSelectModel<typeof subscriptions>;
+export type NewSubscription = InferInsertModel<typeof subscriptions>;

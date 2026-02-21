@@ -6,6 +6,8 @@ import { db } from '../../db';
 import { userMcpAccess } from '../../db/public.schema';
 import { getUserId } from '../auth-helpers';
 import { toolError } from '../errors';
+import { LUCIAN_LIMITS } from '../../billing/config';
+import { hasLucianSubscription, isGrandfathered } from '../../billing/subscriptions';
 import {
   extractions,
   stores,
@@ -130,8 +132,10 @@ Lucian extrai dados de Notas Fiscais eletrônicas (NFC-e) brasileiras, armazena 
       async ({ input }, extra) => {
         const userId = getUserId(extra as Record<string, unknown>);
 
-        // Monthly extraction limit (free tier: 10/month)
-        const MONTHLY_LIMIT = 10;
+        // Monthly extraction limit: tier-aware (free: 10, subscribed: 50, grandfathered: 50)
+        const grandfathered = await isGrandfathered(userId);
+        const subscribed = await hasLucianSubscription(userId);
+        const MONTHLY_LIMIT = (subscribed || grandfathered) ? LUCIAN_LIMITS.subscribed : LUCIAN_LIMITS.free;
         const firstOfMonth = new Date();
         firstOfMonth.setDate(1);
         firstOfMonth.setHours(0, 0, 0, 0);
@@ -147,7 +151,10 @@ Lucian extrai dados de Notas Fiscais eletrônicas (NFC-e) brasileiras, armazena 
           );
 
         if (total >= MONTHLY_LIMIT) {
-          return toolError(`Limite mensal atingido: ${total}/${MONTHLY_LIMIT} extrações usadas este mês.`, 'Aguarde o próximo mês para novas extrações ou faça upgrade para o plano Pro.');
+          const upgradeHint = !subscribed && !grandfathered
+            ? 'Faça upgrade em https://www.thedevhype.com/pricing para obter 50 extrações/mês.'
+            : 'Aguarde o próximo mês para novas extrações.';
+          return toolError(`Limite mensal atingido: ${total}/${MONTHLY_LIMIT} extrações usadas este mês.`, upgradeHint);
         }
 
         const accessKey = extractAccessKey(input);

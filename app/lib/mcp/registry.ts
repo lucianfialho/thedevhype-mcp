@@ -4,6 +4,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { db } from '../db';
 import { mcpToolUsage } from '../db/public.schema';
 import { getUserId } from './auth-helpers';
+import { hasAccessToMcp } from '../billing/subscriptions';
 import type { McpServerDefinition, McpServerInitFn } from './types';
 import { sql, and, eq, gte } from 'drizzle-orm';
 
@@ -52,6 +53,17 @@ function wrapInit(serverName: string, originalInit: McpServerInitFn): McpServerI
               throw new McpError(
                 -32600, // InvalidRequest
                 `Rate limit exceeded: ${RATE_LIMIT_MAX} calls per minute. Wait before retrying.`,
+              );
+            }
+          }
+
+          // Subscription check: verify user has access to this MCP
+          if (userId) {
+            const hasAccess = await hasAccessToMcp(userId, serverName);
+            if (!hasAccess) {
+              throw new McpError(
+                -32600,
+                `Subscription required for ${serverName}. Subscribe at https://www.thedevhype.com/pricing`,
               );
             }
           }
