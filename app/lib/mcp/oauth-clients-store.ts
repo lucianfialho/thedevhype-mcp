@@ -1,4 +1,3 @@
-import crypto from 'node:crypto';
 import type {
   OAuthClientInformationFull,
   OAuthClientMetadata,
@@ -7,6 +6,12 @@ import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/serv
 import { db } from '../db';
 import { mcpOAuthClients } from '../db/public.schema';
 import { eq } from 'drizzle-orm';
+
+function randomHex(bytes: number): string {
+  const array = new Uint8Array(bytes);
+  crypto.getRandomValues(array);
+  return Array.from(array, (b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 function rowToClientInfo(row: typeof mcpOAuthClients.$inferSelect): OAuthClientInformationFull {
   return {
@@ -49,7 +54,7 @@ export class McpOAuthClientsStore implements OAuthRegisteredClientsStore {
 
     // Public clients use 'none', confidential clients get a secret
     const authMethod = metadata.token_endpoint_auth_method ?? 'none';
-    const clientSecret = authMethod !== 'none' ? crypto.randomBytes(32).toString('hex') : null;
+    const clientSecret = authMethod !== 'none' ? randomHex(32) : null;
 
     const [row] = await db
       .insert(mcpOAuthClients)

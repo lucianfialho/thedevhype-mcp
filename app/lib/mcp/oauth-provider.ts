@@ -1,4 +1,3 @@
-import crypto from 'node:crypto';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import { db } from '../db';
 import { mcpOAuthCodes, mcpOAuthTokens } from '../db/public.schema';
@@ -6,8 +5,14 @@ import { eq, and, isNull } from 'drizzle-orm';
 
 const ACCESS_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 
+function randomHex(bytes: number): string {
+  const array = new Uint8Array(bytes);
+  crypto.getRandomValues(array);
+  return Array.from(array, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 function generateToken(): string {
-  return crypto.randomBytes(32).toString('hex');
+  return randomHex(32);
 }
 
 export interface CreateCodeParams {
@@ -86,10 +91,12 @@ export async function exchangeAuthorizationCode(
   if (codeRow.redirectUri !== redirectUri) return null;
 
   // Verify PKCE S256 challenge
-  const expectedChallenge = crypto
-    .createHash('sha256')
-    .update(codeVerifier)
-    .digest('base64url');
+  const encoder = new TextEncoder();
+  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(codeVerifier));
+  const expectedChallenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 
   if (expectedChallenge !== codeRow.codeChallenge) return null;
 
@@ -208,8 +215,8 @@ export async function verifyAccessToken(token: string): Promise<AuthInfo | null>
 export async function revokeToken(token: string): Promise<void> {
   const now = new Date().toISOString();
 
-  // Try revoking as access token
-  const accessResult = await db
+  // Try revoking as access token, then as refresh token
+  await db
     .update(mcpOAuthTokens)
     .set({ revokedAt: now })
     .where(
@@ -219,16 +226,13 @@ export async function revokeToken(token: string): Promise<void> {
       ),
     );
 
-  // If not found as access token, try as refresh token
-  if (!accessResult.rowCount || accessResult.rowCount === 0) {
-    await db
-      .update(mcpOAuthTokens)
-      .set({ revokedAt: now })
-      .where(
-        and(
-          eq(mcpOAuthTokens.refreshToken, token),
-          isNull(mcpOAuthTokens.revokedAt),
-        ),
-      );
-  }
+  await db
+    .update(mcpOAuthTokens)
+    .set({ revokedAt: now })
+    .where(
+      and(
+        eq(mcpOAuthTokens.refreshToken, token),
+        isNull(mcpOAuthTokens.revokedAt),
+      ),
+    );
 }
