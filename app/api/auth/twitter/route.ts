@@ -8,7 +8,7 @@ import { auth } from '@/app/lib/auth/server';
  * Generates state + code_verifier, saves in httpOnly cookies, redirects to Twitter.
  */
 export async function GET() {
-  const { data: session } = await auth.getSession();
+  const { data: session } = await auth.getSession().catch(() => ({ data: null }));
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }

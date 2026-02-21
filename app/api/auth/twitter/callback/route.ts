@@ -11,7 +11,7 @@ import { sql } from 'drizzle-orm';
  * Handles Twitter OAuth 2.0 callback: exchanges code for tokens, saves account.
  */
 export async function GET(request: Request) {
-  const { data: session } = await auth.getSession();
+  const { data: session } = await auth.getSession().catch(() => ({ data: null }));
   if (!session?.user?.id) {
     return NextResponse.redirect(new URL('/dashboard/rayssa?error=not_authenticated', request.url));
   }
