@@ -2,29 +2,59 @@ import { NextResponse } from 'next/server';
 import { withMcpAuth } from 'mcp-handler';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import { db } from '../../../lib/db';
-import { userMcpAccess } from '../../../lib/db/public.schema';
-import { eq, and } from 'drizzle-orm';
+import { userMcpAccess, mcpOAuthTokens } from '../../../lib/db/public.schema';
+import { eq, and, isNull } from 'drizzle-orm';
 import { registry } from '../../../lib/mcp/servers';
 
 function createVerifyToken(serverName: string) {
   return async (_req: Request, bearerToken?: string): Promise<AuthInfo | undefined> => {
     if (!bearerToken) return undefined;
 
-    const rows = await db
-      .select({ userId: userMcpAccess.userId })
-      .from(userMcpAccess)
+    // 1. Try as API key (sk-*) — existing flow
+    if (bearerToken.startsWith('sk-')) {
+      const rows = await db
+        .select({ userId: userMcpAccess.userId })
+        .from(userMcpAccess)
+        .where(
+          and(
+            eq(userMcpAccess.apiKey, bearerToken),
+            eq(userMcpAccess.mcpName, serverName),
+            eq(userMcpAccess.enabled, true),
+          ),
+        )
+        .limit(1);
+
+      if (rows.length > 0) {
+        return { token: bearerToken, clientId: '', scopes: [], extra: { userId: rows[0].userId } };
+      }
+    }
+
+    // 2. Try as OAuth access token
+    const tokenRows = await db
+      .select()
+      .from(mcpOAuthTokens)
       .where(
         and(
-          eq(userMcpAccess.apiKey, bearerToken),
-          eq(userMcpAccess.mcpName, serverName),
-          eq(userMcpAccess.enabled, true),
+          eq(mcpOAuthTokens.accessToken, bearerToken),
+          isNull(mcpOAuthTokens.revokedAt),
         ),
       )
       .limit(1);
 
-    if (rows.length === 0) return undefined;
+    if (tokenRows.length > 0) {
+      const row = tokenRows[0];
+      if (new Date(row.expiresAt) > new Date()) {
+        return {
+          token: bearerToken,
+          clientId: row.clientId,
+          scopes: row.scopes?.split(' ') ?? [],
+          expiresAt: Math.floor(new Date(row.expiresAt).getTime() / 1000),
+          extra: { userId: row.userId },
+        };
+      }
+    }
 
-    return { token: bearerToken, clientId: '', scopes: [], extra: { userId: rows[0].userId } };
+    return undefined;
   };
 }
 
@@ -61,7 +91,23 @@ function buildDocs(serverName: string): Response | null {
   lines.push('');
   lines.push('## Quick Start');
   lines.push('');
-  lines.push('Add to your MCP client config (Claude, Cursor, etc):');
+  lines.push('### Option 1: OAuth (recommended)');
+  lines.push('');
+  lines.push('Clients that support MCP OAuth (Claude Desktop, Cursor, etc) will authenticate automatically:');
+  lines.push('');
+  lines.push('```json');
+  lines.push(JSON.stringify({
+    mcpServers: {
+      [server.name]: {
+        url: endpoint,
+      },
+    },
+  }, null, 2));
+  lines.push('```');
+  lines.push('');
+  lines.push('### Option 2: API Key');
+  lines.push('');
+  lines.push('For clients that don\'t support OAuth, use an API key:');
   lines.push('');
   lines.push('```json');
   lines.push(JSON.stringify({
@@ -125,7 +171,10 @@ async function handleRequest(request: Request, { params }: { params: Promise<{ p
     );
   }
 
-  const handler = withMcpAuth(baseHandler, createVerifyToken(serverName), { required: true });
+  const handler = withMcpAuth(baseHandler, createVerifyToken(serverName), {
+    required: true,
+    resourceMetadataPath: '/.well-known/oauth-protected-resource',
+  });
   return handler(request);
 }
 

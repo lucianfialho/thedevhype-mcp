@@ -153,3 +153,66 @@ export const waitlist = pgTable('waitlist', {
 
 export type Waitlist = InferSelectModel<typeof waitlist>;
 export type NewWaitlist = InferInsertModel<typeof waitlist>;
+
+// --- MCP OAuth: Dynamic Client Registration (RFC 7591) ---
+
+export const mcpOAuthClients = pgTable('mcp_oauth_clients', {
+  id: bigint({ mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  clientId: text().notNull().unique(),
+  clientSecret: text(),
+  clientSecretExpiresAt: integer(),
+  redirectUris: text().array().notNull(),
+  grantTypes: text().array().notNull(),
+  responseTypes: text().array().notNull(),
+  tokenEndpointAuthMethod: text().notNull(),
+  clientName: text(),
+  scope: text(),
+  clientIdIssuedAt: integer().notNull(),
+  createdAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
+
+export type McpOAuthClient = InferSelectModel<typeof mcpOAuthClients>;
+export type NewMcpOAuthClient = InferInsertModel<typeof mcpOAuthClients>;
+
+// --- MCP OAuth: Authorization Codes ---
+
+export const mcpOAuthCodes = pgTable('mcp_oauth_codes', {
+  id: bigint({ mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  clientId: text().notNull(),
+  userId: uuid().notNull().references(() => userInNeonAuth.id),
+  code: text().notNull().unique(),
+  codeChallenge: text().notNull(),
+  redirectUri: text().notNull(),
+  scopes: text(),
+  resource: text(),
+  expiresAt: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
+  used: boolean().default(false).notNull(),
+  createdAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
+
+export type McpOAuthCode = InferSelectModel<typeof mcpOAuthCodes>;
+export type NewMcpOAuthCode = InferInsertModel<typeof mcpOAuthCodes>;
+
+// --- MCP OAuth: Access & Refresh Tokens ---
+
+export const mcpOAuthTokens = pgTable('mcp_oauth_tokens', {
+  id: bigint({ mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  clientId: text().notNull(),
+  userId: uuid().notNull().references(() => userInNeonAuth.id),
+  accessToken: text().notNull().unique(),
+  refreshToken: text().unique(),
+  scopes: text(),
+  resource: text(),
+  expiresAt: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
+  revokedAt: timestamp({ withTimezone: true, mode: 'string' }),
+  createdAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
+
+export type McpOAuthToken = InferSelectModel<typeof mcpOAuthTokens>;
+export type NewMcpOAuthToken = InferInsertModel<typeof mcpOAuthTokens>;

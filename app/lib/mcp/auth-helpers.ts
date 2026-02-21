@@ -12,7 +12,7 @@ export function getUserId(extra: Record<string, unknown>): string {
   if (!userId) {
     throw new McpError(
       ErrorCode.InvalidRequest,
-      'Authentication required. Provide a valid Bearer token in the Authorization header. Get your API key at https://www.thedevhype.com/onboarding',
+      'Authentication required. Use OAuth (configure your MCP client with just the URL) or provide an API key via Authorization header. Get your API key at https://www.thedevhype.com/onboarding',
     );
   }
   return userId;
