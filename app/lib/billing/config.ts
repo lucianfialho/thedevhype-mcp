@@ -67,4 +67,4 @@ export const LUCIAN_LIMITS = {
 } as const;
 
 /** Users approved before this date keep free access */
-export const BILLING_LAUNCH_DATE = new Date('2025-07-01T00:00:00Z');
+export const BILLING_LAUNCH_DATE = new Date('2026-12-31T23:59:59Z');

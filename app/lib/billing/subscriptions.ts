@@ -1,6 +1,6 @@
 import type Stripe from 'stripe';
 import { db } from '../db';
-import { subscriptions, waitlist } from '../db/public.schema';
+import { subscriptions, waitlist, userProfiles } from '../db/public.schema';
 import { eq, and, inArray, lte } from 'drizzle-orm';
 import { PLANS, BILLING_LAUNCH_DATE, type PlanName } from './config';
 
@@ -34,9 +34,12 @@ export async function hasAccessToMcp(userId: string, mcpName: string): Promise<b
 }
 
 /**
- * Users approved on the waitlist before the billing launch date keep free access.
+ * Beta users get free access. A user is grandfathered if:
+ * 1. Approved on the waitlist before the billing launch date, OR
+ * 2. Has a user profile but no waitlist entry (pre-waitlist user)
  */
 export async function isGrandfathered(userId: string): Promise<boolean> {
+  // Check waitlist: approved before launch
   const [wlEntry] = await db
     .select({ approvedAt: waitlist.approvedAt })
     .from(waitlist)
@@ -49,7 +52,24 @@ export async function isGrandfathered(userId: string): Promise<boolean> {
     )
     .limit(1);
 
-  return !!wlEntry;
+  if (wlEntry) return true;
+
+  // Pre-waitlist users: have a profile but no waitlist entry
+  const [profile] = await db
+    .select({ userId: userProfiles.userId })
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, userId))
+    .limit(1);
+
+  if (!profile) return false;
+
+  const [hasWaitlist] = await db
+    .select({ id: waitlist.id })
+    .from(waitlist)
+    .where(eq(waitlist.userId, userId))
+    .limit(1);
+
+  return !hasWaitlist;
 }
 
 /**
