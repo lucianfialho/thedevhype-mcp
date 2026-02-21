@@ -12,7 +12,7 @@ function json(data: unknown, status = 200) {
 
 export async function POST(request: Request) {
   try {
-    const { data: session } = await auth.getSession();
+    const { data: session } = await auth.getSession().catch(() => ({ data: null }));
     const userId = session?.user?.id;
     if (!userId) {
       return json({ error: 'Not authenticated' }, 401);

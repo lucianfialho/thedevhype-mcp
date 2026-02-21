@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const { data: session } = await auth.getSession();
+    const { data: session } = await auth.getSession().catch(() => ({ data: null }));
     const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
