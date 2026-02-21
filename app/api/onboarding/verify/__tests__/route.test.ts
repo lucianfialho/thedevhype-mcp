@@ -82,13 +82,13 @@ describe('GET /api/onboarding/verify', () => {
     expect(body.firstCallAt).toBe(date.toISOString());
   });
 
-  it('should return 500 when an error occurs', async () => {
+  it('should return 401 when getSession rejects', async () => {
     mockGetSession.mockRejectedValue(new Error('DB down'));
 
     const response = await GET();
     const body = await response.json();
 
-    expect(response.status).toBe(500);
-    expect(body.error).toBe('Internal server error');
+    expect(response.status).toBe(401);
+    expect(body.error).toBe('Not authenticated');
   });
 });
