@@ -10,19 +10,26 @@ const corsHeaders = {
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ path: string[] }> },
+  ctx: { params: Promise<{ path: string[] }> },
 ) {
-  const { path } = await params;
-  const resourcePath = '/' + path.join('/');
+  try {
+    const { path } = await ctx.params;
+    const resourcePath = '/' + path.join('/');
 
-  const metadata = {
-    resource: `${ISSUER}${resourcePath}`,
-    authorization_servers: [ISSUER],
-    scopes_supported: ['mcp:tools'],
-    bearer_methods_supported: ['header'],
-  };
+    const metadata = {
+      resource: `${ISSUER}${resourcePath}`,
+      authorization_servers: [ISSUER],
+      scopes_supported: ['mcp:tools'],
+      bearer_methods_supported: ['header'],
+    };
 
-  return NextResponse.json(metadata, { headers: corsHeaders });
+    return NextResponse.json(metadata, { headers: corsHeaders });
+  } catch {
+    return NextResponse.json(
+      { resource: ISSUER, authorization_servers: [ISSUER], scopes_supported: ['mcp:tools'], bearer_methods_supported: ['header'] },
+      { headers: corsHeaders },
+    );
+  }
 }
 
 export function OPTIONS() {
