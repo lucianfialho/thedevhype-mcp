@@ -1,21 +1,15 @@
+import { NextResponse } from 'next/server';
 import { auth } from '@/app/lib/auth/server';
 import { db } from '@/app/lib/db';
 import { userMcpAccess } from '@/app/lib/db/public.schema';
 import { eq, and } from 'drizzle-orm';
-
-function json(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
 
 export async function POST(request: Request) {
   try {
     const { data: session } = await auth.getSession().catch(() => ({ data: null }));
     const userId = session?.user?.id;
     if (!userId) {
-      return json({ error: 'Not authenticated' }, 401);
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
     let mcpName: string;
@@ -23,11 +17,11 @@ export async function POST(request: Request) {
       const body = await request.json();
       mcpName = body.mcpName;
     } catch {
-      return json({ error: 'Invalid request body' }, 400);
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
     if (!mcpName || typeof mcpName !== 'string') {
-      return json({ error: 'mcpName is required' }, 400);
+      return NextResponse.json({ error: 'mcpName is required' }, { status: 400 });
     }
 
     const existing = await db
@@ -42,7 +36,7 @@ export async function POST(request: Request) {
       .limit(1);
 
     if (existing.length === 0 || !existing[0].enabled) {
-      return json({ error: 'Server must be enabled to generate a key' }, 400);
+      return NextResponse.json({ error: 'Server must be enabled to generate a key' }, { status: 400 });
     }
 
     const apiKey = `sk-${globalThis.crypto.randomUUID()}`;
@@ -56,9 +50,9 @@ export async function POST(request: Request) {
         ),
       );
 
-    return json({ apiKey });
+    return NextResponse.json({ apiKey });
   } catch (err) {
     console.error('[generate-key] unhandled error:', err);
-    return json({ error: 'Internal server error' }, 500);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

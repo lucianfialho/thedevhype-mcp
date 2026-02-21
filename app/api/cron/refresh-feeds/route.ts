@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { sources, userSources, articles } from '@/app/lib/mcp/servers/eloa.schema';
 import { eq, sql } from 'drizzle-orm';
@@ -9,7 +10,7 @@ const rssParser = new RssParser();
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   // Each URL appears only once in sources (shared)
@@ -80,5 +81,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return Response.json({ ok: true, updated, failed, total: allSources.length, errors });
+  return NextResponse.json({ ok: true, updated, failed, total: allSources.length, errors });
 }

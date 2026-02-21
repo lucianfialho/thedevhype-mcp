@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import { neon } from "@neondatabase/serverless";
 
 async function checkDependency(name: string, fn: () => Promise<void>) {
@@ -62,9 +63,9 @@ export async function GET() {
       }),
     }).catch(() => {});
 
-    return Response.json({ ok: true });
+    return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[cron/heartbeat] error:', err);
-    return Response.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

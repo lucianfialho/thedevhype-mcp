@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { posts, socialAccounts } from '@/app/lib/mcp/servers/rayssa.schema';
 import { publishPost } from '@/app/lib/mcp/servers/rayssa';
@@ -11,7 +12,7 @@ import { eq, and, lte, sql } from 'drizzle-orm';
 export async function POST(request: Request) {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const now = new Date().toISOString();
@@ -92,7 +93,7 @@ export async function POST(request: Request) {
     }
   }
 
-  return Response.json({
+  return NextResponse.json({
     ok: true,
     total: duePosts.length,
     published,
