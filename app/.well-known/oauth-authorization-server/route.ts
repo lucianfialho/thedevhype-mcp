@@ -21,8 +21,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': '*',
 };
 
-export function GET() {
-  return NextResponse.json(metadata, { headers: corsHeaders });
+export async function GET() {
+  try {
+    return NextResponse.json(metadata, { headers: corsHeaders });
+  } catch {
+    return NextResponse.json(metadata, { headers: corsHeaders });
+  }
 }
 
 export function OPTIONS() {

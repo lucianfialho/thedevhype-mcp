@@ -160,36 +160,46 @@ function buildDocs(serverName: string): Response | null {
 /* ─── MCP protocol handler (auth required) ─── */
 
 async function handleRequest(request: Request, { params }: { params: Promise<{ path: string[] }> }) {
-  const { path } = await params;
-  const serverName = path[0];
+  try {
+    const { path } = await params;
+    const serverName = path[0];
 
-  const baseHandler = registry.getHandler(serverName);
-  if (!baseHandler) {
-    return NextResponse.json(
-      { error: `MCP server "${serverName}" not found` },
-      { status: 404 },
-    );
+    const baseHandler = registry.getHandler(serverName);
+    if (!baseHandler) {
+      return NextResponse.json(
+        { error: `MCP server "${serverName}" not found` },
+        { status: 404 },
+      );
+    }
+
+    const handler = withMcpAuth(baseHandler, createVerifyToken(serverName), {
+      required: true,
+      resourceMetadataPath: '/.well-known/oauth-protected-resource',
+    });
+    return handler(request);
+  } catch (err) {
+    console.error('[mcp handler] error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-
-  const handler = withMcpAuth(baseHandler, createVerifyToken(serverName), {
-    required: true,
-    resourceMetadataPath: '/.well-known/oauth-protected-resource',
-  });
-  return handler(request);
 }
 
 async function handleGet(request: Request, ctx: { params: Promise<{ path: string[] }> }) {
-  const { path } = await ctx.params;
+  try {
+    const { path } = await ctx.params;
 
-  // GET /api/mcp/{name} → return Markdown docs
-  if (path.length === 1) {
-    const docs = buildDocs(path[0]);
-    if (docs) return docs;
-    return NextResponse.json({ error: `MCP server "${path[0]}" not found` }, { status: 404 });
+    // GET /api/mcp/{name} → return Markdown docs
+    if (path.length === 1) {
+      const docs = buildDocs(path[0]);
+      if (docs) return docs;
+      return NextResponse.json({ error: `MCP server "${path[0]}" not found` }, { status: 404 });
+    }
+
+    // GET /api/mcp/{name}/sse → SSE transport
+    return handleRequest(request, ctx);
+  } catch (err) {
+    console.error('[mcp handler GET] error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-
-  // GET /api/mcp/{name}/sse → SSE transport
-  return handleRequest(request, ctx);
 }
 
 export { handleGet as GET, handleRequest as POST, handleRequest as DELETE };
