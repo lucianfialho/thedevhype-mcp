@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { CreditCard, Shield } from 'lucide-react';
 import { UserButton } from '@neondatabase/neon-js/auth/react/ui';
 import { getTimeTheme, NOISE_STYLE, FORCE_THEME } from './components/theme';
 
@@ -168,8 +169,8 @@ export function DashboardHome({ userName, isAdmin }: DashboardHomeProps) {
               <UserButton
                 size="icon"
                 additionalLinks={[
-                  { href: '/dashboard/billing', label: 'Billing', signedIn: true },
-                  ...(isAdmin ? [{ href: '/dashboard/admin', label: 'Admin', signedIn: true }] : []),
+                  { href: '/dashboard/billing', label: 'Billing', icon: <CreditCard size={16} />, signedIn: true },
+                  ...(isAdmin ? [{ href: '/dashboard/admin', label: 'Admin', icon: <Shield size={16} />, signedIn: true }] : []),
                 ]}
               />
             </header>
