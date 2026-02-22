@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
 import { stripe } from '@/app/lib/billing/stripe';
-import { planFromPriceId } from '@/app/lib/billing/config';
+import { PLANS, planFromPriceId } from '@/app/lib/billing/config';
+import type { PlanName } from '@/app/lib/billing/config';
 import { upsertSubscription } from '@/app/lib/billing/subscriptions';
 import type Stripe from 'stripe';
+import { sendEmail, getUserInfo } from '@/app/lib/email';
+import { SubscriptionActive } from '@/app/lib/email/templates/subscription-active';
+import { SubscriptionUpdated } from '@/app/lib/email/templates/subscription-updated';
+import { SubscriptionCanceled } from '@/app/lib/email/templates/subscription-canceled';
+import { PaymentFailed } from '@/app/lib/email/templates/payment-failed';
 
 export async function POST(request: Request) {
   const body = await request.text();
@@ -36,11 +42,61 @@ export async function POST(request: Request) {
             sub.customer as string,
             sub,
           );
+
+          const planConfig = PLANS[session.metadata.plan as PlanName];
+          if (planConfig) {
+            const user = await getUserInfo(session.metadata.userId);
+            if (user) {
+              void sendEmail({
+                to: user.email,
+                subject: `Your ${planConfig.name} subscription is active`,
+                react: SubscriptionActive({
+                  name: user.name,
+                  planName: planConfig.name,
+                  planDescription: planConfig.description,
+                  priceMonthly: planConfig.priceMonthly,
+                }),
+              });
+            }
+          }
         }
         break;
       }
 
-      case 'customer.subscription.updated':
+      case 'customer.subscription.updated': {
+        const sub = event.data.object as Stripe.Subscription;
+        const userId = sub.metadata?.userId;
+        const plan = sub.metadata?.plan || planFromPriceId(sub.items.data[0]?.price.id ?? '');
+        if (userId && plan) {
+          await upsertSubscription(
+            userId,
+            plan as Parameters<typeof upsertSubscription>[1],
+            sub.customer as string,
+            sub,
+          );
+
+          const planConfig = PLANS[plan as PlanName];
+          if (planConfig) {
+            const user = await getUserInfo(userId);
+            if (user) {
+              const periodEnd = sub.items.data[0]?.current_period_end ?? Math.floor(Date.now() / 1000);
+              void sendEmail({
+                to: user.email,
+                subject: `Your ${planConfig.name} subscription was updated`,
+                react: SubscriptionUpdated({
+                  name: user.name,
+                  planName: planConfig.name,
+                  status: sub.status,
+                  cancelAtPeriodEnd: sub.cancel_at_period_end,
+                  currentPeriodEnd: new Date(periodEnd * 1000).toISOString(),
+                }),
+              });
+            }
+          }
+        }
+        break;
+      }
+
       case 'customer.subscription.deleted': {
         const sub = event.data.object as Stripe.Subscription;
         const userId = sub.metadata?.userId;
@@ -52,6 +108,21 @@ export async function POST(request: Request) {
             sub.customer as string,
             sub,
           );
+
+          const planConfig = PLANS[plan as PlanName];
+          if (planConfig) {
+            const user = await getUserInfo(userId);
+            if (user) {
+              void sendEmail({
+                to: user.email,
+                subject: `Your ${planConfig.name} subscription has been canceled`,
+                react: SubscriptionCanceled({
+                  name: user.name,
+                  planName: planConfig.name,
+                }),
+              });
+            }
+          }
         }
         break;
       }
@@ -73,6 +144,21 @@ export async function POST(request: Request) {
               sub.customer as string,
               sub,
             );
+
+            const planConfig = PLANS[plan as PlanName];
+            if (planConfig) {
+              const user = await getUserInfo(userId);
+              if (user) {
+                void sendEmail({
+                  to: user.email,
+                  subject: 'Action required: payment failed',
+                  react: PaymentFailed({
+                    name: user.name,
+                    planName: planConfig.name,
+                  }),
+                });
+              }
+            }
           }
         }
         break;

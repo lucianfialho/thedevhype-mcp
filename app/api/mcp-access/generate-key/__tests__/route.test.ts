@@ -52,6 +52,15 @@ vi.mock('drizzle-orm', () => ({
   and: vi.fn((...args: unknown[]) => args),
 }));
 
+vi.mock('@/app/lib/email', () => ({
+  sendEmail: vi.fn(),
+  getUserInfo: vi.fn().mockResolvedValue(null),
+}));
+
+vi.mock('@/app/lib/email/templates/mcp-key-generated', () => ({
+  McpKeyGenerated: vi.fn(),
+}));
+
 import { POST } from '../route';
 
 function makeRequest(body: unknown): Request {

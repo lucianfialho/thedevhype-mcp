@@ -4,6 +4,8 @@ import { apiKeys, userInNeonAuth } from '@/app/lib/db/public.schema';
 import { eq } from 'drizzle-orm';
 import { auth } from '@/app/lib/auth/server';
 import crypto from 'crypto';
+import { sendEmail } from '@/app/lib/email';
+import { ApiKeyRegistered } from '@/app/lib/email/templates/api-key-registered';
 
 export async function POST(request: NextRequest) {
   try {
@@ -62,6 +64,17 @@ export async function POST(request: NextRequest) {
       tier: 'free',
       rateLimit: 100,
       dailyLimit: 1000,
+    });
+
+    void sendEmail({
+      to: email,
+      subject: 'Your TheDevHype API key is ready',
+      react: ApiKeyRegistered({
+        name,
+        email,
+        keyPrefix: key.substring(0, 8),
+        tier: 'free',
+      }),
     });
 
     return NextResponse.json({

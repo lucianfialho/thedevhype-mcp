@@ -4,6 +4,8 @@ import { auth } from '@/app/lib/auth/server';
 import { db } from '@/app/lib/db';
 import { userMcpAccess } from '@/app/lib/db/public.schema';
 import { eq, and } from 'drizzle-orm';
+import { sendEmail, getUserInfo } from '@/app/lib/email';
+import { McpKeyGenerated } from '@/app/lib/email/templates/mcp-key-generated';
 
 export async function generateApiKey(mcpName: string) {
   const { data: session } = await auth.getSession();
@@ -27,6 +29,15 @@ export async function generateApiKey(mcpName: string) {
     .update(userMcpAccess)
     .set({ apiKey })
     .where(and(eq(userMcpAccess.userId, userId), eq(userMcpAccess.mcpName, mcpName)));
+
+  const user = await getUserInfo(userId);
+  if (user) {
+    void sendEmail({
+      to: user.email,
+      subject: `API key generated for ${mcpName}`,
+      react: McpKeyGenerated({ name: user.name, mcpName }),
+    });
+  }
 
   return { apiKey };
 }

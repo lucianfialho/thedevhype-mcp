@@ -5,6 +5,9 @@ import { db } from '@/app/lib/db';
 import { eq, sql, desc, gte } from 'drizzle-orm';
 import { userInNeonAuth, apiKeys, apiUsageLog, userMcpAccess, mcpToolUsage, waitlist } from '@/app/lib/db/public.schema';
 import { articles, linkClicks } from '@/app/lib/mcp/servers/eloa.schema';
+import { sendEmail, getWaitlistUserInfo } from '@/app/lib/email';
+import { WaitlistApproved } from '@/app/lib/email/templates/waitlist-approved';
+import { WaitlistRejected } from '@/app/lib/email/templates/waitlist-rejected';
 
 async function requireAdmin() {
   const { data: session } = await auth.getSession();
@@ -346,6 +349,16 @@ export async function approveWaitlistEntry(id: number) {
     .update(waitlist)
     .set({ status: 'approved', approvedAt: new Date().toISOString() })
     .where(eq(waitlist.id, id));
+
+  const user = await getWaitlistUserInfo(id);
+  if (user) {
+    void sendEmail({
+      to: user.email,
+      subject: "You're in! Your TheDevHype account is ready",
+      react: WaitlistApproved({ name: user.name }),
+    });
+  }
+
   return { success: true };
 }
 
@@ -356,6 +369,16 @@ export async function rejectWaitlistEntry(id: number) {
     .update(waitlist)
     .set({ status: 'rejected' })
     .where(eq(waitlist.id, id));
+
+  const user = await getWaitlistUserInfo(id);
+  if (user) {
+    void sendEmail({
+      to: user.email,
+      subject: 'Update on your TheDevHype application',
+      react: WaitlistRejected({ name: user.name }),
+    });
+  }
+
   return { success: true };
 }
 
